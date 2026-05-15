@@ -68,7 +68,6 @@ export default function AdminDashboard() {
         setMyGigs(mg);
         setMyUnavail(mun);
       }
-
       setLoading(false);
     } catch (e) {
       console.error(e);
@@ -130,19 +129,18 @@ export default function AdminDashboard() {
     await setUnavailableDates(profile.uid, next);
   }
 
-  const today     = new Date().toISOString().split('T')[0];
-  const now       = new Date();
-  const upcoming  = gigs.filter(g => g.status !== 'rejected' && g.date >= today);
-  const pending   = gigs.filter(g => g.status === 'pending');
-  const thisMonth = gigs.filter(g => {
+  const today              = new Date().toISOString().split('T')[0];
+  const now                = new Date();
+  const upcoming           = gigs.filter(g => g.status !== 'rejected' && g.date >= today);
+  const pending            = gigs.filter(g => g.status === 'pending');
+  const thisMonth          = gigs.filter(g => {
     const d = new Date(g.date); const n = new Date();
     return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear();
   });
-
-  const myConfirmed      = myGigs.filter(g => g.status === 'confirmed' && g.date >= today);
-  const myPending        = myGigs.filter(g => g.status === 'pending');
-  const nextGig          = myConfirmed[0];
-  const myMonthEarnings  = myGigs.filter(g => { if (g.status !== 'confirmed' || !g.fee) return false; const d = new Date(g.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).reduce((sum, g) => sum + Number(g.fee), 0);
+  const myConfirmed        = myGigs.filter(g => g.status === 'confirmed' && g.date >= today);
+  const myPending          = myGigs.filter(g => g.status === 'pending');
+  const nextGig            = myConfirmed[0];
+  const myMonthEarnings    = myGigs.filter(g => { if (g.status !== 'confirmed' || !g.fee) return false; const d = new Date(g.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).reduce((sum, g) => sum + Number(g.fee), 0);
   const myUpcomingEarnings = myConfirmed.filter(g => g.fee).reduce((sum, g) => sum + Number(g.fee), 0);
 
   if (loading) return <div className="loading">Loading…</div>;
@@ -196,7 +194,12 @@ export default function AdminDashboard() {
       )}
 
       {tab === 'calendar' && (
-        <CalendarView gigs={gigs} allUnavail={unavail} readOnly />
+        <CalendarView
+          gigs={gigs}
+          allUnavail={unavail}
+          readOnly
+          showDJPicker
+        />
       )}
 
       {tab === 'roster' && (
