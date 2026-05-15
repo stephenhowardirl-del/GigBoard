@@ -18,8 +18,8 @@ function daysUntil(iso) {
 
 export default function DJDashboard() {
   const { profile, accessToken } = useAuth();
-  const [tab, setTab]       = useState('schedule');
-  const [gigs, setGigs]     = useState([]);
+  const [tab, setTab]         = useState('schedule');
+  const [gigs, setGigs]       = useState([]);
   const [unavail, setUnavail] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -55,16 +55,18 @@ export default function DJDashboard() {
   }
 
   async function handleToggleUnavail(isoDate) {
-    const next = unavail.includes(isoDate) ? unavail.filter(d => d !== isoDate) : [...unavail, isoDate];
+    const next = unavail.includes(isoDate)
+      ? unavail.filter(d => d !== isoDate)
+      : [...unavail, isoDate];
     setUnavail(next);
     await setUnavailableDates(profile.uid, next);
   }
 
-  const today           = new Date().toISOString().split('T')[0];
-  const now             = new Date();
-  const pending         = gigs.filter(g => g.status === 'pending');
-  const confirmed       = gigs.filter(g => g.status === 'confirmed' && g.date >= today);
-  const nextGig         = confirmed[0];
+  const today     = new Date().toISOString().split('T')[0];
+  const now       = new Date();
+  const pending   = gigs.filter(g => g.status === 'pending');
+  const confirmed = gigs.filter(g => g.status === 'confirmed' && g.date >= today);
+  const nextGig   = confirmed[0];
 
   const monthEarnings = gigs
     .filter(g => {
@@ -153,7 +155,11 @@ export default function DJDashboard() {
       )}
 
       {tab === 'calendar' && (
-        <CalendarView gigs={gigs} unavailDates={unavail} onToggleUnavail={handleToggleUnavail} />
+        <CalendarView
+          gigs={gigs}
+          unavailDates={unavail}
+          onToggleUnavail={handleToggleUnavail}
+        />
       )}
 
       {tab === 'pending' && (
