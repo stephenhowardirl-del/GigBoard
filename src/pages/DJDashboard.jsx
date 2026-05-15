@@ -1,144 +1,187 @@
-import React, { useState, useEffect } from 'react';
-import { getAllUsers, getGigsForDJ, getUnavailableDates } from '../lib/db';
+import React, { useEffect, useState } from 'react';
+import { getGigsForDJ, updateGigStatus, getUnavailableDates, setUnavailableDates } from '../lib/db';
+import { addGigToCalendar, removeGigFromCalendar } from '../lib/calendar';
+import { useAuth } from '../hooks/useAuth';
+import CalendarView from '../components/CalendarView';
 
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+function formatDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T12:00:00');
+  return d.toLocaleDateString('en-IE', { weekday:'short', day:'numeric', month:'short' });
+}
 
-export default function CalendarView({ gigs = [], unavailDates = [], allUnavail = [], onToggleUnavail, readOnly = false, venueFilter = null, showDJPicker = false }) {
-  const now = new Date();
-  const [year, setYear]         = useState(now.getFullYear());
-  const [month, setMonth]       = useState(now.getMonth());
-  const [selectedDJ, setSelectedDJ] = useState('all');
-  const [djList, setDjList]     = useState([]);
-  const [djGigs, setDjGigs]     = useState([]);
-  const [djUnavail, setDjUnavail] = useState([]);
-  const [loadingDJ, setLoadingDJ] = useState(false);
+function daysUntil(iso) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const gig   = new Date(iso + 'T12:00:00');
+  return Math.ceil((gig - today) / 86400000);
+}
 
-  useEffect(() => {
-    if (showDJPicker) {
-      getAllUsers().then(u => setDjList(u.filter(x => x.role !== 'full_admin')));
+export default function DJDashboard() {
+  const { profile, accessToken } = useAuth();
+  const [tab, setTab]         = useState('schedule');
+  const [gigs, setGigs]       = useState([]);
+  const [unavail, setUnavail] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    const [g, un] = await Promise.all([
+      getGigsForDJ(profile.uid),
+      getUnavailableDates(profile.uid),
+    ]);
+    setGigs(g);
+    setUnavail(un);
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function handleAccept(gig) {
+    try {
+      let calId = null;
+      if (accessToken) calId = await addGigToCalendar(accessToken, gig);
+      await updateGigStatus(gig.id, 'confirmed', calId);
+      load();
+    } catch (e) {
+      console.error('Calendar error:', e);
+      await updateGigStatus(gig.id, 'confirmed');
+      load();
     }
-  }, [showDJPicker]);
-
-  useEffect(() => {
-    if (!showDJPicker || selectedDJ === 'all') {
-      setDjGigs([]);
-      setDjUnavail([]);
-      return;
-    }
-    setLoadingDJ(true);
-    Promise.all([
-      getGigsForDJ(selectedDJ),
-      getUnavailableDates(selectedDJ),
-    ]).then(([g, u]) => {
-      setDjGigs(g);
-      setDjUnavail(u);
-      setLoadingDJ(false);
-    });
-  }, [selectedDJ, showDJPicker]);
-
-  function prevMonth() { if (month === 0) { setMonth(11); setYear(y => y-1); } else setMonth(m => m-1); }
-  function nextMonth() { if (month === 11) { setMonth(0); setYear(y => y+1); } else setMonth(m => m+1); }
-
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDow    = (new Date(year, month, 1).getDay() + 6) % 7;
-
-  const activeGigs       = showDJPicker && selectedDJ !== 'all' ? djGigs : (venueFilter ? gigs.filter(g => g.venue === venueFilter) : gigs);
-  const activeUnavail    = showDJPicker && selectedDJ !== 'all' ? djUnavail : unavailDates;
-  const activeAllUnavail = showDJPicker && selectedDJ !== 'all' ? [] : allUnavail;
-
-  function isoForDay(d) {
-    return `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
   }
 
-  function gigsOnDay(d) {
-    return activeGigs.filter(g => g.date === isoForDay(d));
+  async function handleReject(gig) {
+    if (gig.calendarEventId && accessToken) await removeGigFromCalendar(accessToken, gig.calendarEventId);
+    await updateGigStatus(gig.id, 'rejected');
+    load();
   }
 
-  function isUnavail(d) {
-    return activeUnavail.includes(isoForDay(d));
+  async function handleToggleUnavail(isoDate) {
+    const next = unavail.includes(isoDate)
+      ? unavail.filter(d => d !== isoDate)
+      : [...unavail, isoDate];
+    setUnavail(next);
+    await setUnavailableDates(profile.uid, next);
   }
 
-  function isAnyUnavail(d) {
-    const iso = isoForDay(d);
-    return activeAllUnavail.some(u => u.dates?.includes(iso));
-  }
+  const today     = new Date().toISOString().split('T')[0];
+  const now       = new Date();
+  const pending   = gigs.filter(g => g.status === 'pending');
+  const confirmed = gigs.filter(g => g.status === 'confirmed' && g.date >= today);
+  const nextGig   = confirmed[0];
 
-  function dayClass(d) {
-    const classes = ['cal-day'];
-    const today = new Date();
-    if (year === today.getFullYear() && month === today.getMonth() && d === today.getDate()) classes.push('today');
-    const dayGigs = gigsOnDay(d);
-    if (dayGigs.some(g => g.status === 'confirmed')) classes.push('has-gig');
-    else if (dayGigs.some(g => g.status === 'pending')) classes.push('pending-gig');
-    if (isUnavail(d)) classes.push('unavail');
-    if (readOnly && isAnyUnavail(d)) classes.push('unavail-admin');
-    return classes.join(' ');
-  }
+  const monthEarnings = gigs
+    .filter(g => {
+      if (g.status !== 'confirmed' || !g.fee) return false;
+      const d = new Date(g.date);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    })
+    .reduce((sum, g) => sum + Number(g.fee), 0);
 
-  function handleClick(d) {
-    if (readOnly) return;
-    if (gigsOnDay(d).length > 0) return;
-    onToggleUnavail && onToggleUnavail(isoForDay(d));
-  }
+  const upcomingEarnings = confirmed
+    .filter(g => g.fee)
+    .reduce((sum, g) => sum + Number(g.fee), 0);
+
+  if (loading) return <div className="loading">Loading…</div>;
 
   return (
-    <div className="cal-wrap">
-      <div className="cal-header">
-        <div className="cal-month">{MONTHS[month]} {year}</div>
-        <div className="cal-nav">
-          <button onClick={prevMonth}>‹</button>
-          <button onClick={nextMonth}>›</button>
-        </div>
+    <>
+      <div className="subnav">
+        <button className={`subnav-btn${tab==='schedule'?' active':''}`} onClick={() => setTab('schedule')}>My schedule</button>
+        <button className={`subnav-btn${tab==='calendar'?' active':''}`} onClick={() => setTab('calendar')}>Month view</button>
+        <button className={`subnav-btn${tab==='pending'?' active':''}`} onClick={() => setTab('pending')}>
+          Pending{pending.length > 0 && <span className="notif-dot">{pending.length}</span>}
+        </button>
       </div>
 
-      {showDJPicker && (
-        <div style={{marginBottom:14}}>
-          <label style={{fontSize:10,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:5}}>View DJ calendar</label>
-          <select
-            className="perm-select"
-            style={{width:'100%',padding:'8px 10px',fontSize:13}}
-            value={selectedDJ}
-            onChange={e => setSelectedDJ(e.target.value)}
-          >
-            <option value="all">All gigs overview</option>
-            {djList.map(u => <option key={u.uid} value={u.uid}>{u.name}</option>)}
-          </select>
-        </div>
-      )}
+      {tab === 'schedule' && (
+        <div className="page-body">
+          <div className="stats-row" style={{marginBottom:20}}>
+            <div className="stat-card">
+              <div className="stat-label">This month</div>
+              <div className="stat-val neon">€{monthEarnings}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Upcoming total</div>
+              <div className="stat-val" style={{color:'#a080ff'}}>€{upcomingEarnings}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Confirmed gigs</div>
+              <div className="stat-val">{confirmed.length}</div>
+            </div>
+          </div>
 
-      {!readOnly && <p className="unavail-hint">Tap a free day to mark yourself unavailable. Tap again to remove.</p>}
-      {showDJPicker && selectedDJ !== 'all' && (
-        <p className="unavail-hint" style={{color:'#a080ff80'}}>
-          Showing gigs and unavailability for {djList.find(u => u.uid === selectedDJ)?.name}
-        </p>
-      )}
-
-      {loadingDJ ? (
-        <div style={{textAlign:'center',padding:'20px',color:'var(--text-muted)',fontSize:13}}>Loading…</div>
-      ) : (
-        <div className="cal-grid">
-          {DAYS.map(d => <div key={d} className="cal-dow">{d}</div>)}
-          {Array.from({ length: firstDow }, (_, i) => <div key={`e${i}`} className="cal-day empty" />)}
-          {Array.from({ length: daysInMonth }, (_, i) => {
-            const d = i + 1;
-            const dayGigs = gigsOnDay(d);
-            return (
-              <div key={d} className={dayClass(d)} onClick={() => handleClick(d)} title={dayGigs.map(g => `${g.djName} – ${g.venue}`).join('\n')}>
-                {d}
-                {dayGigs.length > 0 && <div style={{fontSize:8,marginTop:1,color:'inherit',opacity:0.75}}>{dayGigs[0].djName?.split(' ')[0]}</div>}
+          {nextGig ? (
+            <div className="next-gig-card">
+              <div style={{flex:1}}>
+                <div className="next-label">Next up</div>
+                <div className="next-venue">{nextGig.venue}</div>
+                <div className="next-sub">{formatDate(nextGig.date)} · {nextGig.time}</div>
+                {nextGig.fee && <div style={{marginTop:6,fontSize:13,color:'#00ffc2',fontWeight:600}}>€{nextGig.fee}</div>}
               </div>
-            );
-          })}
+              <div>
+                <div className="countdown-num">{daysUntil(nextGig.date)}</div>
+                <div className="countdown-unit">days away</div>
+              </div>
+            </div>
+          ) : (
+            <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,padding:20,marginBottom:20,textAlign:'center',color:'var(--text-muted)',fontSize:13}}>
+              No upcoming confirmed gigs. Check the Pending tab for any offers.
+            </div>
+          )}
+
+          <div className="section-title">Confirmed gigs</div>
+          <div className="panel">
+            {confirmed.length === 0 && <div className="empty-state">No confirmed gigs yet.</div>}
+            {confirmed.map(g => {
+              const d = new Date(g.date + 'T12:00:00');
+              return (
+                <div key={g.id} className="timeline-item">
+                  <div className="timeline-date">
+                    <div className="timeline-day">{d.getDate()}</div>
+                    <div className="timeline-month">{d.toLocaleDateString('en-IE',{month:'short'})}</div>
+                  </div>
+                  <div className="timeline-line" />
+                  <div style={{flex:1}}>
+                    <div className="timeline-venue">{g.venue}</div>
+                    <div className="timeline-sub">{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
+                    {g.fee && <div style={{fontSize:12,color:'#00ffc2',fontWeight:600,marginTop:3}}>€{g.fee}</div>}
+                    {g.notes && <div style={{fontSize:11,color:'var(--text-secondary)',marginTop:2}}>📌 {g.notes}</div>}
+                    {g.calendarEventId && <div className="cal-badge">📅 In Google Calendar</div>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
-      <div className="cal-legend">
-        <div className="cal-legend-item"><div className="cal-legend-dot" style={{background:'#001a12',border:'1px solid #00d4aa50'}}></div>Confirmed</div>
-        <div className="cal-legend-item"><div className="cal-legend-dot" style={{background:'#2a1a00',border:'1px solid #ffbb0050'}}></div>Pending</div>
-        <div className="cal-legend-item"><div className="cal-legend-dot" style={{background:'#1a0008',border:'1px solid #ff407050'}}></div>Unavailable</div>
-        {readOnly && <div className="cal-legend-item"><div className="cal-legend-dot" style={{background:'#1a000820',border:'1px solid #ff407030'}}></div>DJ unavailable (admin view)</div>}
-      </div>
-    </div>
+      {tab === 'calendar' && (
+        <CalendarView
+          gigs={gigs}
+          unavailDates={unavail}
+          onToggleUnavail={handleToggleUnavail}
+        />
+      )}
+
+      {tab === 'pending' && (
+        <div className="page-body">
+          {pending.length === 0 && <div className="empty-state">No pending gigs right now.</div>}
+          {pending.map(g => (
+            <div key={g.id} className="pending-card">
+              <div className="pending-head">⏳ Gig offer — action required</div>
+              <div className="pending-body">
+                <div className="pending-venue">{g.venue}</div>
+                <div className="pending-meta">{formatDate(g.date)} · {g.time}</div>
+                {g.fee && <div style={{fontSize:15,color:'#00ffc2',fontWeight:700,marginBottom:10}}>Fee: €{g.fee}</div>}
+                {g.notes && <div style={{fontSize:12,color:'var(--text-secondary)',marginBottom:12}}>📌 {g.notes}</div>}
+                <div className="pending-actions">
+                  <button className="btn btn-primary" onClick={() => handleAccept(g)}>Accept — add to calendar</button>
+                  <button className="btn btn-danger" onClick={() => handleReject(g)}>Reject</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
   );
 }
