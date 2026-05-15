@@ -30,6 +30,25 @@ function initials(name) {
   return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 }
 
+function GigBoardLogo() {
+  return (
+    <div style={{display:'flex', alignItems:'center', gap:10}}>
+      <svg width="28" height="28" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <rect width="32" height="32" rx="6" fill="#0a0a0f"/>
+        <rect x="2" y="12" width="3" height="8" rx="1.5" fill="#00ffc2"/>
+        <rect x="7" y="9" width="3" height="14" rx="1.5" fill="#00ffc2" opacity="0.8"/>
+        <rect x="12" y="6" width="3" height="20" rx="1.5" fill="#00ffc2"/>
+        <rect x="17" y="11" width="3" height="10" rx="1.5" fill="#00ffc2" opacity="0.7"/>
+        <rect x="22" y="8" width="3" height="16" rx="1.5" fill="#00ffc2" opacity="0.9"/>
+        <rect x="27" y="13" width="3" height="6" rx="1.5" fill="#00ffc2" opacity="0.6"/>
+      </svg>
+      <div style={{fontFamily:'var(--font-mono)', fontSize:16, fontWeight:500, letterSpacing:'0.06em', color:'#fff'}}>
+        GIG<span style={{color:'#00ffc2'}}>BOARD</span>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const { user, profile, loading, logout } = useAuth();
 
@@ -39,8 +58,7 @@ export default function App() {
   return (
     <div style={{minHeight:'100vh'}}>
       <div className="topbar">
-        <div className="logo">GIG<span>BOARD</span></div>
-
+        <GigBoardLogo />
         <div className="user-chip">
           <div>
             <div style={{fontSize:13,fontWeight:500,lineHeight:1.2,textAlign:'right'}}>{profile.name}</div>
