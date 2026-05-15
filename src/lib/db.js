@@ -1,5 +1,5 @@
 import {
-  collection, doc, addDoc, updateDoc, getDoc, getDocs,
+  collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs,
   query, where, orderBy, serverTimestamp, setDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -35,15 +35,12 @@ export async function updateUserRole(uid, role, venueScope = null) {
 
 // ── GIGS ───────────────────────────────────────────────
 
-export async function createGig({ venue, date, time, djUid, djName, notes, assignedBy }) {
+export async function createGig({ venue, date, time, djUid, djName, notes, fee, assignedBy }) {
   return await addDoc(collection(db, 'gigs'), {
-    venue,
-    date,       // ISO string e.g. "2026-05-24"
-    time,       // e.g. "22:00–03:00"
-    djUid,
-    djName,
+    venue, date, time, djUid, djName,
     notes: notes || '',
-    status: 'pending',  // pending | confirmed | rejected
+    fee: fee ? Number(fee) : null,
+    status: 'pending',
     assignedBy,
     calendarEventId: null,
     createdAt: serverTimestamp(),
@@ -75,10 +72,22 @@ export async function updateGigStatus(gigId, status, calendarEventId = null) {
   await updateDoc(doc(db, 'gigs', gigId), data);
 }
 
+export async function updateGig(gigId, { venue, date, time, djUid, djName, notes, fee }) {
+  await updateDoc(doc(db, 'gigs', gigId), {
+    venue, date, time, djUid, djName,
+    notes: notes || '',
+    fee: fee ? Number(fee) : null,
+    status: 'pending',
+  });
+}
+
+export async function deleteGig(gigId) {
+  await deleteDoc(doc(db, 'gigs', gigId));
+}
+
 // ── UNAVAILABILITY ─────────────────────────────────────
 
 export async function setUnavailableDates(uid, dates) {
-  // dates = array of ISO date strings e.g. ["2026-05-17", "2026-05-18"]
   await setDoc(doc(db, 'unavailability', uid), { uid, dates, updatedAt: serverTimestamp() });
 }
 
