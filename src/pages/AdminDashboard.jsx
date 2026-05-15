@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getAllGigs, createGig, updateGig, deleteGig, getAllUsers, updateUserRole, getAllUnavailability, updateGigStatus, getGigsForDJ, getUnavailableDates, setUnavailableDates } from '../lib/db';
+import { getAllGigs, createGig, updateGig, deleteGig, getAllUsers, updateUserRole, getAllUnavailability, updateGigStatus, getGigsForDJ, getUnavailableDates, setUnavailableDates, getInvitedEmails, saveInvitedEmails } from '../lib/db';
 import { addGigToCalendar, removeGigFromCalendar } from '../lib/calendar';
 import { DJ_COLORS } from '../lib/config';
 import { useAuth } from '../hooks/useAuth';
@@ -48,17 +48,19 @@ export default function AdminDashboard() {
   const [editingGig, setEditingGig] = useState(null);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
+  const [invites, setInvites]       = useState([]);
+  const [newEmail, setNewEmail]     = useState('');
+  const [inviteSaved, setInviteSaved] = useState(false);
 
   async function load() {
     try {
-      const [g, u, un] = await Promise.all([
-        getAllGigs(),
-        getAllUsers(),
-        getAllUnavailability(),
+      const [g, u, un, inv] = await Promise.all([
+        getAllGigs(), getAllUsers(), getAllUnavailability(), getInvitedEmails(),
       ]);
       setGigs(g);
       setUsers(u.filter(x => x.role !== 'full_admin'));
       setUnavail(un);
+      setInvites(inv);
 
       if (profile?.uid) {
         const [mg, mun] = await Promise.all([
@@ -95,15 +97,8 @@ export default function AdminDashboard() {
     load();
   }
 
-  async function handleConfirm(gigId) {
-    await updateGigStatus(gigId, 'confirmed');
-    load();
-  }
-
-  async function handleReject(gigId) {
-    await updateGigStatus(gigId, 'rejected');
-    load();
-  }
+  async function handleConfirm(gigId) { await updateGigStatus(gigId, 'confirmed'); load(); }
+  async function handleReject(gigId)  { await updateGigStatus(gigId, 'rejected');  load(); }
 
   async function handleAcceptMyGig(gig) {
     try {
@@ -129,14 +124,28 @@ export default function AdminDashboard() {
     await setUnavailableDates(profile.uid, next);
   }
 
+  async function handleAddInvite() {
+    const email = newEmail.trim().toLowerCase();
+    if (!email || invites.includes(email)) return;
+    const updated = [...invites, email];
+    setInvites(updated);
+    setNewEmail('');
+    await saveInvitedEmails(updated);
+    setInviteSaved(true);
+    setTimeout(() => setInviteSaved(false), 2000);
+  }
+
+  async function handleRemoveInvite(email) {
+    const updated = invites.filter(e => e !== email);
+    setInvites(updated);
+    await saveInvitedEmails(updated);
+  }
+
   const today              = new Date().toISOString().split('T')[0];
   const now                = new Date();
   const upcoming           = gigs.filter(g => g.status !== 'rejected' && g.date >= today);
   const pending            = gigs.filter(g => g.status === 'pending');
-  const thisMonth          = gigs.filter(g => {
-    const d = new Date(g.date); const n = new Date();
-    return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear();
-  });
+  const thisMonth          = gigs.filter(g => { const d = new Date(g.date); const n = new Date(); return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear(); });
   const myConfirmed        = myGigs.filter(g => g.status === 'confirmed' && g.date >= today);
   const myPending          = myGigs.filter(g => g.status === 'pending');
   const nextGig            = myConfirmed[0];
@@ -149,12 +158,13 @@ export default function AdminDashboard() {
   return (
     <>
       <div className="subnav">
-        <button className={`subnav-btn${tab==='list'?' active':''}`} onClick={() => setTab('list')}>Gig list</button>
+        <button className={`subnav-btn${tab==='list'?' active':''}`}     onClick={() => setTab('list')}>Gig list</button>
         <button className={`subnav-btn${tab==='calendar'?' active':''}`} onClick={() => setTab('calendar')}>Month view</button>
-        <button className={`subnav-btn${tab==='roster'?' active':''}`} onClick={() => setTab('roster')}>DJ roster</button>
-        <button className={`subnav-btn${tab==='mygigs'?' active':''}`} onClick={() => setTab('mygigs')}>
+        <button className={`subnav-btn${tab==='roster'?' active':''}`}   onClick={() => setTab('roster')}>DJ roster</button>
+        <button className={`subnav-btn${tab==='mygigs'?' active':''}`}   onClick={() => setTab('mygigs')}>
           My gigs{myPending.length > 0 && <span className="notif-dot">{myPending.length}</span>}
         </button>
+        <button className={`subnav-btn${tab==='access'?' active':''}`}   onClick={() => setTab('access')}>Access</button>
       </div>
 
       {tab === 'list' && (
@@ -194,12 +204,7 @@ export default function AdminDashboard() {
       )}
 
       {tab === 'calendar' && (
-        <CalendarView
-          gigs={gigs}
-          allUnavail={unavail}
-          readOnly
-          showDJPicker
-        />
+        <CalendarView gigs={gigs} allUnavail={unavail} readOnly showDJPicker />
       )}
 
       {tab === 'roster' && (
@@ -292,6 +297,51 @@ export default function AdminDashboard() {
 
           <div className="section-title" style={{marginTop:20}}>My availability</div>
           <CalendarView gigs={myGigs} unavailDates={myUnavail} onToggleUnavail={handleToggleUnavail} />
+        </div>
+      )}
+
+      {tab === 'access' && (
+        <div className="page-body">
+          <div className="section-title">Invite management</div>
+          <div style={{fontSize:13,color:'var(--text-muted)',marginBottom:16}}>
+            Only email addresses on this list can log in to GigBoard. Add a DJ's email before sending them the link.
+          </div>
+
+          <div className="panel" style={{marginBottom:20}}>
+            <div className="panel-head">Invited emails — {invites.length} people</div>
+            {invites.length === 0 && <div className="empty-state">No invites yet. Add emails below.</div>}
+            {invites.map(email => (
+              <div key={email} className="gig-row">
+                <div style={{flex:1,fontSize:13,fontFamily:'var(--font-mono)',color:'#e8e8f0'}}>{email}</div>
+                <button
+                  onClick={() => handleRemoveInvite(email)}
+                  style={{background:'transparent',border:'1px solid #ff407040',color:'#ff4070',borderRadius:5,padding:'3px 10px',fontSize:11,cursor:'pointer'}}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="panel">
+            <div className="panel-head">Add a new invite</div>
+            <div style={{padding:16,display:'flex',gap:10}}>
+              <input
+                type="email"
+                placeholder="dj@gmail.com"
+                value={newEmail}
+                onChange={e => setNewEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAddInvite()}
+                style={{flex:1,background:'var(--bg-raised)',border:'1px solid var(--border)',borderRadius:6,color:'var(--text-primary)',fontSize:13,padding:'8px 10px'}}
+              />
+              <button className="btn btn-primary" onClick={handleAddInvite} style={{whiteSpace:'nowrap'}}>
+                {inviteSaved ? '✓ Saved' : 'Add invite'}
+              </button>
+            </div>
+            <div style={{padding:'0 16px 14px',fontSize:11,color:'var(--text-muted)'}}>
+              The DJ must log in using this exact Google account email address.
+            </div>
+          </div>
         </div>
       )}
 
