@@ -6,6 +6,23 @@ import AssignGigModal from '../components/AssignGigModal';
 
 const DOT_COLORS = ['#00d4aa','#a080ff','#40a0ff','#ff60c0','#ffbb00','#80d040'];
 
+const VENUES = [
+  'Clancys Cork',
+  'JJ Walsh',
+  'Dwyers',
+  'Seventy Seven',
+  'Seventy Seven (brunch)',
+  'Seventy Seven (first floor)',
+  'Seventy Seven (stamp room)',
+  'The Wash',
+  'The Pav',
+  'The Dean',
+  'The Woodford',
+  'Mardyke',
+  'Wedding',
+  'Private Event',
+];
+
 function statusBadge(status) {
   return <span className={`badge badge-${status}`}>{status.charAt(0).toUpperCase() + status.slice(1)}</span>;
 }
@@ -121,8 +138,6 @@ export default function AdminDashboard() {
     </>
   );
 }
-
-const VENUES = ['Wigwam', 'The Wash', 'Opium', 'District 8', "Workman's Club", 'The Button Factory'];
 
 function RosterRow({ user, dotColor, onRoleChange }) {
   const [role, setRole]   = useState(user.role || 'dj');
