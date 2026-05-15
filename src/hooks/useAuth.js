@@ -1,31 +1,49 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
-import { getOrCreateUser } from '../lib/db';
+import { getOrCreateUser, isEmailInvited } from '../lib/db';
 import { FULL_ADMIN_EMAIL } from '../lib/config';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser]               = useState(null);  // firebase user
-  const [profile, setProfile]         = useState(null);  // firestore profile
-  const [accessToken, setAccessToken] = useState(null);  // google oauth token
-  const [loading, setLoading]         = useState(true);
+  const [user, setUser]                 = useState(null);
+  const [profile, setProfile]           = useState(null);
+  const [accessToken, setAccessToken]   = useState(null);
+  const [loading, setLoading]           = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        if (firebaseUser.email.toLowerCase() === FULL_ADMIN_EMAIL.toLowerCase()) {
+          setUser(firebaseUser);
+          const p = await getOrCreateUser(firebaseUser);
+          p.role = 'full_admin';
+          setProfile(p);
+          setAccessDenied(false);
+          setLoading(false);
+          return;
+        }
+
+        const invited = await isEmailInvited(firebaseUser.email);
+        if (!invited) {
+          setUser(firebaseUser);
+          setProfile(null);
+          setAccessDenied(true);
+          setLoading(false);
+          return;
+        }
+
         setUser(firebaseUser);
         const p = await getOrCreateUser(firebaseUser);
-        // Override role for full admin
-        if (firebaseUser.email === FULL_ADMIN_EMAIL) {
-          p.role = 'full_admin';
-        }
         setProfile(p);
+        setAccessDenied(false);
       } else {
         setUser(null);
         setProfile(null);
         setAccessToken(null);
+        setAccessDenied(false);
       }
       setLoading(false);
     });
@@ -34,7 +52,6 @@ export function AuthProvider({ children }) {
 
   async function login() {
     const result = await signInWithPopup(auth, googleProvider);
-    // Capture the OAuth access token for Calendar API calls
     const credential = result._tokenResponse;
     if (credential?.oauthAccessToken) {
       setAccessToken(credential.oauthAccessToken);
@@ -46,7 +63,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, accessToken, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, profile, accessToken, loading, accessDenied, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
