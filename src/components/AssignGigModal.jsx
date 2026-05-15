@@ -1,22 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getAllUsers, getAllUnavailability } from '../lib/db';
 
-const VENUES = [
-  'Clancys Cork',
-  'JJ Walsh',
-  'Dwyers',
-  'Seventy Seven',
-  'Seventy Seven (brunch)',
-  'Seventy Seven (first floor)',
-  'Seventy Seven (stamp room)',
-  'The Wash',
-  'The Pav',
-  'The Dean',
-  'The Woodford',
-  'Mardyke',
-  'Wedding',
-  'Private Event',
-];
+const VENUES = ['Clancys Cork','JJ Walsh','Dwyers','Seventy Seven','Seventy Seven (brunch)','Seventy Seven (first floor)','Seventy Seven (stamp room)','The Wash','The Pav','The Dean','The Woodford','Mardyke','Wedding','Private Event'];
 
 export default function AssignGigModal({ onClose, onAssign, lockedVenue = null }) {
   const [users, setUsers]         = useState([]);
@@ -31,7 +16,7 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null }
 
   useEffect(() => {
     getAllUsers().then(u => {
-      const djs = u.filter(x => x.role !== 'full_admin');
+      const djs = u;
       setUsers(djs);
       if (djs.length) setDjUid(djs[0].uid);
     });
