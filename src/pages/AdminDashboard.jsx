@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getAllGigs, createGig, getAllUsers, updateUserRole, getAllUnavailability } from '../lib/db';
+import { getAllGigs, createGig, updateGig, deleteGig, getAllUsers, updateUserRole, getAllUnavailability, updateGigStatus } from '../lib/db';
 import { DJ_COLORS } from '../lib/config';
 import CalendarView from '../components/CalendarView';
 import AssignGigModal from '../components/AssignGigModal';
@@ -7,29 +7,14 @@ import AssignGigModal from '../components/AssignGigModal';
 const DOT_COLORS = ['#00d4aa','#a080ff','#40a0ff','#ff60c0','#ffbb00','#80d040'];
 
 const VENUES = [
-  'Clancys Cork',
-  'JJ Walsh',
-  'Dwyers',
-  'Seventy Seven',
-  'Seventy Seven (brunch)',
-  'Seventy Seven (first floor)',
-  'Seventy Seven (stamp room)',
-  'The Wash',
-  'The Pav',
-  'The Dean',
-  'The Woodford',
-  'Mardyke',
-  'Wedding',
-  'Private Event',
+  'Clancys Cork','JJ Walsh','Dwyers','Seventy Seven',
+  'Seventy Seven (brunch)','Seventy Seven (first floor)',
+  'Seventy Seven (stamp room)','The Wash','The Pav',
+  'The Dean','The Woodford','Mardyke','Wedding','Private Event',
 ];
 
 function statusBadge(status) {
   return <span className={`badge badge-${status}`}>{status.charAt(0).toUpperCase() + status.slice(1)}</span>;
-}
-
-function djDot(name, idx) {
-  const color = DOT_COLORS[idx % DOT_COLORS.length];
-  return <div className="gig-dot" style={{background: color}} />;
 }
 
 function djTag(name) {
@@ -37,13 +22,20 @@ function djTag(name) {
   return <span className="dj-tag" style={{background: c.bg, color: c.color}}>{name?.split(' ')[0]}</span>;
 }
 
+function formatDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T12:00:00');
+  return d.toLocaleDateString('en-IE', { weekday:'short', day:'numeric', month:'short' });
+}
+
 export default function AdminDashboard() {
-  const [tab, setTab]         = useState('list');
-  const [gigs, setGigs]       = useState([]);
-  const [users, setUsers]     = useState([]);
-  const [unavail, setUnavail] = useState([]);
-  const [showModal, setShowModal] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [tab, setTab]               = useState('list');
+  const [gigs, setGigs]             = useState([]);
+  const [users, setUsers]           = useState([]);
+  const [unavail, setUnavail]       = useState([]);
+  const [showModal, setShowModal]   = useState(false);
+  const [editingGig, setEditingGig] = useState(null);
+  const [loading, setLoading]       = useState(true);
 
   async function load() {
     const [g, u, un] = await Promise.all([getAllGigs(), getAllUsers(), getAllUnavailability()]);
@@ -60,16 +52,33 @@ export default function AdminDashboard() {
     load();
   }
 
-  async function handleRoleChange(uid, role, venueScope) {
-    await updateUserRole(uid, role, venueScope || null);
+  async function handleEdit(gigData) {
+    await updateGig(editingGig.id, gigData);
+    setEditingGig(null);
     load();
   }
 
-  const upcoming  = gigs.filter(g => g.status !== 'rejected' && g.date >= new Date().toISOString().split('T')[0]);
+  async function handleDelete(gig) {
+    if (!window.confirm(`Delete this gig?\n\n${gig.venue} — ${formatDate(gig.date)}\n\nThis cannot be undone.`)) return;
+    await deleteGig(gig.id);
+    load();
+  }
+
+  async function handleConfirm(gigId) {
+    await updateGigStatus(gigId, 'confirmed');
+    load();
+  }
+
+  async function handleReject(gigId) {
+    await updateGigStatus(gigId, 'rejected');
+    load();
+  }
+
+  const today     = new Date().toISOString().split('T')[0];
+  const upcoming  = gigs.filter(g => g.status !== 'rejected' && g.date >= today);
   const pending   = gigs.filter(g => g.status === 'pending');
   const thisMonth = gigs.filter(g => {
-    const d = new Date(g.date);
-    const n = new Date();
+    const d = new Date(g.date); const n = new Date();
     return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear();
   });
 
@@ -94,21 +103,37 @@ export default function AdminDashboard() {
           </div>
 
           <div style={{display:'flex',justifyContent:'flex-end',marginBottom:12}}>
-            <button className="btn btn-primary btn-sm" onClick={() => setShowModal(true)}>+ Assign gig</button>
+            <button className="btn btn-primary btn-sm" onClick={() => { setEditingGig(null); setShowModal(true); }}>+ Assign gig</button>
           </div>
 
           <div className="panel">
             <div className="panel-head">All venues — all DJs</div>
             {gigs.length === 0 && <div className="empty-state">No gigs yet. Assign one above.</div>}
             {gigs.map((g, i) => (
-              <div key={g.id} className="gig-row">
-                {djDot(g.djName, i)}
+              <div key={g.id} className="gig-row" style={{flexWrap:'wrap',gap:8}}>
+                <div className="gig-dot" style={{background: DOT_COLORS[i % DOT_COLORS.length]}} />
                 <div className="gig-info">
                   <div className="gig-venue">{g.venue}</div>
                   <div className="gig-meta">{formatDate(g.date)} · {g.time}</div>
+                  <div className="gig-meta">{g.djName}{g.fee ? <span style={{color:'#00ffc2',marginLeft:8}}>€{g.fee}</span> : null}</div>
                 </div>
-                {djTag(g.djName)}
-                {statusBadge(g.status)}
+                <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
+                  {g.status === 'pending' && <>
+                    <button className="btn btn-primary btn-sm" onClick={() => handleConfirm(g.id)}>Confirm</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => handleReject(g.id)}>Reject</button>
+                  </>}
+                  {g.status !== 'pending' && statusBadge(g.status)}
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => { setEditingGig(g); setShowModal(true); }}
+                    style={{fontSize:11,padding:'3px 8px'}}
+                  >Edit</button>
+                  <button
+                    className="btn btn-danger btn-sm"
+                    onClick={() => handleDelete(g)}
+                    style={{fontSize:11,padding:'3px 8px'}}
+                  >Delete</button>
+                </div>
               </div>
             ))}
           </div>
@@ -127,14 +152,20 @@ export default function AdminDashboard() {
               Active DJs
               <span style={{fontSize:10,color:'var(--text-muted)',fontWeight:400,textTransform:'none',letterSpacing:0}}>Change permissions anytime</span>
             </div>
+            {users.length === 0 && <div className="empty-state">No DJs yet — share the link so they can log in.</div>}
             {users.map((u, i) => (
-              <RosterRow key={u.uid} user={u} dotColor={DOT_COLORS[i % DOT_COLORS.length]} onRoleChange={handleRoleChange} />
+              <RosterRow key={u.uid} user={u} dotColor={DOT_COLORS[i % DOT_COLORS.length]} onRoleChange={async (uid, role, venueScope) => { await updateUserRole(uid, role, venueScope || null); load(); }} />
             ))}
           </div>
         </div>
       )}
 
-      {showModal && <AssignGigModal onClose={() => setShowModal(false)} onAssign={handleAssign} />}
+      {showModal && !editingGig && (
+        <AssignGigModal onClose={() => setShowModal(false)} onAssign={handleAssign} />
+      )}
+      {showModal && editingGig && (
+        <AssignGigModal onClose={() => { setShowModal(false); setEditingGig(null); }} onAssign={handleEdit} existingGig={editingGig} />
+      )}
     </>
   );
 }
@@ -143,22 +174,15 @@ function RosterRow({ user, dotColor, onRoleChange }) {
   const [role, setRole]   = useState(user.role || 'dj');
   const [venue, setVenue] = useState(user.venueScope || VENUES[0]);
 
-  function handleRole(e) {
-    const r = e.target.value;
-    setRole(r);
-    onRoleChange(user.uid, r, r === 'venue_admin' ? venue : null);
-  }
-  function handleVenue(e) {
-    setVenue(e.target.value);
-    onRoleChange(user.uid, role, e.target.value);
-  }
+  function handleRole(e) { const r = e.target.value; setRole(r); onRoleChange(user.uid, r, r === 'venue_admin' ? venue : null); }
+  function handleVenue(e) { setVenue(e.target.value); onRoleChange(user.uid, role, e.target.value); }
 
   const initials = user.name?.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
 
   return (
     <div>
       <div className="roster-row">
-        <div className="avatar" style={{background: dotColor + '20', color: dotColor, borderColor: dotColor + '40'}}>{initials}</div>
+        <div className="avatar" style={{background: dotColor+'20', color: dotColor, borderColor: dotColor+'40'}}>{initials}</div>
         <div style={{flex:1}}>
           <div style={{fontSize:13,fontWeight:500}}>{user.name}</div>
           <div style={{fontSize:11,color:'var(--text-muted)'}}>{user.email}</div>
@@ -178,10 +202,4 @@ function RosterRow({ user, dotColor, onRoleChange }) {
       )}
     </div>
   );
-}
-
-function formatDate(iso) {
-  if (!iso) return '';
-  const d = new Date(iso + 'T12:00:00');
-  return d.toLocaleDateString('en-IE', { weekday:'short', day:'numeric', month:'short' });
 }
