@@ -47,24 +47,37 @@ export default function AdminDashboard() {
   const [showModal, setShowModal]   = useState(false);
   const [editingGig, setEditingGig] = useState(null);
   const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState(null);
 
   async function load() {
-    const [g, u, un, mg, mun] = await Promise.all([
-      getAllGigs(),
-      getAllUsers(),
-      getAllUnavailability(),
-      getGigsForDJ(profile.uid),
-      getUnavailableDates(profile.uid),
-    ]);
-    setGigs(g);
-    setUsers(u.filter(x => x.role !== 'full_admin'));
-    setUnavail(un);
-    setMyGigs(mg);
-    setMyUnavail(mun);
-    setLoading(false);
+    try {
+      const [g, u, un] = await Promise.all([
+        getAllGigs(),
+        getAllUsers(),
+        getAllUnavailability(),
+      ]);
+      setGigs(g);
+      setUsers(u.filter(x => x.role !== 'full_admin'));
+      setUnavail(un);
+
+      if (profile?.uid) {
+        const [mg, mun] = await Promise.all([
+          getGigsForDJ(profile.uid),
+          getUnavailableDates(profile.uid),
+        ]);
+        setMyGigs(mg);
+        setMyUnavail(mun);
+      }
+
+      setLoading(false);
+    } catch (e) {
+      console.error(e);
+      setError(e.message);
+      setLoading(false);
+    }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { if (profile?.uid) load(); }, [profile]);
 
   async function handleAssign(gigData) {
     await createGig({ ...gigData, assignedBy: 'Steve Howard' });
@@ -126,23 +139,14 @@ export default function AdminDashboard() {
     return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear();
   });
 
-  const myConfirmed = myGigs.filter(g => g.status === 'confirmed' && g.date >= today);
-  const myPending   = myGigs.filter(g => g.status === 'pending');
-  const nextGig     = myConfirmed[0];
-
-  const myMonthEarnings = myGigs
-    .filter(g => {
-      if (g.status !== 'confirmed' || !g.fee) return false;
-      const d = new Date(g.date);
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    })
-    .reduce((sum, g) => sum + Number(g.fee), 0);
-
-  const myUpcomingEarnings = myConfirmed
-    .filter(g => g.fee)
-    .reduce((sum, g) => sum + Number(g.fee), 0);
+  const myConfirmed      = myGigs.filter(g => g.status === 'confirmed' && g.date >= today);
+  const myPending        = myGigs.filter(g => g.status === 'pending');
+  const nextGig          = myConfirmed[0];
+  const myMonthEarnings  = myGigs.filter(g => { if (g.status !== 'confirmed' || !g.fee) return false; const d = new Date(g.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).reduce((sum, g) => sum + Number(g.fee), 0);
+  const myUpcomingEarnings = myConfirmed.filter(g => g.fee).reduce((sum, g) => sum + Number(g.fee), 0);
 
   if (loading) return <div className="loading">Loading…</div>;
+  if (error)   return <div className="loading" style={{color:'#ff4070'}}>Error: {error} — try refreshing.</div>;
 
   return (
     <>
@@ -162,11 +166,9 @@ export default function AdminDashboard() {
             <div className="stat-card"><div className="stat-label">Pending</div><div className="stat-val pending">{pending.length}</div></div>
             <div className="stat-card"><div className="stat-label">This month</div><div className="stat-val">{thisMonth.length}</div></div>
           </div>
-
           <div style={{display:'flex',justifyContent:'flex-end',marginBottom:12}}>
             <button className="btn btn-primary btn-sm" onClick={() => { setEditingGig(null); setShowModal(true); }}>+ Assign gig</button>
           </div>
-
           <div className="panel">
             <div className="panel-head">All venues — all DJs</div>
             {gigs.length === 0 && <div className="empty-state">No gigs yet. Assign one above.</div>}
@@ -216,18 +218,9 @@ export default function AdminDashboard() {
       {tab === 'mygigs' && (
         <div className="page-body">
           <div className="stats-row" style={{marginBottom:20}}>
-            <div className="stat-card">
-              <div className="stat-label">This month</div>
-              <div className="stat-val neon">€{myMonthEarnings}</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-label">Upcoming total</div>
-              <div className="stat-val" style={{color:'#a080ff'}}>€{myUpcomingEarnings}</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-label">Confirmed</div>
-              <div className="stat-val">{myConfirmed.length}</div>
-            </div>
+            <div className="stat-card"><div className="stat-label">This month</div><div className="stat-val neon">€{myMonthEarnings}</div></div>
+            <div className="stat-card"><div className="stat-label">Upcoming total</div><div className="stat-val" style={{color:'#a080ff'}}>€{myUpcomingEarnings}</div></div>
+            <div className="stat-card"><div className="stat-label">Confirmed</div><div className="stat-val">{myConfirmed.length}</div></div>
           </div>
 
           {nextGig ? (
