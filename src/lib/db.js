@@ -100,3 +100,18 @@ export async function getAllUnavailability() {
   const snap = await getDocs(collection(db, 'unavailability'));
   return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
 }
+// ── INVITES ────────────────────────────────────────────
+
+export async function getInvitedEmails() {
+  const snap = await getDoc(doc(db, 'settings', 'invites'));
+  return snap.exists() ? snap.data().emails : [];
+}
+
+export async function saveInvitedEmails(emails) {
+  await setDoc(doc(db, 'settings', 'invites'), { emails });
+}
+
+export async function isEmailInvited(email) {
+  const emails = await getInvitedEmails();
+  return emails.map(e => e.toLowerCase().trim()).includes(email.toLowerCase().trim());
+}
