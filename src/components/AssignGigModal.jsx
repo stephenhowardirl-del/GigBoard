@@ -1,24 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { getAllUsers, getAllUnavailability } from '../lib/db';
 
-const VENUES = ['Clancys Cork','JJ Walsh','Dwyers','Seventy Seven','Seventy Seven (brunch)','Seventy Seven (first floor)','Seventy Seven (stamp room)','The Wash','The Pav','The Dean','The Woodford','Mardyke','Wedding','Private Event'];
+const VENUES = [
+  'Clancys Cork','JJ Walsh','Dwyers','Seventy Seven',
+  'Seventy Seven (brunch)','Seventy Seven (first floor)',
+  'Seventy Seven (stamp room)','The Wash','The Pav',
+  'The Dean','The Woodford','Mardyke','Wedding','Private Event',
+];
 
-export default function AssignGigModal({ onClose, onAssign, lockedVenue = null }) {
-  const [users, setUsers]         = useState([]);
-  const [unavail, setUnavail]     = useState([]);
-  const [venue, setVenue]         = useState(lockedVenue || VENUES[0]);
-  const [date, setDate]           = useState('');
-  const [time, setTime]           = useState('');
-  const [djUid, setDjUid]         = useState('');
-  const [notes, setNotes]         = useState('');
-  const [warning, setWarning]     = useState('');
+export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, existingGig = null }) {
+  const editing = !!existingGig;
+
+  const [users, setUsers]       = useState([]);
+  const [unavail, setUnavail]   = useState([]);
+  const [venue, setVenue]       = useState(existingGig?.venue || lockedVenue || VENUES[0]);
+  const [date, setDate]         = useState(existingGig?.date || '');
+  const [time, setTime]         = useState(existingGig?.time || '');
+  const [djUid, setDjUid]       = useState(existingGig?.djUid || '');
+  const [notes, setNotes]       = useState(existingGig?.notes || '');
+  const [fee, setFee]           = useState(existingGig?.fee || '');
+  const [warning, setWarning]   = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     getAllUsers().then(u => {
-      const djs = u;
-      setUsers(djs);
-      if (djs.length) setDjUid(djs[0].uid);
+      setUsers(u);
+      if (!editing && u.length) setDjUid(u[0].uid);
     });
     getAllUnavailability().then(setUnavail);
   }, []);
@@ -33,29 +40,24 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null }
     }
   }
 
-  function handleDateChange(e) {
-    setDate(e.target.value);
-    checkUnavail(e.target.value, djUid);
-  }
-
-  function handleDjChange(e) {
-    setDjUid(e.target.value);
-    checkUnavail(date, e.target.value);
-  }
+  function handleDateChange(e) { setDate(e.target.value); checkUnavail(e.target.value, djUid); }
+  function handleDjChange(e)   { setDjUid(e.target.value); checkUnavail(date, e.target.value); }
 
   async function handleSubmit() {
     if (!date || !time || !djUid) return;
     setSubmitting(true);
     const dj = users.find(u => u.uid === djUid);
-    await onAssign({ venue: lockedVenue || venue, date, time, djUid, djName: dj?.name, notes });
+    await onAssign({ venue: lockedVenue || venue, date, time, djUid, djName: dj?.name, notes, fee });
     onClose();
   }
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal">
-        <div className="modal-title">{lockedVenue ? `Assign gig at ${lockedVenue}` : 'Assign a gig'}</div>
-        <div className="modal-sub">DJ will receive a notification and must accept before it goes to their calendar.</div>
+        <div className="modal-title">{editing ? 'Edit gig' : lockedVenue ? `Assign gig at ${lockedVenue}` : 'Assign a gig'}</div>
+        <div className="modal-sub">
+          {editing ? 'Changes will reset the gig to pending — the DJ will need to reconfirm.' : 'DJ will receive a notification and must accept before it goes to their calendar.'}
+        </div>
 
         {!lockedVenue && (
           <div className="field">
@@ -65,12 +67,8 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null }
             </select>
           </div>
         )}
-
         {lockedVenue && (
-          <div className="field">
-            <label>Venue</label>
-            <input value={lockedVenue} disabled />
-          </div>
+          <div className="field"><label>Venue</label><input value={lockedVenue} disabled /></div>
         )}
 
         <div className="field">
@@ -97,6 +95,11 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null }
         )}
 
         <div className="field">
+          <label>Fee (€)</label>
+          <input type="number" placeholder="e.g. 150" value={fee} onChange={e => setFee(e.target.value)} min="0" />
+        </div>
+
+        <div className="field">
           <label>Notes (optional)</label>
           <input type="text" placeholder="e.g. Load in at 21:00" value={notes} onChange={e => setNotes(e.target.value)} />
         </div>
@@ -104,7 +107,7 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null }
         <div className="modal-actions">
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting || !date || !time}>
-            {submitting ? 'Sending…' : 'Send to DJ →'}
+            {submitting ? 'Saving…' : editing ? 'Save changes →' : 'Send to DJ →'}
           </button>
         </div>
       </div>
