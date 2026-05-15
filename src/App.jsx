@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from './hooks/useAuth';
 import LoginPage from './pages/LoginPage';
+import AccessDenied from './pages/AccessDenied';
 import AdminDashboard from './pages/AdminDashboard';
 import VenueAdminDashboard from './pages/VenueAdminDashboard';
 import DJDashboard from './pages/DJDashboard';
@@ -50,11 +51,13 @@ function GigBoardLogo() {
 }
 
 export default function App() {
-  const { user, profile, loading, logout } = useAuth();
+  const { user, profile, loading, accessDenied, logout } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
 
-  if (loading) return <div className="loading">Loading GigBoard…</div>;
-  if (!user || !profile) return <LoginPage />;
+  if (loading)      return <div className="loading">Loading GigBoard…</div>;
+  if (!user)        return <LoginPage />;
+  if (accessDenied) return <AccessDenied />;
+  if (!profile)     return <div className="loading">Loading…</div>;
 
   return (
     <div style={{minHeight:'100vh'}} onClick={() => setShowMenu(false)}>
@@ -81,25 +84,19 @@ export default function App() {
           </div>
 
           {showMenu && (
-            <div style={{
-              position:'absolute', top:44, right:0, zIndex:200,
-              background:'#0d0d14', border:'1px solid #2a2a40',
-              borderRadius:8, minWidth:160, overflow:'hidden',
-              boxShadow:'0 8px 24px #00000060',
-            }} onClick={e => e.stopPropagation()}>
-              <div style={{padding:'10px 14px', borderBottom:'1px solid #1e1e2e'}}>
+            <div
+              style={{position:'absolute',top:44,right:0,zIndex:200,background:'#0d0d14',border:'1px solid #2a2a40',borderRadius:8,minWidth:180,overflow:'hidden',boxShadow:'0 8px 24px #00000060'}}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{padding:'10px 14px',borderBottom:'1px solid #1e1e2e'}}>
                 <div style={{fontSize:12,fontWeight:500,color:'#e8e8f0'}}>{profile.name}</div>
                 <div style={{fontSize:11,color:'#404060',marginTop:2}}>{user.email}</div>
               </div>
               <button
                 onClick={() => { setShowMenu(false); logout(); }}
-                style={{
-                  width:'100%', padding:'10px 14px', background:'transparent',
-                  border:'none', color:'#ff4070', fontSize:13, fontWeight:500,
-                  textAlign:'left', cursor:'pointer', display:'flex', alignItems:'center', gap:8,
-                }}
+                style={{width:'100%',padding:'10px 14px',background:'transparent',border:'none',color:'#ff4070',fontSize:13,fontWeight:500,textAlign:'left',cursor:'pointer',display:'flex',alignItems:'center',gap:8}}
               >
-                Sign out
+                🚪 Sign out
               </button>
             </div>
           )}
