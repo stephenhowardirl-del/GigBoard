@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getAllGigs, createGig, updateGig, deleteGig, getAllUsers, updateUserRole, getAllUnavailability, updateGigStatus, getGigsForDJ, getUnavailableDates, setUnavailableDates, getInvitedEmails, saveInvitedEmails, getVenues, saveVenues } from '../lib/db';
-import { DJ_COLORS } from '../lib/config';
+import { getVenueColor, VENUE_ADMIN_SCOPES } from '../lib/venueGroups';
 import { useAuth } from '../hooks/useAuth';
 import CalendarView from '../components/CalendarView';
 import AssignGigModal from '../components/AssignGigModal';
@@ -23,6 +23,16 @@ function daysUntil(iso) {
   return Math.ceil((gig - today) / 86400000);
 }
 
+function VenueBadge({ venue }) {
+  const { color, bg, group } = getVenueColor(venue);
+  return (
+    <div style={{display:'flex', alignItems:'center', gap:6, marginTop:3}}>
+      <div style={{width:7, height:7, borderRadius:'50%', background:color, flexShrink:0}} />
+      {group && <span style={{fontSize:10, color, background:bg, padding:'1px 6px', borderRadius:4, fontWeight:500}}>{group}</span>}
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const { profile } = useAuth();
   const [tab, setTab]               = useState('list');
@@ -34,7 +44,7 @@ export default function AdminDashboard() {
   const [venues, setVenues]         = useState([]);
   const [newVenue, setNewVenue]     = useState('');
   const [venueSaved, setVenueSaved] = useState(false);
-  const [editingVenue, setEditingVenue] = useState(null);
+  const [editingVenue, setEditingVenue]     = useState(null);
   const [editingVenueName, setEditingVenueName] = useState('');
   const [showModal, setShowModal]   = useState(false);
   const [editingGig, setEditingGig] = useState(null);
@@ -192,25 +202,28 @@ export default function AdminDashboard() {
           <div className="panel">
             <div className="panel-head">All venues — all DJs</div>
             {gigs.length === 0 && <div className="empty-state">No gigs yet. Assign one above.</div>}
-            {gigs.map((g, i) => (
-              <div key={g.id} className="gig-row" style={{flexWrap:'wrap',gap:8}}>
-                <div className="gig-dot" style={{background: DOT_COLORS[i % DOT_COLORS.length]}} />
-                <div className="gig-info">
-                  <div className="gig-venue">{g.venue}</div>
-                  <div className="gig-meta">{formatDate(g.date)} · {g.time}</div>
-                  <div className="gig-meta">{g.djName}{g.fee ? <span style={{color:'#00ffc2',marginLeft:8}}>€{g.fee}</span> : null}</div>
+            {gigs.map(g => {
+              const vc = getVenueColor(g.venue);
+              return (
+                <div key={g.id} className="gig-row" style={{flexWrap:'wrap',gap:8,borderLeft:`3px solid ${vc.color}`}}>
+                  <div className="gig-info">
+                    <div className="gig-venue">{g.venue}</div>
+                    <VenueBadge venue={g.venue} />
+                    <div className="gig-meta" style={{marginTop:4}}>{formatDate(g.date)} · {g.time}</div>
+                    <div className="gig-meta">{g.djName}{g.fee ? <span style={{color:'#00ffc2',marginLeft:8}}>€{g.fee}</span> : null}</div>
+                  </div>
+                  <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
+                    {g.status === 'pending' && <>
+                      <button className="btn btn-primary btn-sm" onClick={() => handleConfirm(g.id)}>Confirm</button>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleReject(g.id)}>Reject</button>
+                    </>}
+                    {g.status !== 'pending' && statusBadge(g.status)}
+                    <button className="btn btn-ghost btn-sm" onClick={() => { setEditingGig(g); setShowModal(true); }} style={{fontSize:11,padding:'3px 8px'}}>Edit</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => handleDelete(g)} style={{fontSize:11,padding:'3px 8px'}}>Delete</button>
+                  </div>
                 </div>
-                <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
-                  {g.status === 'pending' && <>
-                    <button className="btn btn-primary btn-sm" onClick={() => handleConfirm(g.id)}>Confirm</button>
-                    <button className="btn btn-danger btn-sm" onClick={() => handleReject(g.id)}>Reject</button>
-                  </>}
-                  {g.status !== 'pending' && statusBadge(g.status)}
-                  <button className="btn btn-ghost btn-sm" onClick={() => { setEditingGig(g); setShowModal(true); }} style={{fontSize:11,padding:'3px 8px'}}>Edit</button>
-                  <button className="btn btn-danger btn-sm" onClick={() => handleDelete(g)} style={{fontSize:11,padding:'3px 8px'}}>Delete</button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -244,11 +257,12 @@ export default function AdminDashboard() {
           </div>
 
           {nextGig ? (
-            <div className="next-gig-card">
+            <div className="next-gig-card" style={{borderColor: getVenueColor(nextGig.venue).color+'40'}}>
               <div style={{flex:1}}>
                 <div className="next-label">Next up</div>
                 <div className="next-venue">{nextGig.venue}</div>
-                <div className="next-sub">{formatDate(nextGig.date)} · {nextGig.time}</div>
+                <VenueBadge venue={nextGig.venue} />
+                <div className="next-sub" style={{marginTop:6}}>{formatDate(nextGig.date)} · {nextGig.time}</div>
                 {nextGig.fee && <div style={{marginTop:6,fontSize:13,color:'#00ffc2',fontWeight:600}}>€{nextGig.fee}</div>}
               </div>
               <div>
@@ -265,21 +279,25 @@ export default function AdminDashboard() {
           {myPending.length > 0 && (
             <>
               <div className="section-title" style={{color:'#ffbb00'}}>Pending — action required</div>
-              {myPending.map(g => (
-                <div key={g.id} className="pending-card" style={{marginBottom:12}}>
-                  <div className="pending-head">⏳ Gig offer</div>
-                  <div className="pending-body">
-                    <div className="pending-venue">{g.venue}</div>
-                    <div className="pending-meta">{formatDate(g.date)} · {g.time}</div>
-                    {g.fee && <div style={{fontSize:15,color:'#00ffc2',fontWeight:700,marginBottom:10}}>Fee: €{g.fee}</div>}
-                    {g.notes && <div style={{fontSize:12,color:'var(--text-secondary)',marginBottom:12}}>📌 {g.notes}</div>}
-                    <div className="pending-actions">
-                      <button className="btn btn-primary" onClick={() => handleAcceptMyGig(g)}>Accept</button>
-                      <button className="btn btn-danger" onClick={() => handleRejectMyGig(g)}>Reject</button>
+              {myPending.map(g => {
+                const vc = getVenueColor(g.venue);
+                return (
+                  <div key={g.id} className="pending-card" style={{marginBottom:12,borderColor:vc.color+'40'}}>
+                    <div className="pending-head" style={{background:vc.bg,color:vc.color}}>⏳ Gig offer</div>
+                    <div className="pending-body">
+                      <div className="pending-venue">{g.venue}</div>
+                      <VenueBadge venue={g.venue} />
+                      <div className="pending-meta" style={{marginTop:8}}>{formatDate(g.date)} · {g.time}</div>
+                      {g.fee && <div style={{fontSize:15,color:'#00ffc2',fontWeight:700,marginBottom:10,marginTop:6}}>Fee: €{g.fee}</div>}
+                      {g.notes && <div style={{fontSize:12,color:'var(--text-secondary)',marginBottom:12}}>📌 {g.notes}</div>}
+                      <div className="pending-actions">
+                        <button className="btn btn-primary" onClick={() => handleAcceptMyGig(g)}>Accept</button>
+                        <button className="btn btn-danger" onClick={() => handleRejectMyGig(g)}>Reject</button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </>
           )}
 
@@ -288,16 +306,18 @@ export default function AdminDashboard() {
             {myConfirmed.length === 0 && <div className="empty-state">No confirmed gigs yet.</div>}
             {myConfirmed.map(g => {
               const d = new Date(g.date + 'T12:00:00');
+              const vc = getVenueColor(g.venue);
               return (
-                <div key={g.id} className="timeline-item">
+                <div key={g.id} className="timeline-item" style={{borderLeft:`3px solid ${vc.color}`}}>
                   <div className="timeline-date">
-                    <div className="timeline-day">{d.getDate()}</div>
+                    <div className="timeline-day" style={{color:vc.color}}>{d.getDate()}</div>
                     <div className="timeline-month">{d.toLocaleDateString('en-IE',{month:'short'})}</div>
                   </div>
-                  <div className="timeline-line" />
+                  <div className="timeline-line" style={{background:vc.color+'40'}} />
                   <div style={{flex:1}}>
                     <div className="timeline-venue">{g.venue}</div>
-                    <div className="timeline-sub">{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
+                    <VenueBadge venue={g.venue} />
+                    <div className="timeline-sub" style={{marginTop:4}}>{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
                     {g.fee && <div style={{fontSize:12,color:'#00ffc2',fontWeight:600,marginTop:3}}>€{g.fee}</div>}
                     {g.notes && <div style={{fontSize:11,color:'var(--text-secondary)',marginTop:2}}>📌 {g.notes}</div>}
                   </div>
@@ -313,7 +333,6 @@ export default function AdminDashboard() {
 
       {tab === 'access' && (
         <div className="page-body">
-
           <div className="section-title">Venues</div>
           <div style={{fontSize:13,color:'var(--text-muted)',marginBottom:16}}>
             Add, rename or remove venues. Changes appear immediately in the assign gig form.
@@ -321,35 +340,35 @@ export default function AdminDashboard() {
           <div className="panel" style={{marginBottom:20}}>
             <div className="panel-head">Current venues — {venues.length}</div>
             {venues.length === 0 && <div className="empty-state">No venues yet.</div>}
-            {venues.map(venue => (
-              <div key={venue} className="gig-row">
-                {editingVenue === venue ? (
-                  <>
-                    <input
-                      autoFocus
-                      value={editingVenueName}
-                      onChange={e => setEditingVenueName(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') handleRenameVenue(); if (e.key === 'Escape') setEditingVenue(null); }}
-                      style={{flex:1,background:'var(--bg-raised)',border:'1px solid var(--border-mid)',borderRadius:5,color:'var(--text-primary)',fontSize:13,padding:'5px 8px'}}
-                    />
-                    <button onClick={handleRenameVenue} className="btn btn-primary btn-sm" style={{marginLeft:6}}>Save</button>
-                    <button onClick={() => setEditingVenue(null)} className="btn btn-ghost btn-sm" style={{marginLeft:4}}>Cancel</button>
-                  </>
-                ) : (
-                  <>
-                    <div style={{flex:1,fontSize:13,color:'#e8e8f0'}}>{venue}</div>
-                    <button
-                      onClick={() => { setEditingVenue(venue); setEditingVenueName(venue); }}
-                      style={{background:'transparent',border:'1px solid #1e1e2e',color:'#6060a0',borderRadius:5,padding:'3px 10px',fontSize:11,cursor:'pointer',marginRight:6}}
-                    >Edit</button>
-                    <button
-                      onClick={() => handleRemoveVenue(venue)}
-                      style={{background:'transparent',border:'1px solid #ff407040',color:'#ff4070',borderRadius:5,padding:'3px 10px',fontSize:11,cursor:'pointer'}}
-                    >Remove</button>
-                  </>
-                )}
-              </div>
-            ))}
+            {venues.map(venue => {
+              const vc = getVenueColor(venue);
+              return (
+                <div key={venue} className="gig-row" style={{borderLeft:`3px solid ${vc.color}`}}>
+                  {editingVenue === venue ? (
+                    <>
+                      <input
+                        autoFocus
+                        value={editingVenueName}
+                        onChange={e => setEditingVenueName(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') handleRenameVenue(); if (e.key === 'Escape') setEditingVenue(null); }}
+                        style={{flex:1,background:'var(--bg-raised)',border:'1px solid var(--border-mid)',borderRadius:5,color:'var(--text-primary)',fontSize:13,padding:'5px 8px'}}
+                      />
+                      <button onClick={handleRenameVenue} className="btn btn-primary btn-sm" style={{marginLeft:6}}>Save</button>
+                      <button onClick={() => setEditingVenue(null)} className="btn btn-ghost btn-sm" style={{marginLeft:4}}>Cancel</button>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:13,color:'#e8e8f0'}}>{venue}</div>
+                        {vc.group && <div style={{fontSize:10,color:vc.color,marginTop:2}}>{vc.group}</div>}
+                      </div>
+                      <button onClick={() => { setEditingVenue(venue); setEditingVenueName(venue); }} style={{background:'transparent',border:'1px solid #1e1e2e',color:'#6060a0',borderRadius:5,padding:'3px 10px',fontSize:11,cursor:'pointer',marginRight:6}}>Edit</button>
+                      <button onClick={() => handleRemoveVenue(venue)} style={{background:'transparent',border:'1px solid #ff407040',color:'#ff4070',borderRadius:5,padding:'3px 10px',fontSize:11,cursor:'pointer'}}>Remove</button>
+                    </>
+                  )}
+                </div>
+              );
+            })}
           </div>
           <div className="panel" style={{marginBottom:32}}>
             <div className="panel-head">Add a venue</div>
@@ -416,10 +435,10 @@ export default function AdminDashboard() {
 
 function RosterRow({ user, dotColor, onRoleChange, venues }) {
   const [role, setRole]   = useState(user.role || 'dj');
-  const [venue, setVenue] = useState(user.venueScope || '');
+  const [scope, setScope] = useState(user.venueScope || '');
 
-  function handleRole(e) { const r = e.target.value; setRole(r); onRoleChange(user.uid, r, r === 'venue_admin' ? venue : null); }
-  function handleVenue(e) { setVenue(e.target.value); onRoleChange(user.uid, role, e.target.value); }
+  function handleRole(e) { const r = e.target.value; setRole(r); onRoleChange(user.uid, r, r === 'venue_admin' ? scope : null); }
+  function handleScope(e) { setScope(e.target.value); onRoleChange(user.uid, role, e.target.value); }
 
   const initials = user.name?.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
 
@@ -438,9 +457,9 @@ function RosterRow({ user, dotColor, onRoleChange, venues }) {
       </div>
       {role === 'venue_admin' && (
         <div style={{padding:'6px 16px 10px 58px',borderBottom:'1px solid var(--bg-raised)'}}>
-          <label style={{fontSize:10,color:'var(--text-muted)',display:'block',marginBottom:4,textTransform:'uppercase',letterSpacing:'0.07em'}}>Assigned venue</label>
-          <select className="perm-select" style={{width:180}} value={venue} onChange={handleVenue}>
-            {venues.map(v => <option key={v}>{v}</option>)}
+          <label style={{fontSize:10,color:'var(--text-muted)',display:'block',marginBottom:4,textTransform:'uppercase',letterSpacing:'0.07em'}}>Assigned scope</label>
+          <select className="perm-select" style={{width:200}} value={scope} onChange={handleScope}>
+            {VENUE_ADMIN_SCOPES.map(s => <option key={s.label} value={s.label}>{s.label}</option>)}
           </select>
         </div>
       )}
