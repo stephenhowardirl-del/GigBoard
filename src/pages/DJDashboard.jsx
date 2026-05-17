@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getGigsForDJ, updateGigStatus, getUnavailableDates, setUnavailableDates } from '../lib/db';
-import { addGigToCalendar, removeGigFromCalendar } from '../lib/calendar';
+import { addGigToCalendar } from '../lib/calendar';
 import { useAuth } from '../hooks/useAuth';
 import CalendarView from '../components/CalendarView';
 
@@ -17,7 +17,7 @@ function daysUntil(iso) {
 }
 
 export default function DJDashboard() {
-  const { profile, accessToken } = useAuth();
+  const { profile } = useAuth();
   const [tab, setTab]         = useState('schedule');
   const [gigs, setGigs]       = useState([]);
   const [unavail, setUnavail] = useState([]);
@@ -37,8 +37,7 @@ export default function DJDashboard() {
 
   async function handleAccept(gig) {
     try {
-      let calId = null;
-      if (accessToken) calId = await addGigToCalendar(accessToken, gig);
+      const calId = await addGigToCalendar(gig);
       await updateGigStatus(gig.id, 'confirmed', calId);
       load();
     } catch (e) {
@@ -49,7 +48,6 @@ export default function DJDashboard() {
   }
 
   async function handleReject(gig) {
-    if (gig.calendarEventId && accessToken) await removeGigFromCalendar(accessToken, gig.calendarEventId);
     await updateGigStatus(gig.id, 'rejected');
     load();
   }
@@ -115,73 +113,4 @@ export default function DJDashboard() {
                 <div className="next-label">Next up</div>
                 <div className="next-venue">{nextGig.venue}</div>
                 <div className="next-sub">{formatDate(nextGig.date)} · {nextGig.time}</div>
-                {nextGig.fee && <div style={{marginTop:6,fontSize:13,color:'#00ffc2',fontWeight:600}}>€{nextGig.fee}</div>}
-              </div>
-              <div>
-                <div className="countdown-num">{daysUntil(nextGig.date)}</div>
-                <div className="countdown-unit">days away</div>
-              </div>
-            </div>
-          ) : (
-            <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,padding:20,marginBottom:20,textAlign:'center',color:'var(--text-muted)',fontSize:13}}>
-              No upcoming confirmed gigs. Check the Pending tab for any offers.
-            </div>
-          )}
-
-          <div className="section-title">Confirmed gigs</div>
-          <div className="panel">
-            {confirmed.length === 0 && <div className="empty-state">No confirmed gigs yet.</div>}
-            {confirmed.map(g => {
-              const d = new Date(g.date + 'T12:00:00');
-              return (
-                <div key={g.id} className="timeline-item">
-                  <div className="timeline-date">
-                    <div className="timeline-day">{d.getDate()}</div>
-                    <div className="timeline-month">{d.toLocaleDateString('en-IE',{month:'short'})}</div>
-                  </div>
-                  <div className="timeline-line" />
-                  <div style={{flex:1}}>
-                    <div className="timeline-venue">{g.venue}</div>
-                    <div className="timeline-sub">{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
-                    {g.fee && <div style={{fontSize:12,color:'#00ffc2',fontWeight:600,marginTop:3}}>€{g.fee}</div>}
-                    {g.notes && <div style={{fontSize:11,color:'var(--text-secondary)',marginTop:2}}>📌 {g.notes}</div>}
-                    {g.calendarEventId && <div className="cal-badge">📅 In Google Calendar</div>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {tab === 'calendar' && (
-        <CalendarView
-          gigs={gigs}
-          unavailDates={unavail}
-          onToggleUnavail={handleToggleUnavail}
-        />
-      )}
-
-      {tab === 'pending' && (
-        <div className="page-body">
-          {pending.length === 0 && <div className="empty-state">No pending gigs right now.</div>}
-          {pending.map(g => (
-            <div key={g.id} className="pending-card">
-              <div className="pending-head">⏳ Gig offer — action required</div>
-              <div className="pending-body">
-                <div className="pending-venue">{g.venue}</div>
-                <div className="pending-meta">{formatDate(g.date)} · {g.time}</div>
-                {g.fee && <div style={{fontSize:15,color:'#00ffc2',fontWeight:700,marginBottom:10}}>Fee: €{g.fee}</div>}
-                {g.notes && <div style={{fontSize:12,color:'var(--text-secondary)',marginBottom:12}}>📌 {g.notes}</div>}
-                <div className="pending-actions">
-                  <button className="btn btn-primary" onClick={() => handleAccept(g)}>Accept — add to calendar</button>
-                  <button className="btn btn-danger" onClick={() => handleReject(g)}>Reject</button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </>
-  );
-}
+                {nextGig.fee && <div style={{marginTop:6,fontSize:13,color:'#00ffc2',fontWeight:600}}>€{next
