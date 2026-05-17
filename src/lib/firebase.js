@@ -2,8 +2,6 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 
-// TODO: Replace with your Firebase project config
-// Go to Firebase Console > Project Settings > Your apps > Web app
 const firebaseConfig = {
   apiKey: "AIzaSyBBsfvbhpMOLQhQt-5CgazqLCqbkpYZBFY",
   authDomain: "gigboard-fde2d.firebaseapp.com",
@@ -17,4 +15,7 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+
+// Force Google to ask for calendar permission every login
 googleProvider.addScope('https://www.googleapis.com/auth/calendar.events');
+googleProvider.setCustomParameters({ prompt: 'consent' });
