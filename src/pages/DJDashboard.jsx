@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { getGigsForDJ, updateGigStatus, getUnavailableDates, setUnavailableDates } from '../lib/db';
-import { addGigToCalendar } from '../lib/calendar';
 import { useAuth } from '../hooks/useAuth';
 import CalendarView from '../components/CalendarView';
 
@@ -36,15 +35,8 @@ export default function DJDashboard() {
   useEffect(() => { load(); }, []);
 
   async function handleAccept(gig) {
-    try {
-      const calId = await addGigToCalendar(gig);
-      await updateGigStatus(gig.id, 'confirmed', calId);
-      load();
-    } catch (e) {
-      console.error('Calendar error:', e);
-      await updateGigStatus(gig.id, 'confirmed');
-      load();
-    }
+    await updateGigStatus(gig.id, 'confirmed');
+    load();
   }
 
   async function handleReject(gig) {
@@ -95,11 +87,11 @@ export default function DJDashboard() {
           <div className="stats-row" style={{marginBottom:20}}>
             <div className="stat-card">
               <div className="stat-label">This month</div>
-              <div className="stat-val neon">euro{monthEarnings}</div>
+              <div className="stat-val neon">€{monthEarnings}</div>
             </div>
             <div className="stat-card">
               <div className="stat-label">Upcoming total</div>
-              <div className="stat-val" style={{color:'#a080ff'}}>euro{upcomingEarnings}</div>
+              <div className="stat-val" style={{color:'#a080ff'}}>€{upcomingEarnings}</div>
             </div>
             <div className="stat-card">
               <div className="stat-label">Confirmed gigs</div>
@@ -112,8 +104,8 @@ export default function DJDashboard() {
               <div style={{flex:1}}>
                 <div className="next-label">Next up</div>
                 <div className="next-venue">{nextGig.venue}</div>
-                <div className="next-sub">{formatDate(nextGig.date)} - {nextGig.time}</div>
-                {nextGig.fee && <div style={{marginTop:6,fontSize:13,color:'#00ffc2',fontWeight:600}}>euro{nextGig.fee}</div>}
+                <div className="next-sub">{formatDate(nextGig.date)} · {nextGig.time}</div>
+                {nextGig.fee && <div style={{marginTop:6,fontSize:13,color:'#00ffc2',fontWeight:600}}>€{nextGig.fee}</div>}
               </div>
               <div>
                 <div className="countdown-num">{daysUntil(nextGig.date)}</div>
@@ -129,8 +121,8 @@ export default function DJDashboard() {
           <div className="section-title">Confirmed gigs</div>
           <div className="panel">
             {confirmed.length === 0 && <div className="empty-state">No confirmed gigs yet.</div>}
-            {confirmed.map(function(g) {
-              var d = new Date(g.date + 'T12:00:00');
+            {confirmed.map(g => {
+              const d = new Date(g.date + 'T12:00:00');
               return (
                 <div key={g.id} className="timeline-item">
                   <div className="timeline-date">
@@ -140,10 +132,9 @@ export default function DJDashboard() {
                   <div className="timeline-line" />
                   <div style={{flex:1}}>
                     <div className="timeline-venue">{g.venue}</div>
-                    <div className="timeline-sub">{g.time} - {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
-                    {g.fee && <div style={{fontSize:12,color:'#00ffc2',fontWeight:600,marginTop:3}}>euro{g.fee}</div>}
-                    {g.notes && <div style={{fontSize:11,color:'var(--text-secondary)',marginTop:2}}>{g.notes}</div>}
-                    {g.calendarEventId && <div className="cal-badge">In Google Calendar</div>}
+                    <div className="timeline-sub">{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
+                    {g.fee && <div style={{fontSize:12,color:'#00ffc2',fontWeight:600,marginTop:3}}>€{g.fee}</div>}
+                    {g.notes && <div style={{fontSize:11,color:'var(--text-secondary)',marginTop:2}}>📌 {g.notes}</div>}
                   </div>
                 </div>
               );
@@ -163,23 +154,21 @@ export default function DJDashboard() {
       {tab === 'pending' && (
         <div className="page-body">
           {pending.length === 0 && <div className="empty-state">No pending gigs right now.</div>}
-          {pending.map(function(g) {
-            return (
-              <div key={g.id} className="pending-card">
-                <div className="pending-head">Gig offer - action required</div>
-                <div className="pending-body">
-                  <div className="pending-venue">{g.venue}</div>
-                  <div className="pending-meta">{formatDate(g.date)} - {g.time}</div>
-                  {g.fee && <div style={{fontSize:15,color:'#00ffc2',fontWeight:700,marginBottom:10}}>Fee: euro{g.fee}</div>}
-                  {g.notes && <div style={{fontSize:12,color:'var(--text-secondary)',marginBottom:12}}>{g.notes}</div>}
-                  <div className="pending-actions">
-                    <button className="btn btn-primary" onClick={() => handleAccept(g)}>Accept - add to calendar</button>
-                    <button className="btn btn-danger" onClick={() => handleReject(g)}>Reject</button>
-                  </div>
+          {pending.map(g => (
+            <div key={g.id} className="pending-card">
+              <div className="pending-head">⏳ Gig offer — action required</div>
+              <div className="pending-body">
+                <div className="pending-venue">{g.venue}</div>
+                <div className="pending-meta">{formatDate(g.date)} · {g.time}</div>
+                {g.fee && <div style={{fontSize:15,color:'#00ffc2',fontWeight:700,marginBottom:10}}>Fee: €{g.fee}</div>}
+                {g.notes && <div style={{fontSize:12,color:'var(--text-secondary)',marginBottom:12}}>📌 {g.notes}</div>}
+                <div className="pending-actions">
+                  <button className="btn btn-primary" onClick={() => handleAccept(g)}>Accept</button>
+                  <button className="btn btn-danger" onClick={() => handleReject(g)}>Reject</button>
                 </div>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       )}
     </div>
