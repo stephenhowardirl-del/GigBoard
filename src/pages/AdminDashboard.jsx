@@ -1,18 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { getAllGigs, createGig, updateGig, deleteGig, getAllUsers, updateUserRole, getAllUnavailability, updateGigStatus, getGigsForDJ, getUnavailableDates, setUnavailableDates, getInvitedEmails, saveInvitedEmails } from '../lib/db';
+import { getAllGigs, createGig, updateGig, deleteGig, getAllUsers, updateUserRole, getAllUnavailability, updateGigStatus, getGigsForDJ, getUnavailableDates, setUnavailableDates, getInvitedEmails, saveInvitedEmails, getVenues, saveVenues } from '../lib/db';
 import { DJ_COLORS } from '../lib/config';
 import { useAuth } from '../hooks/useAuth';
 import CalendarView from '../components/CalendarView';
 import AssignGigModal from '../components/AssignGigModal';
 
 const DOT_COLORS = ['#00d4aa','#a080ff','#40a0ff','#ff60c0','#ffbb00','#80d040'];
-
-const VENUES = [
-  'Clancys Cork','JJ Walsh','Dwyers','Seventy Seven',
-  'Seventy Seven (brunch)','Seventy Seven (first floor)',
-  'Seventy Seven (stamp room)','The Wash','The Pav',
-  'The Dean','The Woodford','Mardyke','Wedding','Private Event',
-];
 
 function statusBadge(status) {
   return <span className={`badge badge-${status}`}>{status.charAt(0).toUpperCase() + status.slice(1)}</span>;
@@ -38,6 +31,9 @@ export default function AdminDashboard() {
   const [myUnavail, setMyUnavail]   = useState([]);
   const [users, setUsers]           = useState([]);
   const [unavail, setUnavail]       = useState([]);
+  const [venues, setVenues]         = useState([]);
+  const [newVenue, setNewVenue]     = useState('');
+  const [venueSaved, setVenueSaved] = useState(false);
   const [showModal, setShowModal]   = useState(false);
   const [editingGig, setEditingGig] = useState(null);
   const [loading, setLoading]       = useState(true);
@@ -48,13 +44,14 @@ export default function AdminDashboard() {
 
   async function load() {
     try {
-      const [g, u, un, inv] = await Promise.all([
-        getAllGigs(), getAllUsers(), getAllUnavailability(), getInvitedEmails(),
+      const [g, u, un, inv, v] = await Promise.all([
+        getAllGigs(), getAllUsers(), getAllUnavailability(), getInvitedEmails(), getVenues(),
       ]);
       setGigs(g);
       setUsers(u.filter(x => x.role !== 'full_admin'));
       setUnavail(un);
       setInvites(inv);
+      setVenues(v);
       if (profile?.uid) {
         const [mg, mun] = await Promise.all([
           getGigsForDJ(profile.uid),
@@ -124,6 +121,24 @@ export default function AdminDashboard() {
     const updated = invites.filter(e => e !== email);
     setInvites(updated);
     await saveInvitedEmails(updated);
+  }
+
+  async function handleAddVenue() {
+    const v = newVenue.trim();
+    if (!v || venues.includes(v)) return;
+    const updated = [...venues, v];
+    setVenues(updated);
+    setNewVenue('');
+    await saveVenues(updated);
+    setVenueSaved(true);
+    setTimeout(() => setVenueSaved(false), 2000);
+  }
+
+  async function handleRemoveVenue(venue) {
+    if (!window.confirm(`Remove "${venue}" from the venue list?`)) return;
+    const updated = venues.filter(v => v !== venue);
+    setVenues(updated);
+    await saveVenues(updated);
   }
 
   const today              = new Date().toISOString().split('T')[0];
@@ -202,7 +217,7 @@ export default function AdminDashboard() {
             </div>
             {users.length === 0 && <div className="empty-state">No DJs yet — share the link so they can log in.</div>}
             {users.map((u, i) => (
-              <RosterRow key={u.uid} user={u} dotColor={DOT_COLORS[i % DOT_COLORS.length]} onRoleChange={async (uid, role, venueScope) => { await updateUserRole(uid, role, venueScope || null); load(); }} />
+              <RosterRow key={u.uid} user={u} dotColor={DOT_COLORS[i % DOT_COLORS.length]} onRoleChange={async (uid, role, venueScope) => { await updateUserRole(uid, role, venueScope || null); load(); }} venues={venues} />
             ))}
           </div>
         </div>
@@ -286,9 +301,41 @@ export default function AdminDashboard() {
 
       {tab === 'access' && (
         <div className="page-body">
+
+          <div className="section-title">Venues</div>
+          <div style={{fontSize:13,color:'var(--text-muted)',marginBottom:16}}>
+            Add or remove venues. Changes appear immediately in the assign gig form.
+          </div>
+          <div className="panel" style={{marginBottom:20}}>
+            <div className="panel-head">Current venues — {venues.length}</div>
+            {venues.length === 0 && <div className="empty-state">No venues yet.</div>}
+            {venues.map(venue => (
+              <div key={venue} className="gig-row">
+                <div style={{flex:1,fontSize:13,color:'#e8e8f0'}}>{venue}</div>
+                <button onClick={() => handleRemoveVenue(venue)} style={{background:'transparent',border:'1px solid #ff407040',color:'#ff4070',borderRadius:5,padding:'3px 10px',fontSize:11,cursor:'pointer'}}>Remove</button>
+              </div>
+            ))}
+          </div>
+          <div className="panel" style={{marginBottom:32}}>
+            <div className="panel-head">Add a venue</div>
+            <div style={{padding:16,display:'flex',gap:10}}>
+              <input
+                type="text"
+                placeholder="e.g. The Shelter"
+                value={newVenue}
+                onChange={e => setNewVenue(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAddVenue()}
+                style={{flex:1,background:'var(--bg-raised)',border:'1px solid var(--border)',borderRadius:6,color:'var(--text-primary)',fontSize:13,padding:'8px 10px'}}
+              />
+              <button className="btn btn-primary" onClick={handleAddVenue} style={{whiteSpace:'nowrap'}}>
+                {venueSaved ? '✓ Saved' : 'Add venue'}
+              </button>
+            </div>
+          </div>
+
           <div className="section-title">Invite management</div>
           <div style={{fontSize:13,color:'var(--text-muted)',marginBottom:16}}>
-            Only email addresses on this list can log in to GigBoard. Add a DJ's email before sending them the link.
+            Only email addresses on this list can log in to GigBoard.
           </div>
           <div className="panel" style={{marginBottom:20}}>
             <div className="panel-head">Invited emails — {invites.length} people</div>
@@ -323,18 +370,18 @@ export default function AdminDashboard() {
       )}
 
       {showModal && !editingGig && (
-        <AssignGigModal onClose={() => setShowModal(false)} onAssign={handleAssign} />
+        <AssignGigModal onClose={() => setShowModal(false)} onAssign={handleAssign} venues={venues} />
       )}
       {showModal && editingGig && (
-        <AssignGigModal onClose={() => { setShowModal(false); setEditingGig(null); }} onAssign={handleEdit} existingGig={editingGig} />
+        <AssignGigModal onClose={() => { setShowModal(false); setEditingGig(null); }} onAssign={handleEdit} existingGig={editingGig} venues={venues} />
       )}
     </>
   );
 }
 
-function RosterRow({ user, dotColor, onRoleChange }) {
+function RosterRow({ user, dotColor, onRoleChange, venues }) {
   const [role, setRole]   = useState(user.role || 'dj');
-  const [venue, setVenue] = useState(user.venueScope || VENUES[0]);
+  const [venue, setVenue] = useState(user.venueScope || '');
 
   function handleRole(e) { const r = e.target.value; setRole(r); onRoleChange(user.uid, r, r === 'venue_admin' ? venue : null); }
   function handleVenue(e) { setVenue(e.target.value); onRoleChange(user.uid, role, e.target.value); }
@@ -358,7 +405,7 @@ function RosterRow({ user, dotColor, onRoleChange }) {
         <div style={{padding:'6px 16px 10px 58px',borderBottom:'1px solid var(--bg-raised)'}}>
           <label style={{fontSize:10,color:'var(--text-muted)',display:'block',marginBottom:4,textTransform:'uppercase',letterSpacing:'0.07em'}}>Assigned venue</label>
           <select className="perm-select" style={{width:180}} value={venue} onChange={handleVenue}>
-            {VENUES.map(v => <option key={v}>{v}</option>)}
+            {venues.map(v => <option key={v}>{v}</option>)}
           </select>
         </div>
       )}
