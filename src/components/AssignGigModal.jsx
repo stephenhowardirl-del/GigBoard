@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAllUsers, getAllUnavailability } from '../lib/db';
+import { notifyGigAssigned } from '../lib/email';
 
 export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, existingGig = null, venues = [] }) {
   const editing = !!existingGig;
@@ -46,7 +47,30 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
     if (!date || !time || !djUid) return;
     setSubmitting(true);
     const dj = users.find(u => u.uid === djUid);
-    await onAssign({ venue: lockedVenue || venue, date, time, djUid, djName: dj?.name, notes, fee });
+
+    await onAssign({
+      venue: lockedVenue || venue,
+      date, time,
+      djUid,
+      djName: dj?.name,
+      djEmail: dj?.email,
+      notes,
+      fee,
+    });
+
+    // Send email notification to DJ
+    if (!editing && dj?.email) {
+      await notifyGigAssigned({
+        djName: dj.name,
+        djEmail: dj.email,
+        venue: lockedVenue || venue,
+        date,
+        time,
+        fee,
+        notes,
+      });
+    }
+
     onClose();
   }
 
@@ -55,7 +79,7 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
       <div className="modal">
         <div className="modal-title">{editing ? 'Edit gig' : lockedVenue ? `Assign gig at ${lockedVenue}` : 'Assign a gig'}</div>
         <div className="modal-sub">
-          {editing ? 'Changes will reset the gig to pending — the DJ will need to reconfirm.' : 'DJ will receive a notification and must accept before it is confirmed.'}
+          {editing ? 'Changes will reset the gig to pending — the DJ will need to reconfirm.' : 'DJ will be notified by email and must accept before it is confirmed.'}
         </div>
 
         {!lockedVenue && (
@@ -107,7 +131,7 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
         <div className="modal-actions">
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting || !date || !time}>
-            {submitting ? 'Saving…' : editing ? 'Save changes →' : 'Send to DJ →'}
+            {submitting ? 'Sending…' : editing ? 'Save changes →' : 'Send to DJ →'}
           </button>
         </div>
       </div>
