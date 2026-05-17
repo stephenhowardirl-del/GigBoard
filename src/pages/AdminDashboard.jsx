@@ -34,6 +34,8 @@ export default function AdminDashboard() {
   const [venues, setVenues]         = useState([]);
   const [newVenue, setNewVenue]     = useState('');
   const [venueSaved, setVenueSaved] = useState(false);
+  const [editingVenue, setEditingVenue] = useState(null);
+  const [editingVenueName, setEditingVenueName] = useState('');
   const [showModal, setShowModal]   = useState(false);
   const [editingGig, setEditingGig] = useState(null);
   const [loading, setLoading]       = useState(true);
@@ -139,6 +141,16 @@ export default function AdminDashboard() {
     const updated = venues.filter(v => v !== venue);
     setVenues(updated);
     await saveVenues(updated);
+  }
+
+  async function handleRenameVenue() {
+    const newName = editingVenueName.trim();
+    if (!newName || newName === editingVenue) { setEditingVenue(null); return; }
+    const updated = venues.map(v => v === editingVenue ? newName : v);
+    setVenues(updated);
+    await saveVenues(updated);
+    setEditingVenue(null);
+    setEditingVenueName('');
   }
 
   const today              = new Date().toISOString().split('T')[0];
@@ -304,15 +316,38 @@ export default function AdminDashboard() {
 
           <div className="section-title">Venues</div>
           <div style={{fontSize:13,color:'var(--text-muted)',marginBottom:16}}>
-            Add or remove venues. Changes appear immediately in the assign gig form.
+            Add, rename or remove venues. Changes appear immediately in the assign gig form.
           </div>
           <div className="panel" style={{marginBottom:20}}>
             <div className="panel-head">Current venues — {venues.length}</div>
             {venues.length === 0 && <div className="empty-state">No venues yet.</div>}
             {venues.map(venue => (
               <div key={venue} className="gig-row">
-                <div style={{flex:1,fontSize:13,color:'#e8e8f0'}}>{venue}</div>
-                <button onClick={() => handleRemoveVenue(venue)} style={{background:'transparent',border:'1px solid #ff407040',color:'#ff4070',borderRadius:5,padding:'3px 10px',fontSize:11,cursor:'pointer'}}>Remove</button>
+                {editingVenue === venue ? (
+                  <>
+                    <input
+                      autoFocus
+                      value={editingVenueName}
+                      onChange={e => setEditingVenueName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleRenameVenue(); if (e.key === 'Escape') setEditingVenue(null); }}
+                      style={{flex:1,background:'var(--bg-raised)',border:'1px solid var(--border-mid)',borderRadius:5,color:'var(--text-primary)',fontSize:13,padding:'5px 8px'}}
+                    />
+                    <button onClick={handleRenameVenue} className="btn btn-primary btn-sm" style={{marginLeft:6}}>Save</button>
+                    <button onClick={() => setEditingVenue(null)} className="btn btn-ghost btn-sm" style={{marginLeft:4}}>Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <div style={{flex:1,fontSize:13,color:'#e8e8f0'}}>{venue}</div>
+                    <button
+                      onClick={() => { setEditingVenue(venue); setEditingVenueName(venue); }}
+                      style={{background:'transparent',border:'1px solid #1e1e2e',color:'#6060a0',borderRadius:5,padding:'3px 10px',fontSize:11,cursor:'pointer',marginRight:6}}
+                    >Edit</button>
+                    <button
+                      onClick={() => handleRemoveVenue(venue)}
+                      style={{background:'transparent',border:'1px solid #ff407040',color:'#ff4070',borderRadius:5,padding:'3px 10px',fontSize:11,cursor:'pointer'}}
+                    >Remove</button>
+                  </>
+                )}
               </div>
             ))}
           </div>
