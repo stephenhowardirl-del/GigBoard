@@ -35,9 +35,9 @@ export async function updateUserRole(uid, role, venueScope = null) {
 
 // ── GIGS ───────────────────────────────────────────────
 
-export async function createGig({ venue, date, time, djUid, djName, notes, fee, assignedBy }) {
+export async function createGig({ venue, date, time, djUid, djName, djEmail, notes, fee, assignedBy }) {
   return await addDoc(collection(db, 'gigs'), {
-    venue, date, time, djUid, djName,
+    venue, date, time, djUid, djName, djEmail: djEmail || '',
     notes: notes || '',
     fee: fee ? Number(fee) : null,
     status: 'pending',
@@ -72,9 +72,9 @@ export async function updateGigStatus(gigId, status, calendarEventId = null) {
   await updateDoc(doc(db, 'gigs', gigId), data);
 }
 
-export async function updateGig(gigId, { venue, date, time, djUid, djName, notes, fee }) {
+export async function updateGig(gigId, { venue, date, time, djUid, djName, djEmail, notes, fee }) {
   await updateDoc(doc(db, 'gigs', gigId), {
-    venue, date, time, djUid, djName,
+    venue, date, time, djUid, djName, djEmail: djEmail || '',
     notes: notes || '',
     fee: fee ? Number(fee) : null,
     status: 'pending',
