@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
+import { GoogleAuthProvider } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { getOrCreateUser, isEmailInvited } from '../lib/db';
 import { FULL_ADMIN_EMAIL } from '../lib/config';
@@ -51,10 +52,18 @@ export function AuthProvider({ children }) {
   }, []);
 
   async function login() {
-    const result = await signInWithPopup(auth, googleProvider);
-    const credential = result._tokenResponse;
-    if (credential?.oauthAccessToken) {
-      setAccessToken(credential.oauthAccessToken);
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      // Use the official Firebase method to get the OAuth credential
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential?.accessToken) {
+        setAccessToken(credential.accessToken);
+        console.log('Calendar access token captured successfully');
+      } else {
+        console.warn('No access token returned from Google login');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
     }
   }
 
