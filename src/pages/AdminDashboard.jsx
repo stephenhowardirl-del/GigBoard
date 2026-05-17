@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { getAllGigs, createGig, updateGig, deleteGig, getAllUsers, updateUserRole, getAllUnavailability, updateGigStatus, getGigsForDJ, getUnavailableDates, setUnavailableDates, getInvitedEmails, saveInvitedEmails } from '../lib/db';
-import { addGigToCalendar } from '../lib/calendar';
 import { DJ_COLORS } from '../lib/config';
 import { useAuth } from '../hooks/useAuth';
 import CalendarView from '../components/CalendarView';
@@ -95,15 +94,8 @@ export default function AdminDashboard() {
   async function handleReject(gigId)  { await updateGigStatus(gigId, 'rejected');  load(); }
 
   async function handleAcceptMyGig(gig) {
-    try {
-      const calId = await addGigToCalendar(gig);
-      await updateGigStatus(gig.id, 'confirmed', calId);
-      load();
-    } catch (e) {
-      console.error('Calendar error:', e);
-      await updateGigStatus(gig.id, 'confirmed');
-      load();
-    }
+    await updateGigStatus(gig.id, 'confirmed');
+    load();
   }
 
   async function handleRejectMyGig(gig) {
@@ -255,7 +247,7 @@ export default function AdminDashboard() {
                     {g.fee && <div style={{fontSize:15,color:'#00ffc2',fontWeight:700,marginBottom:10}}>Fee: €{g.fee}</div>}
                     {g.notes && <div style={{fontSize:12,color:'var(--text-secondary)',marginBottom:12}}>📌 {g.notes}</div>}
                     <div className="pending-actions">
-                      <button className="btn btn-primary" onClick={() => handleAcceptMyGig(g)}>Accept — add to calendar</button>
+                      <button className="btn btn-primary" onClick={() => handleAcceptMyGig(g)}>Accept</button>
                       <button className="btn btn-danger" onClick={() => handleRejectMyGig(g)}>Reject</button>
                     </div>
                   </div>
@@ -281,7 +273,6 @@ export default function AdminDashboard() {
                     <div className="timeline-sub">{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
                     {g.fee && <div style={{fontSize:12,color:'#00ffc2',fontWeight:600,marginTop:3}}>€{g.fee}</div>}
                     {g.notes && <div style={{fontSize:11,color:'var(--text-secondary)',marginTop:2}}>📌 {g.notes}</div>}
-                    {g.calendarEventId && <div className="cal-badge">📅 In Google Calendar</div>}
                   </div>
                 </div>
               );
