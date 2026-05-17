@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getGigsForDJ, updateGigStatus, getUnavailableDates, setUnavailableDates } from '../lib/db';
+import { getVenueColor } from '../lib/venueGroups';
 import { useAuth } from '../hooks/useAuth';
 import CalendarView from '../components/CalendarView';
 
@@ -13,6 +14,16 @@ function daysUntil(iso) {
   const today = new Date(); today.setHours(0,0,0,0);
   const gig   = new Date(iso + 'T12:00:00');
   return Math.ceil((gig - today) / 86400000);
+}
+
+function VenueBadge({ venue }) {
+  const { color, bg, group } = getVenueColor(venue);
+  return (
+    <div style={{display:'flex', alignItems:'center', gap:6, marginTop:4}}>
+      <div style={{width:8, height:8, borderRadius:'50%', background:color, flexShrink:0}} />
+      {group && <span style={{fontSize:10, color, background:bg, padding:'1px 6px', borderRadius:4, fontWeight:500}}>{group}</span>}
+    </div>
+  );
 }
 
 export default function DJDashboard() {
@@ -100,11 +111,12 @@ export default function DJDashboard() {
           </div>
 
           {nextGig ? (
-            <div className="next-gig-card">
+            <div className="next-gig-card" style={{borderColor: getVenueColor(nextGig.venue).color + '40'}}>
               <div style={{flex:1}}>
                 <div className="next-label">Next up</div>
                 <div className="next-venue">{nextGig.venue}</div>
-                <div className="next-sub">{formatDate(nextGig.date)} · {nextGig.time}</div>
+                <VenueBadge venue={nextGig.venue} />
+                <div className="next-sub" style={{marginTop:6}}>{formatDate(nextGig.date)} · {nextGig.time}</div>
                 {nextGig.fee && <div style={{marginTop:6,fontSize:13,color:'#00ffc2',fontWeight:600}}>€{nextGig.fee}</div>}
               </div>
               <div>
@@ -123,16 +135,18 @@ export default function DJDashboard() {
             {confirmed.length === 0 && <div className="empty-state">No confirmed gigs yet.</div>}
             {confirmed.map(g => {
               const d = new Date(g.date + 'T12:00:00');
+              const vc = getVenueColor(g.venue);
               return (
-                <div key={g.id} className="timeline-item">
+                <div key={g.id} className="timeline-item" style={{borderLeft:`3px solid ${vc.color}`}}>
                   <div className="timeline-date">
-                    <div className="timeline-day">{d.getDate()}</div>
+                    <div className="timeline-day" style={{color:vc.color}}>{d.getDate()}</div>
                     <div className="timeline-month">{d.toLocaleDateString('en-IE',{month:'short'})}</div>
                   </div>
-                  <div className="timeline-line" />
+                  <div className="timeline-line" style={{background:vc.color+'40'}} />
                   <div style={{flex:1}}>
                     <div className="timeline-venue">{g.venue}</div>
-                    <div className="timeline-sub">{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
+                    <VenueBadge venue={g.venue} />
+                    <div className="timeline-sub" style={{marginTop:4}}>{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
                     {g.fee && <div style={{fontSize:12,color:'#00ffc2',fontWeight:600,marginTop:3}}>€{g.fee}</div>}
                     {g.notes && <div style={{fontSize:11,color:'var(--text-secondary)',marginTop:2}}>📌 {g.notes}</div>}
                   </div>
@@ -154,21 +168,27 @@ export default function DJDashboard() {
       {tab === 'pending' && (
         <div className="page-body">
           {pending.length === 0 && <div className="empty-state">No pending gigs right now.</div>}
-          {pending.map(g => (
-            <div key={g.id} className="pending-card">
-              <div className="pending-head">⏳ Gig offer — action required</div>
-              <div className="pending-body">
-                <div className="pending-venue">{g.venue}</div>
-                <div className="pending-meta">{formatDate(g.date)} · {g.time}</div>
-                {g.fee && <div style={{fontSize:15,color:'#00ffc2',fontWeight:700,marginBottom:10}}>Fee: €{g.fee}</div>}
-                {g.notes && <div style={{fontSize:12,color:'var(--text-secondary)',marginBottom:12}}>📌 {g.notes}</div>}
-                <div className="pending-actions">
-                  <button className="btn btn-primary" onClick={() => handleAccept(g)}>Accept</button>
-                  <button className="btn btn-danger" onClick={() => handleReject(g)}>Reject</button>
+          {pending.map(g => {
+            const vc = getVenueColor(g.venue);
+            return (
+              <div key={g.id} className="pending-card" style={{borderColor:vc.color+'40'}}>
+                <div className="pending-head" style={{background:vc.bg, color:vc.color}}>
+                  ⏳ Gig offer — action required
+                </div>
+                <div className="pending-body">
+                  <div className="pending-venue">{g.venue}</div>
+                  <VenueBadge venue={g.venue} />
+                  <div className="pending-meta" style={{marginTop:8}}>{formatDate(g.date)} · {g.time}</div>
+                  {g.fee && <div style={{fontSize:15,color:'#00ffc2',fontWeight:700,marginBottom:10,marginTop:6}}>Fee: €{g.fee}</div>}
+                  {g.notes && <div style={{fontSize:12,color:'var(--text-secondary)',marginBottom:12}}>📌 {g.notes}</div>}
+                  <div className="pending-actions">
+                    <button className="btn btn-primary" onClick={() => handleAccept(g)}>Accept</button>
+                    <button className="btn btn-danger" onClick={() => handleReject(g)}>Reject</button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
