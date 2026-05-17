@@ -101,16 +101,8 @@ export default function AdminDashboard() {
 
   async function handleConfirm(gigId) { await updateGigStatus(gigId, 'confirmed'); load(); }
   async function handleRejectGig(gigId) { await updateGigStatus(gigId, 'rejected'); load(); }
-
-  async function handleAcceptMyGig(gig) {
-    await updateGigStatus(gig.id, 'confirmed');
-    load();
-  }
-
-  async function handleRejectMyGig(gig) {
-    await updateGigStatus(gig.id, 'rejected');
-    load();
-  }
+  async function handleAcceptMyGig(gig) { await updateGigStatus(gig.id, 'confirmed'); load(); }
+  async function handleRejectMyGig(gig) { await updateGigStatus(gig.id, 'rejected'); load(); }
 
   async function handleToggleUnavail(isoDate) {
     const next = myUnavail.includes(isoDate) ? myUnavail.filter(d => d !== isoDate) : [...myUnavail, isoDate];
@@ -247,12 +239,7 @@ export default function AdminDashboard() {
             </div>
             {users.length === 0 && <div className="empty-state">No DJs yet — share the link so they can log in.</div>}
             {users.map((u, i) => (
-              <RosterRow
-                key={u.uid}
-                user={u}
-                dotColor={DOT_COLORS[i % DOT_COLORS.length]}
-                onSave={saveUserRole}
-              />
+              <RosterRow key={u.uid} user={u} dotColor={DOT_COLORS[i % DOT_COLORS.length]} onSave={saveUserRole} />
             ))}
           </div>
         </div>
@@ -265,7 +252,6 @@ export default function AdminDashboard() {
             <div className="stat-card"><div className="stat-label">Upcoming total</div><div className="stat-val" style={{color:'#a080ff'}}>€{myUpcomingEarnings}</div></div>
             <div className="stat-card"><div className="stat-label">Confirmed</div><div className="stat-val">{myConfirmed.length}</div></div>
           </div>
-
           {nextGig ? (
             <div className="next-gig-card" style={{borderColor: getVenueColor(nextGig.venue).color+'40'}}>
               <div style={{flex:1}}>
@@ -285,7 +271,6 @@ export default function AdminDashboard() {
               No upcoming confirmed gigs assigned to you yet.
             </div>
           )}
-
           {myPending.length > 0 && (
             <>
               <div className="section-title" style={{color:'#ffbb00'}}>Pending — action required</div>
@@ -310,7 +295,6 @@ export default function AdminDashboard() {
               })}
             </>
           )}
-
           <div className="section-title">Confirmed gigs</div>
           <div className="panel">
             {myConfirmed.length === 0 && <div className="empty-state">No confirmed gigs yet.</div>}
@@ -335,7 +319,6 @@ export default function AdminDashboard() {
               );
             })}
           </div>
-
           <div className="section-title" style={{marginTop:20}}>My availability</div>
           <CalendarView gigs={myGigs} unavailDates={myUnavail} onToggleUnavail={handleToggleUnavail} />
         </div>
@@ -344,9 +327,7 @@ export default function AdminDashboard() {
       {tab === 'access' && (
         <div className="page-body">
           <div className="section-title">Venues</div>
-          <div style={{fontSize:13,color:'var(--text-muted)',marginBottom:16}}>
-            Add, rename or remove venues. Changes appear immediately in the assign gig form.
-          </div>
+          <div style={{fontSize:13,color:'var(--text-muted)',marginBottom:16}}>Add, rename or remove venues.</div>
           <div className="panel" style={{marginBottom:20}}>
             <div className="panel-head">Current venues — {venues.length}</div>
             {venues.length === 0 && <div className="empty-state">No venues yet.</div>}
@@ -356,13 +337,7 @@ export default function AdminDashboard() {
                 <div key={venue} className="gig-row" style={{borderLeft:`3px solid ${vc.color}`}}>
                   {editingVenue === venue ? (
                     <>
-                      <input
-                        autoFocus
-                        value={editingVenueName}
-                        onChange={e => setEditingVenueName(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') handleRenameVenue(); if (e.key === 'Escape') setEditingVenue(null); }}
-                        style={{flex:1,background:'var(--bg-raised)',border:'1px solid var(--border-mid)',borderRadius:5,color:'var(--text-primary)',fontSize:13,padding:'5px 8px'}}
-                      />
+                      <input autoFocus value={editingVenueName} onChange={e => setEditingVenueName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleRenameVenue(); if (e.key === 'Escape') setEditingVenue(null); }} style={{flex:1,background:'var(--bg-raised)',border:'1px solid var(--border-mid)',borderRadius:5,color:'var(--text-primary)',fontSize:13,padding:'5px 8px'}} />
                       <button onClick={handleRenameVenue} className="btn btn-primary btn-sm" style={{marginLeft:6}}>Save</button>
                       <button onClick={() => setEditingVenue(null)} className="btn btn-ghost btn-sm" style={{marginLeft:4}}>Cancel</button>
                     </>
@@ -383,27 +358,15 @@ export default function AdminDashboard() {
           <div className="panel" style={{marginBottom:32}}>
             <div className="panel-head">Add a venue</div>
             <div style={{padding:16,display:'flex',gap:10}}>
-              <input
-                type="text"
-                placeholder="e.g. The Shelter"
-                value={newVenue}
-                onChange={e => setNewVenue(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAddVenue()}
-                style={{flex:1,background:'var(--bg-raised)',border:'1px solid var(--border)',borderRadius:6,color:'var(--text-primary)',fontSize:13,padding:'8px 10px'}}
-              />
-              <button className="btn btn-primary" onClick={handleAddVenue} style={{whiteSpace:'nowrap'}}>
-                {venueSaved ? '✓ Saved' : 'Add venue'}
-              </button>
+              <input type="text" placeholder="e.g. The Shelter" value={newVenue} onChange={e => setNewVenue(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddVenue()} style={{flex:1,background:'var(--bg-raised)',border:'1px solid var(--border)',borderRadius:6,color:'var(--text-primary)',fontSize:13,padding:'8px 10px'}} />
+              <button className="btn btn-primary" onClick={handleAddVenue} style={{whiteSpace:'nowrap'}}>{venueSaved ? '✓ Saved' : 'Add venue'}</button>
             </div>
           </div>
-
           <div className="section-title">Invite management</div>
-          <div style={{fontSize:13,color:'var(--text-muted)',marginBottom:16}}>
-            Only email addresses on this list can log in to GigBoard.
-          </div>
+          <div style={{fontSize:13,color:'var(--text-muted)',marginBottom:16}}>Only email addresses on this list can log in to GigBoard.</div>
           <div className="panel" style={{marginBottom:20}}>
             <div className="panel-head">Invited emails — {invites.length} people</div>
-            {invites.length === 0 && <div className="empty-state">No invites yet. Add emails below.</div>}
+            {invites.length === 0 && <div className="empty-state">No invites yet.</div>}
             {invites.map(email => (
               <div key={email} className="gig-row">
                 <div style={{flex:1,fontSize:13,fontFamily:'var(--font-mono)',color:'#e8e8f0'}}>{email}</div>
@@ -414,31 +377,16 @@ export default function AdminDashboard() {
           <div className="panel">
             <div className="panel-head">Add a new invite</div>
             <div style={{padding:16,display:'flex',gap:10}}>
-              <input
-                type="email"
-                placeholder="dj@gmail.com"
-                value={newEmail}
-                onChange={e => setNewEmail(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAddInvite()}
-                style={{flex:1,background:'var(--bg-raised)',border:'1px solid var(--border)',borderRadius:6,color:'var(--text-primary)',fontSize:13,padding:'8px 10px'}}
-              />
-              <button className="btn btn-primary" onClick={handleAddInvite} style={{whiteSpace:'nowrap'}}>
-                {inviteSaved ? '✓ Saved' : 'Add invite'}
-              </button>
+              <input type="email" placeholder="dj@gmail.com" value={newEmail} onChange={e => setNewEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddInvite()} style={{flex:1,background:'var(--bg-raised)',border:'1px solid var(--border)',borderRadius:6,color:'var(--text-primary)',fontSize:13,padding:'8px 10px'}} />
+              <button className="btn btn-primary" onClick={handleAddInvite} style={{whiteSpace:'nowrap'}}>{inviteSaved ? '✓ Saved' : 'Add invite'}</button>
             </div>
-            <div style={{padding:'0 16px 14px',fontSize:11,color:'var(--text-muted)'}}>
-              The DJ must log in using this exact Google account email address.
-            </div>
+            <div style={{padding:'0 16px 14px',fontSize:11,color:'var(--text-muted)'}}>The DJ must log in using this exact Google account email address.</div>
           </div>
         </div>
       )}
 
-      {showModal && !editingGig && (
-        <AssignGigModal onClose={() => setShowModal(false)} onAssign={handleAssign} venues={venues} />
-      )}
-      {showModal && editingGig && (
-        <AssignGigModal onClose={() => { setShowModal(false); setEditingGig(null); }} onAssign={handleEdit} existingGig={editingGig} venues={venues} />
-      )}
+      {showModal && !editingGig && <AssignGigModal onClose={() => setShowModal(false)} onAssign={handleAssign} venues={venues} />}
+      {showModal && editingGig && <AssignGigModal onClose={() => { setShowModal(false); setEditingGig(null); }} onAssign={handleEdit} existingGig={editingGig} venues={venues} />}
     </>
   );
 }
@@ -455,11 +403,10 @@ function RosterRow({ user, dotColor, onSave }) {
       await onSave(user.uid, role, scope);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-    } catch (e) {
-      console.error('Save failed:', e);
-    } finally {
-      setSaving(false);
+    } catch(e) {
+      console.error(e);
     }
+    setSaving(false);
   }
 
   const initials = user.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
@@ -467,7 +414,7 @@ function RosterRow({ user, dotColor, onSave }) {
   return (
     <div>
       <div className="roster-row">
-        <div className="avatar" style={{background: dotColor+'20', color: dotColor, borderColor: dotColor+'40'}}>{initials}</div>
+        <div className="avatar" style={{background:dotColor+'20',color:dotColor,borderColor:dotColor+'40'}}>{initials}</div>
         <div style={{flex:1}}>
           <div style={{fontSize:13,fontWeight:500}}>{user.name}</div>
           <div style={{fontSize:11,color:'var(--text-muted)'}}>{user.email}</div>
@@ -478,7 +425,7 @@ function RosterRow({ user, dotColor, onSave }) {
         </select>
       </div>
       {role === 'venue_admin' && (
-        <div style={{padding:'8px 16px 12px 58px', borderBottom:'1px solid var(--bg-raised)'}}>
+        <div style={{padding:'8px 16px 12px 58px',borderBottom:'1px solid var(--bg-raised)'}}>
           <label style={{fontSize:10,color:'var(--text-muted)',display:'block',marginBottom:6,textTransform:'uppercase',letterSpacing:'0.07em'}}>Assigned scope</label>
           <div style={{display:'flex',gap:8,alignItems:'center'}}>
             <select className="perm-select" style={{flex:1}} value={scope} onChange={e => setScope(e.target.value)}>
@@ -488,13 +435,11 @@ function RosterRow({ user, dotColor, onSave }) {
               {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save'}
             </button>
           </div>
-          {user.venueScope && (
-            <div style={{fontSize:11,color:'var(--text-muted)',marginTop:6}}>Currently: {user.venueScope}</div>
-          )}
+          {user.venueScope && <div style={{fontSize:11,color:'var(--text-muted)',marginTop:6}}>Currently: {user.venueScope}</div>}
         </div>
       )}
       {role === 'dj' && user.role !== 'dj' && (
-        <div style={{padding:'8px 16px 12px 58px', borderBottom:'1px solid var(--bg-raised)'}}>
+        <div style={{padding:'8px 16px 12px 58px',borderBottom:'1px solid var(--bg-raised)'}}>
           <button onClick={handleSave} className="btn btn-primary btn-sm" disabled={saving}>
             {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save as DJ'}
           </button>
