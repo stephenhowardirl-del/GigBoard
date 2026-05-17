@@ -100,7 +100,7 @@ export default function AdminDashboard() {
   }
 
   async function handleConfirm(gigId) { await updateGigStatus(gigId, 'confirmed'); load(); }
-  async function handleReject(gigId)  { await updateGigStatus(gigId, 'rejected');  load(); }
+  async function handleRejectGig(gigId)  { await updateGigStatus(gigId, 'rejected');  load(); }
 
   async function handleAcceptMyGig(gig) {
     await updateGigStatus(gig.id, 'confirmed');
@@ -163,6 +163,11 @@ export default function AdminDashboard() {
     setEditingVenueName('');
   }
 
+  async function saveUserRole(uid, role, scope) {
+    await updateUserRole(uid, role, role === 'venue_admin' ? scope : null);
+    await load();
+  }
+
   const today              = new Date().toISOString().split('T')[0];
   const now                = new Date();
   const upcoming           = gigs.filter(g => g.status !== 'rejected' && g.date >= today);
@@ -215,7 +220,7 @@ export default function AdminDashboard() {
                   <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
                     {g.status === 'pending' && <>
                       <button className="btn btn-primary btn-sm" onClick={() => handleConfirm(g.id)}>Confirm</button>
-                      <button className="btn btn-danger btn-sm" onClick={() => handleReject(g.id)}>Reject</button>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleRejectGig(g.id)}>Reject</button>
                     </>}
                     {g.status !== 'pending' && statusBadge(g.status)}
                     <button className="btn btn-ghost btn-sm" onClick={() => { setEditingGig(g); setShowModal(true); }} style={{fontSize:11,padding:'3px 8px'}}>Edit</button>
@@ -242,7 +247,12 @@ export default function AdminDashboard() {
             </div>
             {users.length === 0 && <div className="empty-state">No DJs yet — share the link so they can log in.</div>}
             {users.map((u, i) => (
-              <RosterRow key={u.uid} user={u} dotColor={DOT_COLORS[i % DOT_COLORS.length]} onRoleChange={async (uid, role, venueScope) => { await updateUserRole(uid, role, venueScope || null); load(); }} />
+              <RosterRow
+                key={u.uid}
+                user={u}
+                dotColor={DOT_COLORS[i % DOT_COLORS.length]}
+                onSave={saveUserRole}
+              />
             ))}
           </div>
         </div>
@@ -433,18 +443,21 @@ export default function AdminDashboard() {
   );
 }
 
-function RosterRow({ user, dotColor, onRoleChange }) {
+function RosterRow({ user, dotColor, onSave }) {
   const [role, setRole]   = useState(user.role || 'dj');
   const [scope, setScope] = useState(user.venueScope || VENUE_ADMIN_SCOPES[0]?.label || '');
-  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved]   = useState(false);
 
   async function handleSave() {
-    await onRoleChange(user.uid, role, role === 'venue_admin' ? scope : null);
+    setSaving(true);
+    await onSave(user.uid, role, scope);
+    setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
 
-  const initials = user.name?.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+  const initials = user.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
     <div>
@@ -460,19 +473,26 @@ function RosterRow({ user, dotColor, onRoleChange }) {
         </select>
       </div>
       {role === 'venue_admin' && (
-        <div style={{padding:'8px 16px 12px 58px',borderBottom:'1px solid var(--bg-raised)'}}>
+        <div style={{padding:'8px 16px 12px 58px', borderBottom:'1px solid var(--bg-raised)'}}>
           <label style={{fontSize:10,color:'var(--text-muted)',display:'block',marginBottom:6,textTransform:'uppercase',letterSpacing:'0.07em'}}>Assigned scope</label>
           <div style={{display:'flex',gap:8,alignItems:'center'}}>
             <select className="perm-select" style={{flex:1}} value={scope} onChange={e => setScope(e.target.value)}>
               {VENUE_ADMIN_SCOPES.map(s => <option key={s.label} value={s.label}>{s.label}</option>)}
             </select>
-            <button onClick={handleSave} className="btn btn-primary btn-sm">
-              {saved ? '✓ Saved' : 'Save'}
+            <button onClick={handleSave} className="btn btn-primary btn-sm" disabled={saving}>
+              {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save'}
             </button>
           </div>
           {user.venueScope && (
-            <div style={{fontSize:11,color:'var(--text-muted)',marginTop:6}}>Currently saved: {user.venueScope}</div>
+            <div style={{fontSize:11,color:'var(--text-muted)',marginTop:6}}>Currently: {user.venueScope}</div>
           )}
+        </div>
+      )}
+      {role === 'dj' && user.role !== 'dj' && (
+        <div style={{padding:'8px 16px 12px 58px', borderBottom:'1px solid var(--bg-raised)'}}>
+          <button onClick={handleSave} className="btn btn-primary btn-sm" disabled={saving}>
+            {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save as DJ'}
+          </button>
         </div>
       )}
     </div>
