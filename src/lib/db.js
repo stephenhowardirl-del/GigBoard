@@ -27,8 +27,9 @@ export async function getAllUsers() {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
-export async function updateUserRole(uid, role, venueScope = null) {
-  await updateDoc(doc(db, 'users', uid), { role, venueScope });
+export async function updateUserRole(uid, role, venueScope) {
+  const data = { role, venueScope: venueScope || null };
+  await updateDoc(doc(db, 'users', uid), data);
 }
 
 export async function createGig({ venue, date, time, djUid, djName, djEmail, notes, fee, assignedBy }) {
