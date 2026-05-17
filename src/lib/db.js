@@ -100,6 +100,7 @@ export async function getAllUnavailability() {
   const snap = await getDocs(collection(db, 'unavailability'));
   return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
 }
+
 // ── INVITES ────────────────────────────────────────────
 
 export async function getInvitedEmails() {
@@ -114,4 +115,22 @@ export async function saveInvitedEmails(emails) {
 export async function isEmailInvited(email) {
   const emails = await getInvitedEmails();
   return emails.map(e => e.toLowerCase().trim()).includes(email.toLowerCase().trim());
+}
+
+// ── VENUES ─────────────────────────────────────────────
+
+const DEFAULT_VENUES = [
+  'Clancys Cork','JJ Walsh','Dwyers','Seventy Seven',
+  'Seventy Seven (brunch)','Seventy Seven (first floor)',
+  'Seventy Seven (stamp room)','The Wash','The Pav',
+  'The Dean','The Woodford','Mardyke','Wedding','Private Event',
+];
+
+export async function getVenues() {
+  const snap = await getDoc(doc(db, 'settings', 'venues'));
+  return snap.exists() ? snap.data().list : DEFAULT_VENUES;
+}
+
+export async function saveVenues(list) {
+  await setDoc(doc(db, 'settings', 'venues'), { list });
 }
