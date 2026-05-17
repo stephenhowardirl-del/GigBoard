@@ -4,8 +4,6 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 
-// ── USERS ──────────────────────────────────────────────
-
 export async function getOrCreateUser(googleUser) {
   const ref = doc(db, 'users', googleUser.uid);
   const snap = await getDoc(ref);
@@ -32,8 +30,6 @@ export async function getAllUsers() {
 export async function updateUserRole(uid, role, venueScope = null) {
   await updateDoc(doc(db, 'users', uid), { role, venueScope });
 }
-
-// ── GIGS ───────────────────────────────────────────────
 
 export async function createGig({ venue, date, time, djUid, djName, djEmail, notes, fee, assignedBy }) {
   return await addDoc(collection(db, 'gigs'), {
@@ -66,6 +62,11 @@ export async function getGigsForVenue(venue) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
+export async function getGigsForVenueGroup(venues) {
+  const allGigs = await Promise.all(venues.map(v => getGigsForVenue(v)));
+  return allGigs.flat().sort((a, b) => a.date.localeCompare(b.date));
+}
+
 export async function updateGigStatus(gigId, status, calendarEventId = null) {
   const data = { status };
   if (calendarEventId) data.calendarEventId = calendarEventId;
@@ -85,8 +86,6 @@ export async function deleteGig(gigId) {
   await deleteDoc(doc(db, 'gigs', gigId));
 }
 
-// ── UNAVAILABILITY ─────────────────────────────────────
-
 export async function setUnavailableDates(uid, dates) {
   await setDoc(doc(db, 'unavailability', uid), { uid, dates, updatedAt: serverTimestamp() });
 }
@@ -100,8 +99,6 @@ export async function getAllUnavailability() {
   const snap = await getDocs(collection(db, 'unavailability'));
   return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
 }
-
-// ── INVITES ────────────────────────────────────────────
 
 export async function getInvitedEmails() {
   const snap = await getDoc(doc(db, 'settings', 'invites'));
@@ -117,13 +114,11 @@ export async function isEmailInvited(email) {
   return emails.map(e => e.toLowerCase().trim()).includes(email.toLowerCase().trim());
 }
 
-// ── VENUES ─────────────────────────────────────────────
-
 const DEFAULT_VENUES = [
-  'Clancys Cork','JJ Walsh','Dwyers','Seventy Seven',
-  'Seventy Seven (brunch)','Seventy Seven (first floor)',
-  'Seventy Seven (stamp room)','The Wash','The Pav',
-  'The Dean','The Woodford','Mardyke','Wedding','Private Event',
+  'Clancys Cork', 'JJ Walsh', 'Sky Bar', 'The Wilton',
+  'Dwyers', 'Seventy Seven', 'Seventy Seven (1st Floor)', 'Seventy Seven (Stamp Room)',
+  'The Wash', 'The Pav', 'The Dean', 'The Woodford', 'Mardyke',
+  'Wedding', 'Private Event',
 ];
 
 export async function getVenues() {
