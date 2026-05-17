@@ -1,19 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { getAllUsers, getAllUnavailability } from '../lib/db';
 
-const VENUES = [
-  'Clancys Cork','JJ Walsh','Dwyers','Seventy Seven',
-  'Seventy Seven (brunch)','Seventy Seven (first floor)',
-  'Seventy Seven (stamp room)','The Wash','The Pav',
-  'The Dean','The Woodford','Mardyke','Wedding','Private Event',
-];
-
-export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, existingGig = null }) {
+export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, existingGig = null, venues = [] }) {
   const editing = !!existingGig;
 
   const [users, setUsers]       = useState([]);
   const [unavail, setUnavail]   = useState([]);
-  const [venue, setVenue]       = useState(existingGig?.venue || lockedVenue || VENUES[0]);
+  const [venue, setVenue]       = useState(existingGig?.venue || lockedVenue || '');
   const [date, setDate]         = useState(existingGig?.date || '');
   const [time, setTime]         = useState(existingGig?.time || '');
   const [djUid, setDjUid]       = useState(existingGig?.djUid || '');
@@ -29,6 +22,12 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
     });
     getAllUnavailability().then(setUnavail);
   }, []);
+
+  useEffect(() => {
+    if (venues.length && !existingGig?.venue && !lockedVenue) {
+      setVenue(venues[0]);
+    }
+  }, [venues]);
 
   function checkUnavail(selectedDate, selectedDjUid) {
     const djUnavail = unavail.find(u => u.uid === selectedDjUid);
@@ -56,14 +55,15 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
       <div className="modal">
         <div className="modal-title">{editing ? 'Edit gig' : lockedVenue ? `Assign gig at ${lockedVenue}` : 'Assign a gig'}</div>
         <div className="modal-sub">
-          {editing ? 'Changes will reset the gig to pending — the DJ will need to reconfirm.' : 'DJ will receive a notification and must accept before it goes to their calendar.'}
+          {editing ? 'Changes will reset the gig to pending — the DJ will need to reconfirm.' : 'DJ will receive a notification and must accept before it is confirmed.'}
         </div>
 
         {!lockedVenue && (
           <div className="field">
             <label>Venue</label>
             <select value={venue} onChange={e => setVenue(e.target.value)}>
-              {VENUES.map(v => <option key={v}>{v}</option>)}
+              {venues.length === 0 && <option>No venues added yet</option>}
+              {venues.map(v => <option key={v}>{v}</option>)}
             </select>
           </div>
         )}
