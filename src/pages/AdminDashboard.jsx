@@ -100,7 +100,7 @@ export default function AdminDashboard() {
   }
 
   async function handleConfirm(gigId) { await updateGigStatus(gigId, 'confirmed'); load(); }
-  async function handleRejectGig(gigId)  { await updateGigStatus(gigId, 'rejected');  load(); }
+  async function handleRejectGig(gigId) { await updateGigStatus(gigId, 'rejected'); load(); }
 
   async function handleAcceptMyGig(gig) {
     await updateGigStatus(gig.id, 'confirmed');
@@ -165,7 +165,7 @@ export default function AdminDashboard() {
 
   async function saveUserRole(uid, role, scope) {
     await updateUserRole(uid, role, role === 'venue_admin' ? scope : null);
-    await load();
+    load();
   }
 
   const today              = new Date().toISOString().split('T')[0];
@@ -444,17 +444,22 @@ export default function AdminDashboard() {
 }
 
 function RosterRow({ user, dotColor, onSave }) {
-  const [role, setRole]   = useState(user.role || 'dj');
-  const [scope, setScope] = useState(user.venueScope || VENUE_ADMIN_SCOPES[0]?.label || '');
+  const [role, setRole]     = useState(user.role || 'dj');
+  const [scope, setScope]   = useState(user.venueScope || VENUE_ADMIN_SCOPES[0]?.label || '');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved]   = useState(false);
 
   async function handleSave() {
     setSaving(true);
-    await onSave(user.uid, role, scope);
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    try {
+      await onSave(user.uid, role, scope);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e) {
+      console.error('Save failed:', e);
+    } finally {
+      setSaving(false);
+    }
   }
 
   const initials = user.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
