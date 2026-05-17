@@ -1,20 +1,14 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from 'firebase/auth';
-import { GoogleAuthProvider } from 'firebase/auth';
+import { onAuthStateChanged, signInWithRedirect, getRedirectResult, signOut } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { getOrCreateUser, isEmailInvited } from '../lib/db';
 import { FULL_ADMIN_EMAIL } from '../lib/config';
 
 const AuthContext = createContext(null);
 
-function isMobile() {
-  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-}
-
 export function AuthProvider({ children }) {
   const [user, setUser]                 = useState(null);
   const [profile, setProfile]           = useState(null);
-  const [accessToken, setAccessToken]   = useState(null);
   const [loading, setLoading]           = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
 
@@ -22,7 +16,6 @@ export function AuthProvider({ children }) {
     if (!firebaseUser) {
       setUser(null);
       setProfile(null);
-      setAccessToken(null);
       setAccessDenied(false);
       setLoading(false);
       return;
@@ -55,25 +48,26 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    // Check for redirect result first (mobile login)
-    getRedirectResult(auth).then(result => {
-      if (result?.user) {
-        handleFirebaseUser(result.user);
+    async function init() {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          await handleFirebaseUser(result.user);
+          return;
+        }
+      } catch (e) {
+        console.error('Redirect error:', e);
       }
-    }).catch(e => {
-      console.error('Redirect result error:', e);
-    });
 
-    const unsub = onAuthStateChanged(auth, handleFirebaseUser);
-    return unsub;
+      const unsub = onAuthStateChanged(auth, handleFirebaseUser);
+      return unsub;
+    }
+
+    init();
   }, []);
 
   async function login() {
-    if (isMobile()) {
-      await signInWithRedirect(auth, googleProvider);
-    } else {
-      await signInWithPopup(auth, googleProvider);
-    }
+    await signInWithRedirect(auth, googleProvider);
   }
 
   async function logout() {
@@ -81,7 +75,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, accessToken, loading, accessDenied, login, logout }}>
+    <AuthContext.Provider value={{ user, profile, loading, accessDenied, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
