@@ -1,11 +1,15 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from 'firebase/auth';
 import { GoogleAuthProvider } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { getOrCreateUser, isEmailInvited } from '../lib/db';
 import { FULL_ADMIN_EMAIL } from '../lib/config';
 
 const AuthContext = createContext(null);
+
+function isMobile() {
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser]                 = useState(null);
@@ -14,56 +18,61 @@ export function AuthProvider({ children }) {
   const [loading, setLoading]           = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
 
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        if (firebaseUser.email.toLowerCase() === FULL_ADMIN_EMAIL.toLowerCase()) {
-          setUser(firebaseUser);
-          const p = await getOrCreateUser(firebaseUser);
-          p.role = 'full_admin';
-          setProfile(p);
-          setAccessDenied(false);
-          setLoading(false);
-          return;
-        }
-
-        const invited = await isEmailInvited(firebaseUser.email);
-        if (!invited) {
-          setUser(firebaseUser);
-          setProfile(null);
-          setAccessDenied(true);
-          setLoading(false);
-          return;
-        }
-
-        setUser(firebaseUser);
-        const p = await getOrCreateUser(firebaseUser);
-        setProfile(p);
-        setAccessDenied(false);
-      } else {
-        setUser(null);
-        setProfile(null);
-        setAccessToken(null);
-        setAccessDenied(false);
-      }
+  async function handleFirebaseUser(firebaseUser) {
+    if (!firebaseUser) {
+      setUser(null);
+      setProfile(null);
+      setAccessToken(null);
+      setAccessDenied(false);
       setLoading(false);
+      return;
+    }
+
+    if (firebaseUser.email.toLowerCase() === FULL_ADMIN_EMAIL.toLowerCase()) {
+      setUser(firebaseUser);
+      const p = await getOrCreateUser(firebaseUser);
+      p.role = 'full_admin';
+      setProfile(p);
+      setAccessDenied(false);
+      setLoading(false);
+      return;
+    }
+
+    const invited = await isEmailInvited(firebaseUser.email);
+    if (!invited) {
+      setUser(firebaseUser);
+      setProfile(null);
+      setAccessDenied(true);
+      setLoading(false);
+      return;
+    }
+
+    setUser(firebaseUser);
+    const p = await getOrCreateUser(firebaseUser);
+    setProfile(p);
+    setAccessDenied(false);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    // Check for redirect result first (mobile login)
+    getRedirectResult(auth).then(result => {
+      if (result?.user) {
+        handleFirebaseUser(result.user);
+      }
+    }).catch(e => {
+      console.error('Redirect result error:', e);
     });
+
+    const unsub = onAuthStateChanged(auth, handleFirebaseUser);
     return unsub;
   }, []);
 
   async function login() {
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      // Use the official Firebase method to get the OAuth credential
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      if (credential?.accessToken) {
-        setAccessToken(credential.accessToken);
-        console.log('Calendar access token captured successfully');
-      } else {
-        console.warn('No access token returned from Google login');
-      }
-    } catch (error) {
-      console.error('Login error:', error);
+    if (isMobile()) {
+      await signInWithRedirect(auth, googleProvider);
+    } else {
+      await signInWithPopup(auth, googleProvider);
     }
   }
 
