@@ -1,121 +1,163 @@
-import React, { useState } from 'react';
-import { useAuth } from './hooks/useAuth';
-import LoginPage from './pages/LoginPage';
-import AccessDenied from './pages/AccessDenied';
-import AdminDashboard from './pages/AdminDashboard';
-import VenueAdminDashboard from './pages/VenueAdminDashboard';
-import DJDashboard from './pages/DJDashboard';
-import DJProfile from './pages/DJProfile';
-import './index.css';
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '../hooks/useAuth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
-const ROLE_LABELS = {
-  full_admin:  'Full admin',
-  venue_admin: 'Venue admin',
-  dj:          'DJ',
-};
-const ROLE_CLASS = {
-  full_admin:  'role-full-admin',
-  venue_admin: 'role-venue-admin',
-  dj:          'role-dj',
-};
+export default function DJProfile({ onClose }) {
+  const { user, profile } = useAuth();
+  const [form, setForm] = useState({
+    name:    '',
+    email:   '',
+    phone:   '',
+    address: '',
+    vat:     '',
+    iban:    '',
+  });
+  const [saving, setSaving]   = useState(false);
+  const [saved, setSaved]     = useState(false);
+  const [loading, setLoading] = useState(true);
 
-function roleLabel(profile) {
-  if (profile.role === 'venue_admin' && profile.venueScope) {
-    return `Venue admin · ${profile.venueScope}`;
+  useEffect(() => {
+    async function load() {
+      const ref  = doc(db, 'djProfiles', user.uid);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        setForm(f => ({ ...f, ...snap.data() }));
+      } else {
+        setForm(f => ({
+          ...f,
+          name:  profile.name || '',
+          email: user.email   || '',
+        }));
+      }
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  async function handleSave() {
+    setSaving(true);
+    const ref = doc(db, 'djProfiles', user.uid);
+    await setDoc(ref, { ...form, uid: user.uid });
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   }
-  return ROLE_LABELS[profile.role] || 'DJ';
-}
 
-function initials(name) {
-  if (!name) return '??';
-  return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-}
+  function handleChange(field, value) {
+    setForm(f => ({ ...f, [field]: value }));
+    setSaved(false);
+  }
 
-function GigBoardLogo() {
-  return (
-    <div style={{display:'flex', alignItems:'center', gap:10}}>
-      <svg width="28" height="28" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-        <rect width="32" height="32" rx="6" fill="#0a0a0f"/>
-        <rect x="2" y="12" width="3" height="8" rx="1.5" fill="#00ffc2"/>
-        <rect x="7" y="9" width="3" height="14" rx="1.5" fill="#00ffc2" opacity="0.8"/>
-        <rect x="12" y="6" width="3" height="20" rx="1.5" fill="#00ffc2"/>
-        <rect x="17" y="11" width="3" height="10" rx="1.5" fill="#00ffc2" opacity="0.7"/>
-        <rect x="22" y="8" width="3" height="16" rx="1.5" fill="#00ffc2" opacity="0.9"/>
-        <rect x="27" y="13" width="3" height="6" rx="1.5" fill="#00ffc2" opacity="0.6"/>
-      </svg>
-      <div style={{fontFamily:'var(--font-mono)', fontSize:16, fontWeight:500, letterSpacing:'0.06em', color:'#fff'}}>
-        GIG<span style={{color:'#00ffc2'}}>BOARD</span>
+  if (loading) return (
+    <div style={overlayStyle}>
+      <div style={modalStyle}>
+        <div style={{color:'var(--text-muted)',textAlign:'center',padding:40}}>Loading...</div>
       </div>
     </div>
   );
-}
-
-export default function App() {
-  const { user, profile, loading, accessDenied, logout } = useAuth();
-  const [showMenu, setShowMenu]       = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
-
-  if (loading)      return <div className="loading">Loading GigBoard…</div>;
-  if (!user)        return <LoginPage />;
-  if (accessDenied) return <AccessDenied />;
-  if (!profile)     return <div className="loading">Loading…</div>;
 
   return (
-    <div style={{minHeight:'100vh'}} onClick={() => setShowMenu(false)}>
-      <div className="topbar">
-        <GigBoardLogo />
-        <div className="user-chip" style={{position:'relative'}}>
+    <div style={overlayStyle} onClick={onClose}>
+      <div style={modalStyle} onClick={e => e.stopPropagation()}>
+
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24}}>
           <div>
-            <div style={{fontSize:13,fontWeight:500,lineHeight:1.2,textAlign:'right'}}>{profile.name}</div>
-            <div style={{textAlign:'right',marginTop:2}}>
-              <span className={`role-pill ${ROLE_CLASS[profile.role] || 'role-dj'}`}>{roleLabel(profile)}</span>
-            </div>
+            <div style={{fontSize:18, fontWeight:600, color:'#e8e8f0'}}>My Profile</div>
+            <div style={{fontSize:12, color:'var(--text-muted)', marginTop:2}}>This info will be used for invoice generation</div>
           </div>
-          <div
-            className="avatar"
-            style={{cursor:'pointer'}}
-            onClick={e => { e.stopPropagation(); setShowMenu(m => !m); }}
-          >
-            {user.photoURL
-              ? <img src={user.photoURL} alt="avatar" style={{width:'100%',height:'100%',borderRadius:'50%',objectFit:'cover'}} />
-              : initials(profile.name)
-            }
-          </div>
-          {showMenu && (
-            <div
-              style={{position:'absolute',top:44,right:0,zIndex:200,background:'#0d0d14',border:'1px solid #2a2a40',borderRadius:8,minWidth:180,overflow:'hidden',boxShadow:'0 8px 24px #00000060'}}
-              onClick={e => e.stopPropagation()}
-            >
-              <div style={{padding:'10px 14px',borderBottom:'1px solid #1e1e2e'}}>
-                <div style={{fontSize:12,fontWeight:500,color:'#e8e8f0'}}>{profile.name}</div>
-                <div style={{fontSize:11,color:'#404060',marginTop:2}}>{user.email}</div>
-              </div>
-
-              {profile.role === 'dj' && (
-                <button
-                  onClick={() => { setShowMenu(false); setShowProfile(true); }}
-                  style={{width:'100%',padding:'10px 14px',background:'transparent',border:'none',borderBottom:'1px solid #1e1e2e',color:'#e8e8f0',fontSize:13,fontWeight:500,textAlign:'left',cursor:'pointer',display:'flex',alignItems:'center',gap:8}}
-                >
-                  👤 My Profile
-                </button>
-              )}
-
-              <button
-                onClick={() => { setShowMenu(false); logout(); }}
-                style={{width:'100%',padding:'10px 14px',background:'transparent',border:'none',color:'#ff4070',fontSize:13,fontWeight:500,textAlign:'left',cursor:'pointer',display:'flex',alignItems:'center',gap:8}}
-              >
-                🚪 Sign out
-              </button>
-            </div>
-          )}
+          <button onClick={onClose} style={{background:'transparent', border:'none', color:'#404060', fontSize:20, cursor:'pointer', lineHeight:1}}>✕</button>
         </div>
+
+        <div style={{display:'flex', flexDirection:'column', gap:14}}>
+          {[
+            { label: 'Name',    field: 'name',    placeholder: 'Your full name' },
+            { label: 'Email',   field: 'email',   placeholder: 'Your email address' },
+            { label: 'Phone',   field: 'phone',   placeholder: 'Your phone number' },
+            { label: 'Address', field: 'address', placeholder: 'Your address', multiline: true },
+            { label: 'VAT No',  field: 'vat',     placeholder: 'VAT number (if applicable)' },
+            { label: 'IBAN',    field: 'iban',     placeholder: 'Your IBAN' },
+          ].map(({ label, field, placeholder, multiline }) => (
+            <div key={field}>
+              <div style={{fontSize:12, color:'var(--text-muted)', marginBottom:5, fontWeight:500}}>{label}</div>
+              {multiline ? (
+                <textarea
+                  value={form[field]}
+                  onChange={e => handleChange(field, e.target.value)}
+                  placeholder={placeholder}
+                  rows={3}
+                  style={inputStyle}
+                />
+              ) : (
+                <input
+                  type="text"
+                  value={form[field]}
+                  onChange={e => handleChange(field, e.target.value)}
+                  placeholder={placeholder}
+                  style={inputStyle}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          style={{
+            marginTop: 24,
+            width: '100%',
+            padding: '12px',
+            background: saved ? '#00c896' : '#00ffc2',
+            color: '#0a0a0f',
+            border: 'none',
+            borderRadius: 8,
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: saving ? 'not-allowed' : 'pointer',
+            transition: 'background 0.2s',
+          }}
+        >
+          {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save Profile'}
+        </button>
+
       </div>
-
-      {profile.role === 'full_admin'  && <AdminDashboard />}
-      {profile.role === 'venue_admin' && <VenueAdminDashboard />}
-      {profile.role === 'dj'          && <DJDashboard />}
-
-      {showProfile && <DJProfile onClose={() => setShowProfile(false)} />}
     </div>
   );
 }
+
+const overlayStyle = {
+  position:       'fixed',
+  inset:          0,
+  background:     '#00000080',
+  zIndex:         300,
+  display:        'flex',
+  alignItems:     'center',
+  justifyContent: 'center',
+  padding:        20,
+};
+
+const modalStyle = {
+  background:   '#0d0d14',
+  border:       '1px solid #2a2a40',
+  borderRadius: 12,
+  padding:      28,
+  width:        '100%',
+  maxWidth:     480,
+  maxHeight:    '90vh',
+  overflowY:    'auto',
+};
+
+const inputStyle = {
+  width:        '100%',
+  padding:      '9px 12px',
+  background:   '#0a0a0f',
+  border:       '1px solid #2a2a40',
+  borderRadius: 6,
+  color:        '#e8e8f0',
+  fontSize:     13,
+  outline:      'none',
+  boxSizing:    'border-box',
+  fontFamily:   'inherit',
+  resize:       'vertical',
+};
