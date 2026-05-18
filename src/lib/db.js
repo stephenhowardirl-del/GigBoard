@@ -15,9 +15,10 @@ export async function getOrCreateUser(googleUser) {
       photoURL: googleUser.photoURL,
       role: 'dj',
       venueScope: null,
+      selfAssignVenues: [],
       createdAt: serverTimestamp(),
     });
-    return { uid: googleUser.uid, email: googleUser.email, name: googleUser.displayName, role: 'dj', venueScope: null };
+    return { uid: googleUser.uid, email: googleUser.email, name: googleUser.displayName, role: 'dj', venueScope: null, selfAssignVenues: [] };
   }
   return { uid: snap.id, ...snap.data() };
 }
@@ -32,12 +33,28 @@ export async function updateUserRole(uid, role, venueScope) {
   await updateDoc(doc(db, 'users', uid), data);
 }
 
+export async function updateUserSelfAssignVenues(uid, selfAssignVenues) {
+  await updateDoc(doc(db, 'users', uid), { selfAssignVenues });
+}
+
 export async function createGig({ venue, date, time, djUid, djName, djEmail, notes, fee, assignedBy }) {
   return await addDoc(collection(db, 'gigs'), {
     venue, date, time, djUid, djName, djEmail: djEmail || '',
     notes: notes || '',
     fee: fee ? Number(fee) : null,
     status: 'pending',
+    assignedBy,
+    calendarEventId: null,
+    createdAt: serverTimestamp(),
+  });
+}
+
+export async function createGigConfirmed({ venue, date, time, djUid, djName, djEmail, notes, fee, assignedBy }) {
+  return await addDoc(collection(db, 'gigs'), {
+    venue, date, time, djUid, djName, djEmail: djEmail || '',
+    notes: notes || '',
+    fee: fee ? Number(fee) : null,
+    status: 'confirmed',
     assignedBy,
     calendarEventId: null,
     createdAt: serverTimestamp(),
