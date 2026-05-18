@@ -65,12 +65,19 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
     return activeAllUnavail.some(u => u.dates?.includes(iso));
   }
 
+  function unavailDJsOnDay(d) {
+    const iso = isoForDay(d);
+    return activeAllUnavail
+      .filter(u => u.dates?.includes(iso))
+      .map(u => djList.find(dj => dj.uid === u.uid)?.name)
+      .filter(Boolean);
+  }
+
   function getDayStyle(d) {
     const dayGigs    = gigsOnDay(d);
     const today      = new Date();
     const isToday    = year === today.getFullYear() && month === today.getMonth() && d === today.getDate();
     const unavail    = isUnavail(d);
-    const anyUnavail = isAnyUnavail(d);
     const confirmed  = dayGigs.some(g => g.status === 'confirmed');
     const pending    = dayGigs.some(g => g.status === 'pending');
 
@@ -81,18 +88,31 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
     if (confirmed)    { bg = '#002a1a'; color = '#00ffcc'; border = '1px solid #00ffcc50'; }
     else if (pending) { bg = '#2a1800'; color = '#ffcc00'; border = '1px solid #ffcc0050'; }
 
-    if (!readOnly && unavail)                { bg = '#2a0010'; color = '#ff6090'; border = '1px solid #ff407050'; }
-    if (readOnly && (unavail || anyUnavail)) { bg = '#1a000a'; color = '#ff407060'; border = '1px solid #ff407025'; }
+    // Only show red unavail for the DJ's own calendar (not readOnly admin view)
+    if (!readOnly && unavail) { bg = '#2a0010'; color = '#ff6090'; border = '1px solid #ff407050'; }
+
     if (isToday) { border = '2px solid #00ffc2'; if (!confirmed) color = '#00ffc2'; }
 
     return { background: bg, color, border };
   }
 
   function handleClick(d) {
-    const dayGigs = gigsOnDay(d);
-    if (dayGigs.length > 0 && (readOnly || showDJPicker)) { setPopup({ day: d, gigs: dayGigs }); return; }
-    if (dayGigs.length > 1) { setPopup({ day: d, gigs: dayGigs }); return; }
-    if (!readOnly && dayGigs.length === 0) { onToggleUnavail && onToggleUnavail(isoForDay(d)); return; }
+    const dayGigs     = gigsOnDay(d);
+    const unavailDJs  = readOnly || showDJPicker ? unavailDJsOnDay(d) : [];
+    const selfUnavail = !readOnly && isUnavail(d);
+
+    if (dayGigs.length > 0 || unavailDJs.length > 0) {
+      setPopup({ day: d, gigs: dayGigs, unavailDJs });
+      return;
+    }
+    if (!readOnly && !selfUnavail && dayGigs.length === 0) {
+      onToggleUnavail && onToggleUnavail(isoForDay(d));
+      return;
+    }
+    if (!readOnly && selfUnavail) {
+      onToggleUnavail && onToggleUnavail(isoForDay(d));
+      return;
+    }
   }
 
   const selectedDJName = djList.find(u => u.uid === selectedDJ)?.name;
@@ -131,7 +151,7 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
       ) : (
         <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:3}} onClick={e => e.stopPropagation()}>
           {DAYS.map(d => (
-            <div key={d} style={{fontSize:10,color:'#5050808',textAlign:'center',padding:'4px 0',letterSpacing:'0.05em',textTransform:'uppercase'}}>
+            <div key={d} style={{fontSize:10,color:'#50508080',textAlign:'center',padding:'4px 0',letterSpacing:'0.05em',textTransform:'uppercase'}}>
               {d}
             </div>
           ))}
@@ -189,8 +209,13 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
           <div style={{fontSize:11,color:'#6060a0',textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:10}}>
             {popup.day} {MONTHS[month]}
           </div>
+
+          {popup.gigs.length === 0 && popup.unavailDJs.length === 0 && (
+            <div style={{fontSize:13,color:'var(--text-muted)',padding:'4px 0'}}>No gigs on this day.</div>
+          )}
+
           {popup.gigs.map((g, i) => (
-            <div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 0',borderBottom: i < popup.gigs.length-1 ? '1px solid #1e1e2e' : 'none'}}>
+            <div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 0',borderBottom:'1px solid #1e1e2e'}}>
               <div style={{width:6,height:6,borderRadius:'50%',background: g.status === 'confirmed' ? '#00ffcc' : '#ffcc00',flexShrink:0}} />
               <div>
                 <div style={{fontSize:13,fontWeight:500,color:'#e8e8f0'}}>{g.djName} — {g.venue}</div>
@@ -198,6 +223,16 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
               </div>
             </div>
           ))}
+
+          {popup.unavailDJs.length > 0 && (
+            <div style={{marginTop: popup.gigs.length > 0 ? 10 : 0, padding:'8px 10px', background:'#1a000a', border:'1px solid #ff407030', borderRadius:6}}>
+              <div style={{fontSize:10,color:'#ff6090',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:4}}>Unavailable</div>
+              {popup.unavailDJs.map((name, i) => (
+                <div key={i} style={{fontSize:12,color:'#ff607090',marginTop:2}}>· {name}</div>
+              ))}
+            </div>
+          )}
+
           <button onClick={() => setPopup(null)} style={{marginTop:12,width:'100%',padding:'6px',background:'transparent',border:'1px solid #1e1e2e',borderRadius:5,color:'#6060a0',fontSize:12,cursor:'pointer'}}>Close</button>
         </div>
       )}
@@ -206,7 +241,6 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
         <div className="cal-legend-item"><div className="cal-legend-dot" style={{background:'#002a1a',border:'1px solid #00ffcc50'}}></div>Confirmed</div>
         <div className="cal-legend-item"><div className="cal-legend-dot" style={{background:'#2a1800',border:'1px solid #ffcc0050'}}></div>Pending</div>
         {!readOnly && <div className="cal-legend-item"><div className="cal-legend-dot" style={{background:'#2a0010',border:'1px solid #ff407050'}}></div>Unavailable (tap to toggle)</div>}
-        {readOnly && <div className="cal-legend-item"><div className="cal-legend-dot" style={{background:'#1a000a',border:'1px solid #ff407025'}}></div>DJ unavailable</div>}
       </div>
     </div>
   );
