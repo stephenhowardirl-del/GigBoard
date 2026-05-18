@@ -3,6 +3,7 @@ import { getGigsForDJ, updateGigStatus, getUnavailableDates, setUnavailableDates
 import { getVenueColor } from '../lib/venueGroups';
 import { useAuth } from '../hooks/useAuth';
 import CalendarView from '../components/CalendarView';
+import InvoiceModal from '../components/InvoiceModal';
 
 function formatDate(iso) {
   if (!iso) return '';
@@ -37,15 +38,13 @@ function SelfAssignModal({ venues, profile, onClose, onBooked }) {
     if (!venue || !date || !time) return;
     setSaving(true);
     await createGigConfirmed({
-      venue,
-      date,
-      time,
-      djUid:  profile.uid,
-      djName: profile.name,
+      venue, date, time,
+      djUid:   profile.uid,
+      djName:  profile.name,
       djEmail: profile.email || '',
       notes,
-      fee: null,
-      assignedBy: profile.name,
+      fee:         null,
+      assignedBy:  profile.name,
     });
     setSaving(false);
     onBooked();
@@ -92,12 +91,13 @@ function SelfAssignModal({ venues, profile, onClose, onBooked }) {
 }
 
 export default function DJDashboard() {
-  const { profile } = useAuth();
-  const [tab, setTab]             = useState('schedule');
-  const [gigs, setGigs]           = useState([]);
-  const [unavail, setUnavail]     = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [showBooking, setShowBooking] = useState(false);
+  const { user, profile } = useAuth();
+  const [tab, setTab]               = useState('schedule');
+  const [gigs, setGigs]             = useState([]);
+  const [unavail, setUnavail]       = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [showBooking, setShowBooking]   = useState(false);
+  const [invoiceGig, setInvoiceGig]     = useState(null);
 
   const selfAssignVenues = profile?.selfAssignVenues || [];
 
@@ -182,7 +182,7 @@ export default function DJDashboard() {
           <div className="panel">
             {confirmed.length === 0 && <div className="empty-state">No confirmed gigs yet.</div>}
             {confirmed.map(g => {
-              const d = new Date(g.date + 'T12:00:00');
+              const d  = new Date(g.date + 'T12:00:00');
               const vc = getVenueColor(g.venue);
               return (
                 <div key={g.id} className="timeline-item" style={{borderLeft:`3px solid ${vc.color}`}}>
@@ -198,6 +198,14 @@ export default function DJDashboard() {
                     {g.fee && <div style={{fontSize:12,color:'#00ffc2',fontWeight:600,marginTop:3}}>€{g.fee}</div>}
                     {g.notes && <div style={{fontSize:11,color:'var(--text-secondary)',marginTop:2}}>📌 {g.notes}</div>}
                   </div>
+                  {g.fee && (
+                    <button
+                      onClick={() => setInvoiceGig(g)}
+                      style={{background:'transparent',border:'1px solid #2a2a40',color:'#9090b0',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap',alignSelf:'center'}}
+                    >
+                      🧾 Invoice
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -240,6 +248,14 @@ export default function DJDashboard() {
           profile={profile}
           onClose={() => setShowBooking(false)}
           onBooked={load}
+        />
+      )}
+
+      {invoiceGig && (
+        <InvoiceModal
+          gig={invoiceGig}
+          userUid={user.uid}
+          onClose={() => setInvoiceGig(null)}
         />
       )}
     </div>
