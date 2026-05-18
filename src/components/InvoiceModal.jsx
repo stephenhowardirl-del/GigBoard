@@ -2,11 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { jsPDF } from 'jspdf';
+import { getAllGigs } from '../lib/db';
 
 function formatDate(iso) {
   if (!iso) return '';
   const d = new Date(iso + 'T12:00:00');
   return d.toLocaleDateString('en-IE', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function formatDateShort(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T12:00:00');
+  return d.toLocaleDateString('en-IE', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function addDays(iso, days) {
@@ -21,50 +28,71 @@ function generateInvoiceNumber() {
   return `INV-${now.getFullYear()}-${rand}`;
 }
 
-export default function InvoiceModal({ gig, userUid, onClose }) {
-  const [djProfile, setDjProfile] = useState(null);
-  const [loading, setLoading]     = useState(true);
-  const [fee, setFee]             = useState(String(gig.fee || ''));
-  const [invoiceNum]              = useState(generateInvoiceNumber());
+function sameMonth(iso1, iso2) {
+  const a = new Date(iso1 + 'T12:00:00');
+  const b = new Date(iso2 + 'T12:00:00');
+  return a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
+}
+
+export default function InvoiceModal({ gig, userUid, allGigs = [], onClose }) {
+  const [djProfile, setDjProfile]     = useState(null);
+  const [loading, setLoading]         = useState(true);
+  const [invoiceNum]                  = useState(generateInvoiceNumber());
+  const [relatedGigs, setRelatedGigs] = useState([]);
+  const [selectedIds, setSelectedIds] = useState(new Set([gig.id]));
+  const [fees, setFees]               = useState({ [gig.id]: String(gig.fee || '') });
 
   useEffect(() => {
     async function load() {
       const ref  = doc(db, 'djProfiles', userUid);
       const snap = await getDoc(ref);
       if (snap.exists()) setDjProfile(snap.data());
+
+      // Find other confirmed gigs at same venue in same month with a fee
+      const all = allGigs.length > 0 ? allGigs : await getAllGigs();
+      const related = all.filter(g =>
+        g.id !== gig.id &&
+        g.venue === gig.venue &&
+        g.status === 'confirmed' &&
+        g.fee &&
+        sameMonth(g.date, gig.date)
+      );
+      setRelatedGigs(related);
+      const initFees = { [gig.id]: String(gig.fee || '') };
+      related.forEach(g => { initFees[g.id] = String(g.fee || ''); });
+      setFees(initFees);
       setLoading(false);
     }
     load();
   }, []);
 
+  function toggleGig(id) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (id === gig.id) return next; // can't deselect primary gig
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  const allSelected   = [gig, ...relatedGigs].filter(g => selectedIds.has(g.id));
+  const hasVat        = djProfile?.vat && djProfile.vat.trim() !== '';
+  const subtotal      = allSelected.reduce((sum, g) => sum + (parseFloat(fees[g.id]) || 0), 0);
+  const vatAmt        = hasVat ? subtotal * 0.23 : 0;
+  const total         = subtotal + vatAmt;
+  const tradingName   = djProfile?.tradingName?.trim() || djProfile?.name || gig.djName;
+
   function generatePDF() {
-    const pdf      = new jsPDF({ unit: 'mm', format: 'a4' });
-    const pageW    = 210;
-    const margin   = 20;
-    const col2     = 120;
-    let y          = 20;
-
-    const feeNum   = parseFloat(fee) || 0;
-    const hasVat   = djProfile?.vat && djProfile.vat.trim() !== '';
-    const vatRate  = 0.23;
-    const vatAmt   = hasVat ? feeNum * vatRate : 0;
-    const total    = feeNum + vatAmt;
-
-    const tradingName = djProfile?.tradingName?.trim() || djProfile?.name || gig.djName;
+    const pdf    = new jsPDF({ unit: 'mm', format: 'a4' });
+    const pageW  = 210;
+    const margin = 20;
+    const col2   = 120;
+    let y        = 20;
 
     // ── Header bar ──────────────────────────────────────────────
     pdf.setFillColor(10, 10, 15);
     pdf.rect(0, 0, pageW, 35, 'F');
-
-    pdf.setTextColor(0, 255, 194);
-    pdf.setFontSize(18);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('GIGBOARD', margin, 15);
-
-    pdf.setTextColor(180, 180, 200);
-    pdf.setFontSize(9);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text('gigboard.app', margin, 22);
 
     pdf.setTextColor(255, 255, 255);
     pdf.setFontSize(22);
@@ -99,23 +127,13 @@ export default function InvoiceModal({ gig, userUid, onClose }) {
 
     if (djProfile?.address) {
       const addressLines = djProfile.address.split('\n');
-      addressLines.forEach(line => {
-        pdf.text(line.trim(), margin, y);
-        y += 5;
-      });
+      addressLines.forEach(line => { pdf.text(line.trim(), margin, y); y += 5; });
     }
     if (djProfile?.email) { pdf.text(djProfile.email, margin, y); y += 5; }
     if (djProfile?.phone) { pdf.text(djProfile.phone, margin, y); y += 5; }
     if (djProfile?.vat)   { pdf.text(`VAT: ${djProfile.vat}`, margin, y); y += 5; }
 
-    y = 50 + 6 + 5;
-    pdf.setTextColor(80, 80, 100);
-    pdf.setFontSize(9);
-    const gigDateFormatted = formatDate(gig.date);
-    pdf.text(gigDateFormatted, col2, y); y += 5;
-    pdf.text(gig.time || '', col2, y);
-
-    y = Math.max(y + 20, 110);
+    y = Math.max(y + 10, 110);
 
     // ── Invoice meta ─────────────────────────────────────────────
     pdf.setFillColor(245, 245, 252);
@@ -141,32 +159,42 @@ export default function InvoiceModal({ gig, userUid, onClose }) {
     // ── Line items header ────────────────────────────────────────
     pdf.setFillColor(10, 10, 15);
     pdf.rect(margin, y, pageW - margin * 2, 8, 'F');
-
-    pdf.setTextColor(0, 255, 194);
+    pdf.setTextColor(200, 200, 220);
     pdf.setFontSize(8);
     pdf.setFont('helvetica', 'bold');
     pdf.text('DESCRIPTION', margin + 4, y + 5.5);
     pdf.text('AMOUNT', pageW - margin - 4, y + 5.5, { align: 'right' });
-
     y += 12;
 
-    // ── Line item ────────────────────────────────────────────────
-    pdf.setTextColor(30, 30, 40);
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('DJ Services', margin + 4, y);
+    // ── Line items ───────────────────────────────────────────────
+    allSelected.forEach((g, i) => {
+      const gigFee = parseFloat(fees[g.id]) || 0;
 
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(9);
-    pdf.setTextColor(80, 80, 100);
-    pdf.text(`${gig.venue} · ${formatDate(gig.date)} · ${gig.time}`, margin + 4, y + 6);
+      pdf.setTextColor(30, 30, 40);
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('DJ Services', margin + 4, y);
 
-    pdf.setTextColor(30, 30, 40);
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text(`€${feeNum.toFixed(2)}`, pageW - margin - 4, y, { align: 'right' });
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      pdf.setTextColor(80, 80, 100);
+      pdf.text(`${g.venue} · ${formatDateShort(g.date)} · ${g.time}`, margin + 4, y + 6);
 
-    y += 20;
+      pdf.setTextColor(30, 30, 40);
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(`€${gigFee.toFixed(2)}`, pageW - margin - 4, y, { align: 'right' });
+
+      y += 16;
+
+      if (i < allSelected.length - 1) {
+        pdf.setDrawColor(235, 235, 245);
+        pdf.line(margin + 4, y, pageW - margin - 4, y);
+        y += 6;
+      }
+    });
+
+    y += 8;
 
     // ── Divider ──────────────────────────────────────────────────
     pdf.setDrawColor(220, 220, 235);
@@ -177,15 +205,14 @@ export default function InvoiceModal({ gig, userUid, onClose }) {
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(80, 80, 100);
-
     pdf.text('Subtotal', pageW - margin - 50, y);
     pdf.setTextColor(30, 30, 40);
-    pdf.text(`€${feeNum.toFixed(2)}`, pageW - margin - 4, y, { align: 'right' });
+    pdf.text(`€${subtotal.toFixed(2)}`, pageW - margin - 4, y, { align: 'right' });
     y += 7;
 
     if (hasVat) {
       pdf.setTextColor(80, 80, 100);
-      pdf.text(`VAT (23%)`, pageW - margin - 50, y);
+      pdf.text('VAT (23%)', pageW - margin - 50, y);
       pdf.setTextColor(30, 30, 40);
       pdf.text(`€${vatAmt.toFixed(2)}`, pageW - margin - 4, y, { align: 'right' });
       y += 7;
@@ -197,7 +224,7 @@ export default function InvoiceModal({ gig, userUid, onClose }) {
 
     pdf.setFillColor(10, 10, 15);
     pdf.roundedRect(pageW - margin - 62, y - 5, 62, 12, 2, 2, 'F');
-    pdf.setTextColor(0, 255, 194);
+    pdf.setTextColor(200, 200, 220);
     pdf.setFontSize(11);
     pdf.setFont('helvetica', 'bold');
     pdf.text('TOTAL', pageW - margin - 50, y + 3.5);
@@ -209,40 +236,23 @@ export default function InvoiceModal({ gig, userUid, onClose }) {
     if (djProfile?.iban) {
       pdf.setFillColor(245, 245, 252);
       pdf.roundedRect(margin, y, pageW - margin * 2, 22, 2, 2, 'F');
-
       pdf.setTextColor(100, 100, 150);
       pdf.setFontSize(8);
       pdf.setFont('helvetica', 'bold');
       pdf.text('PAYMENT DETAILS', margin + 4, y + 6);
-
       pdf.setTextColor(30, 30, 40);
       pdf.setFontSize(9);
       pdf.setFont('helvetica', 'normal');
       pdf.text(`IBAN: ${djProfile.iban}`, margin + 4, y + 13);
       if (tradingName) pdf.text(`Account name: ${tradingName}`, margin + 4, y + 19);
-
-      y += 30;
     }
-
-    // ── Footer ───────────────────────────────────────────────────
-    pdf.setFillColor(10, 10, 15);
-    pdf.rect(0, 280, pageW, 17, 'F');
-    pdf.setTextColor(100, 100, 130);
-    pdf.setFontSize(8);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(`Generated by GigBoard · ${invoiceNum}`, pageW / 2, 290, { align: 'center' });
 
     pdf.save(`${invoiceNum}-${gig.venue.replace(/\s+/g, '-')}.pdf`);
   }
 
-  const feeNum  = parseFloat(fee) || 0;
-  const hasVat  = djProfile?.vat && djProfile.vat.trim() !== '';
-  const vatAmt  = hasVat ? feeNum * 0.23 : 0;
-  const total   = feeNum + vatAmt;
-
   return (
     <div style={{position:'fixed',inset:0,background:'#00000080',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:20}} onClick={onClose}>
-      <div style={{background:'#0d0d14',border:'1px solid #2a2a40',borderRadius:12,padding:28,width:'100%',maxWidth:420}} onClick={e => e.stopPropagation()}>
+      <div style={{background:'#0d0d14',border:'1px solid #2a2a40',borderRadius:12,padding:28,width:'100%',maxWidth:460,maxHeight:'90vh',overflowY:'auto'}} onClick={e => e.stopPropagation()}>
 
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
           <div>
@@ -253,53 +263,74 @@ export default function InvoiceModal({ gig, userUid, onClose }) {
         </div>
 
         {loading ? (
-          <div style={{textAlign:'center',padding:20,color:'var(--text-muted)'}}>Loading profile...</div>
+          <div style={{textAlign:'center',padding:20,color:'var(--text-muted)'}}>Loading...</div>
         ) : !djProfile ? (
           <div style={{textAlign:'center',padding:20,color:'#ff6090',fontSize:13}}>
             Please fill in your profile before generating an invoice.
           </div>
         ) : (
           <>
-            <div style={{background:'#13131f',border:'1px solid #1e1e2e',borderRadius:8,padding:14,marginBottom:20,fontSize:12,color:'#9090b0'}}>
-              <div style={{fontWeight:600,color:'#e8e8f0',marginBottom:6}}>{gig.venue}</div>
-              <div>{formatDate(gig.date)} · {gig.time}</div>
+            <div style={{fontSize:11,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:8}}>Gigs to include</div>
+
+            {[gig, ...relatedGigs].map(g => {
+              const isSelected = selectedIds.has(g.id);
+              const isPrimary  = g.id === gig.id;
+              return (
+                <div
+                  key={g.id}
+                  onClick={() => toggleGig(g.id)}
+                  style={{
+                    background: isSelected ? '#002a1a' : '#0f0f1a',
+                    border: `1px solid ${isSelected ? '#00ffcc40' : '#1e1e2e'}`,
+                    borderRadius: 8,
+                    padding: '10px 12px',
+                    marginBottom: 8,
+                    cursor: isPrimary ? 'default' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                  }}
+                >
+                  <div style={{width:14,height:14,borderRadius:3,border:`1px solid ${isSelected ? '#00ffcc' : '#2a2a40'}`,background: isSelected ? '#00ffcc' : 'transparent',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                    {isSelected && <div style={{width:8,height:8,background:'#0a0a0f',borderRadius:1}} />}
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:12,fontWeight:500,color:'#e8e8f0'}}>{g.venue}</div>
+                    <div style={{fontSize:11,color:'#6060a0',marginTop:2}}>{formatDateShort(g.date)} · {g.time}</div>
+                  </div>
+                  <input
+                    type="number"
+                    value={fees[g.id] || ''}
+                    onChange={e => { e.stopPropagation(); setFees(f => ({ ...f, [g.id]: e.target.value })); }}
+                    onClick={e => e.stopPropagation()}
+                    placeholder="Fee"
+                    style={{width:70,background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:5,color:'#e8e8f0',fontSize:12,padding:'4px 8px',textAlign:'right'}}
+                  />
+                </div>
+              );
+            })}
+
+            <div style={{marginTop:16,padding:'12px',background:'#13131f',border:'1px solid #1e1e2e',borderRadius:8,fontSize:12}}>
+              {hasVat && (
+                <>
+                  <div style={{display:'flex',justifyContent:'space-between',color:'#9090b0',marginBottom:4}}>
+                    <span>Subtotal</span><span>€{subtotal.toFixed(2)}</span>
+                  </div>
+                  <div style={{display:'flex',justifyContent:'space-between',color:'#9090b0',marginBottom:8}}>
+                    <span>VAT 23%</span><span>€{vatAmt.toFixed(2)}</span>
+                  </div>
+                </>
+              )}
+              <div style={{display:'flex',justifyContent:'space-between',color:'#00ffc2',fontWeight:600,fontSize:14}}>
+                <span>Total</span><span>€{total.toFixed(2)}</span>
+              </div>
             </div>
 
-            <div style={{marginBottom:16}}>
-              <label style={{fontSize:11,color:'var(--text-muted)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Fee (€)</label>
-              <input
-                type="number"
-                value={fee}
-                onChange={e => setFee(e.target.value)}
-                style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:14,padding:'9px 12px',boxSizing:'border-box'}}
-              />
-            </div>
-
-            {hasVat && (
-              <div style={{background:'#13131f',border:'1px solid #1e1e2e',borderRadius:8,padding:12,marginBottom:16,fontSize:12}}>
-                <div style={{display:'flex',justifyContent:'space-between',color:'#9090b0',marginBottom:4}}>
-                  <span>Subtotal</span><span>€{feeNum.toFixed(2)}</span>
-                </div>
-                <div style={{display:'flex',justifyContent:'space-between',color:'#9090b0',marginBottom:6}}>
-                  <span>VAT 23%</span><span>€{vatAmt.toFixed(2)}</span>
-                </div>
-                <div style={{display:'flex',justifyContent:'space-between',color:'#00ffc2',fontWeight:600,fontSize:14}}>
-                  <span>Total</span><span>€{total.toFixed(2)}</span>
-                </div>
-              </div>
-            )}
-
-            {!hasVat && fee && (
-              <div style={{display:'flex',justifyContent:'space-between',color:'#00ffc2',fontWeight:600,fontSize:14,marginBottom:16}}>
-                <span>Total</span><span>€{feeNum.toFixed(2)}</span>
-              </div>
-            )}
-
-            <div style={{display:'flex',gap:10}}>
+            <div style={{display:'flex',gap:10,marginTop:16}}>
               <button onClick={onClose} className="btn btn-ghost" style={{flex:1}}>Cancel</button>
               <button
                 onClick={generatePDF}
-                disabled={!fee || feeNum <= 0}
+                disabled={subtotal <= 0}
                 className="btn btn-primary"
                 style={{flex:1}}
               >
