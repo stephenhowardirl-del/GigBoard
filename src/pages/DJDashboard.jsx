@@ -27,6 +27,58 @@ function VenueBadge({ venue }) {
   );
 }
 
+function NotesBanner({ notes }) {
+  if (!notes) return null;
+  return (
+    <div style={{
+      background: '#1a1400',
+      border: '1px solid #ffbb0040',
+      borderRadius: 6,
+      padding: '7px 10px',
+      marginTop: 8,
+      fontSize: 12,
+      color: '#ffdd80',
+      display: 'flex',
+      alignItems: 'flex-start',
+      gap: 7,
+    }}>
+      <span style={{fontSize:14, flexShrink:0}}>📌</span>
+      <span>{notes}</span>
+    </div>
+  );
+}
+
+function SuccessToast({ message, onDone }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 3000);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
+    <div style={{
+      position: 'fixed',
+      bottom: 30,
+      left: '50%',
+      transform: 'translateX(-50%)',
+      background: '#002a1a',
+      border: '1px solid #00ffcc60',
+      borderRadius: 10,
+      padding: '14px 24px',
+      color: '#00ffcc',
+      fontSize: 14,
+      fontWeight: 600,
+      zIndex: 400,
+      boxShadow: '0 8px 24px #00000080',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+    }}>
+      <span style={{fontSize:18}}>✓</span>
+      {message}
+    </div>
+  );
+}
+
 function SelfAssignModal({ venues, profile, onClose, onBooked }) {
   const [venue, setVenue]   = useState(venues[0] || '');
   const [date, setDate]     = useState('');
@@ -92,12 +144,13 @@ function SelfAssignModal({ venues, profile, onClose, onBooked }) {
 
 export default function DJDashboard() {
   const { user, profile } = useAuth();
-  const [tab, setTab]             = useState('schedule');
-  const [gigs, setGigs]           = useState([]);
-  const [unavail, setUnavail]     = useState([]);
-  const [loading, setLoading]     = useState(true);
+  const [tab, setTab]                 = useState('schedule');
+  const [gigs, setGigs]               = useState([]);
+  const [unavail, setUnavail]         = useState([]);
+  const [loading, setLoading]         = useState(true);
   const [showBooking, setShowBooking] = useState(false);
   const [invoiceGig, setInvoiceGig]   = useState(null);
+  const [toast, setToast]             = useState(null);
 
   const selfAssignVenues = profile?.selfAssignVenues || [];
 
@@ -121,12 +174,17 @@ export default function DJDashboard() {
     await setUnavailableDates(profile.uid, next);
   }
 
-  const today     = new Date().toISOString().split('T')[0];
-  const now       = new Date();
-  const pending   = gigs.filter(g => g.status === 'pending');
-  const confirmed = gigs.filter(g => g.status === 'confirmed');
+  function handleBooked() {
+    load();
+    setToast('Gig booked and confirmed!');
+  }
+
+  const today             = new Date().toISOString().split('T')[0];
+  const now               = new Date();
+  const pending           = gigs.filter(g => g.status === 'pending');
+  const confirmed         = gigs.filter(g => g.status === 'confirmed');
   const confirmedUpcoming = confirmed.filter(g => g.date >= today);
-  const nextGig   = confirmedUpcoming[0];
+  const nextGig           = confirmedUpcoming[0];
 
   const monthEarnings = gigs
     .filter(g => { if (g.status !== 'confirmed' || !g.fee) return false; const d = new Date(g.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); })
@@ -167,6 +225,7 @@ export default function DJDashboard() {
                 <VenueBadge venue={nextGig.venue} />
                 <div className="next-sub" style={{marginTop:6}}>{formatDate(nextGig.date)} · {nextGig.time}</div>
                 {nextGig.fee && <div style={{marginTop:6,fontSize:13,color:'#00ffc2',fontWeight:600}}>€{nextGig.fee}</div>}
+                {nextGig.notes && <NotesBanner notes={nextGig.notes} />}
               </div>
               <div>
                 <div className="countdown-num">{daysUntil(nextGig.date)}</div>
@@ -186,18 +245,18 @@ export default function DJDashboard() {
               const d  = new Date(g.date + 'T12:00:00');
               const vc = getVenueColor(g.venue);
               return (
-                <div key={g.id} className="timeline-item" style={{borderLeft:`3px solid ${vc.color}`}}>
+                <div key={g.id} className="timeline-item" style={{borderLeft:`3px solid ${vc.color}`, flexWrap:'wrap'}}>
                   <div className="timeline-date">
                     <div className="timeline-day" style={{color:vc.color}}>{d.getDate()}</div>
                     <div className="timeline-month">{d.toLocaleDateString('en-IE',{month:'short'})}</div>
                   </div>
                   <div className="timeline-line" style={{background:vc.color+'40'}} />
-                  <div style={{flex:1}}>
+                  <div style={{flex:1, minWidth:0}}>
                     <div className="timeline-venue">{g.venue}</div>
                     <VenueBadge venue={g.venue} />
                     <div className="timeline-sub" style={{marginTop:4}}>{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
                     {g.fee && <div style={{fontSize:12,color:'#00ffc2',fontWeight:600,marginTop:3}}>€{g.fee}</div>}
-                    {g.notes && <div style={{fontSize:11,color:'var(--text-secondary)',marginTop:2}}>📌 {g.notes}</div>}
+                    {g.notes && <NotesBanner notes={g.notes} />}
                   </div>
                   {g.fee && (
                     <button
@@ -231,8 +290,8 @@ export default function DJDashboard() {
                   <VenueBadge venue={g.venue} />
                   <div className="pending-meta" style={{marginTop:8}}>{formatDate(g.date)} · {g.time}</div>
                   {g.fee && <div style={{fontSize:15,color:'#00ffc2',fontWeight:700,marginBottom:10,marginTop:6}}>Fee: €{g.fee}</div>}
-                  {g.notes && <div style={{fontSize:12,color:'var(--text-secondary)',marginBottom:12}}>📌 {g.notes}</div>}
-                  <div className="pending-actions">
+                  {g.notes && <NotesBanner notes={g.notes} />}
+                  <div className="pending-actions" style={{marginTop:12}}>
                     <button className="btn btn-primary" onClick={() => handleAccept(g)}>Accept</button>
                     <button className="btn btn-danger"  onClick={() => handleReject(g)}>Reject</button>
                   </div>
@@ -248,7 +307,7 @@ export default function DJDashboard() {
           venues={selfAssignVenues}
           profile={profile}
           onClose={() => setShowBooking(false)}
-          onBooked={load}
+          onBooked={handleBooked}
         />
       )}
 
@@ -258,6 +317,13 @@ export default function DJDashboard() {
           userUid={user.uid}
           allGigs={gigs}
           onClose={() => setInvoiceGig(null)}
+        />
+      )}
+
+      {toast && (
+        <SuccessToast
+          message={toast}
+          onDone={() => setToast(null)}
         />
       )}
     </div>
