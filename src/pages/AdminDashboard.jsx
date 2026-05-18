@@ -152,6 +152,7 @@ export default function AdminDashboard() {
       {tab === 'list' && (
         <GigList
           gigs={gigs}
+          users={users}
           onConfirm={handleConfirm}
           onReject={handleRejectGig}
           onEdit={g => { setEditingGig(g); setShowModal(true); }}
