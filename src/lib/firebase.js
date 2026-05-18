@@ -16,6 +16,5 @@ export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// Force Google to ask for calendar permission every login
 googleProvider.addScope('https://www.googleapis.com/auth/calendar.events');
-googleProvider.setCustomParameters({ prompt: 'consent' });
+googleProvider.setCustomParameters({ prompt: 'select_account' });
