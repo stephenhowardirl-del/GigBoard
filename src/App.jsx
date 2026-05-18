@@ -5,6 +5,7 @@ import AccessDenied from './pages/AccessDenied';
 import AdminDashboard from './pages/AdminDashboard';
 import VenueAdminDashboard from './pages/VenueAdminDashboard';
 import DJDashboard from './pages/DJDashboard';
+import DJProfile from './pages/DJProfile';
 import './index.css';
 
 const ROLE_LABELS = {
@@ -12,7 +13,6 @@ const ROLE_LABELS = {
   venue_admin: 'Venue admin',
   dj:          'DJ',
 };
-
 const ROLE_CLASS = {
   full_admin:  'role-full-admin',
   venue_admin: 'role-venue-admin',
@@ -52,7 +52,8 @@ function GigBoardLogo() {
 
 export default function App() {
   const { user, profile, loading, accessDenied, logout } = useAuth();
-  const [showMenu, setShowMenu] = useState(false);
+  const [showMenu, setShowMenu]       = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   if (loading)      return <div className="loading">Loading GigBoard…</div>;
   if (!user)        return <LoginPage />;
@@ -63,7 +64,6 @@ export default function App() {
     <div style={{minHeight:'100vh'}} onClick={() => setShowMenu(false)}>
       <div className="topbar">
         <GigBoardLogo />
-
         <div className="user-chip" style={{position:'relative'}}>
           <div>
             <div style={{fontSize:13,fontWeight:500,lineHeight:1.2,textAlign:'right'}}>{profile.name}</div>
@@ -71,7 +71,6 @@ export default function App() {
               <span className={`role-pill ${ROLE_CLASS[profile.role] || 'role-dj'}`}>{roleLabel(profile)}</span>
             </div>
           </div>
-
           <div
             className="avatar"
             style={{cursor:'pointer'}}
@@ -82,7 +81,6 @@ export default function App() {
               : initials(profile.name)
             }
           </div>
-
           {showMenu && (
             <div
               style={{position:'absolute',top:44,right:0,zIndex:200,background:'#0d0d14',border:'1px solid #2a2a40',borderRadius:8,minWidth:180,overflow:'hidden',boxShadow:'0 8px 24px #00000060'}}
@@ -92,6 +90,16 @@ export default function App() {
                 <div style={{fontSize:12,fontWeight:500,color:'#e8e8f0'}}>{profile.name}</div>
                 <div style={{fontSize:11,color:'#404060',marginTop:2}}>{user.email}</div>
               </div>
+
+              {profile.role === 'dj' && (
+                <button
+                  onClick={() => { setShowMenu(false); setShowProfile(true); }}
+                  style={{width:'100%',padding:'10px 14px',background:'transparent',border:'none',borderBottom:'1px solid #1e1e2e',color:'#e8e8f0',fontSize:13,fontWeight:500,textAlign:'left',cursor:'pointer',display:'flex',alignItems:'center',gap:8}}
+                >
+                  👤 My Profile
+                </button>
+              )}
+
               <button
                 onClick={() => { setShowMenu(false); logout(); }}
                 style={{width:'100%',padding:'10px 14px',background:'transparent',border:'none',color:'#ff4070',fontSize:13,fontWeight:500,textAlign:'left',cursor:'pointer',display:'flex',alignItems:'center',gap:8}}
@@ -106,6 +114,8 @@ export default function App() {
       {profile.role === 'full_admin'  && <AdminDashboard />}
       {profile.role === 'venue_admin' && <VenueAdminDashboard />}
       {profile.role === 'dj'          && <DJDashboard />}
+
+      {showProfile && <DJProfile onClose={() => setShowProfile(false)} />}
     </div>
   );
 }
