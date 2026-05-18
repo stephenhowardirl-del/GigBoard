@@ -6,6 +6,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import VenueAdminDashboard from './pages/VenueAdminDashboard';
 import DJDashboard from './pages/DJDashboard';
 import DJProfile from './pages/DJProfile';
+import ErrorBoundary from './components/ErrorBoundary';
 import './index.css';
 
 const ROLE_LABELS = {
@@ -111,9 +112,11 @@ export default function App() {
         </div>
       </div>
 
-      {profile.role === 'full_admin'  && <AdminDashboard />}
-      {profile.role === 'venue_admin' && <VenueAdminDashboard />}
-      {profile.role === 'dj'          && <DJDashboard />}
+      <ErrorBoundary>
+        {profile.role === 'full_admin'  && <AdminDashboard />}
+        {profile.role === 'venue_admin' && <VenueAdminDashboard />}
+        {profile.role === 'dj'          && <DJDashboard />}
+      </ErrorBoundary>
 
       {showProfile && <DJProfile onClose={() => setShowProfile(false)} />}
     </div>
