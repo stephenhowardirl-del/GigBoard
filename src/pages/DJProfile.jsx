@@ -6,12 +6,13 @@ import { db } from '../lib/firebase';
 export default function DJProfile({ onClose }) {
   const { user, profile } = useAuth();
   const [form, setForm] = useState({
-    name:    '',
-    email:   '',
-    phone:   '',
-    address: '',
-    vat:     '',
-    iban:    '',
+    name:        '',
+    tradingName: '',
+    email:       '',
+    phone:       '',
+    address:     '',
+    vat:         '',
+    iban:        '',
   });
   const [saving, setSaving]   = useState(false);
   const [saved, setSaved]     = useState(false);
@@ -64,19 +65,20 @@ export default function DJProfile({ onClose }) {
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24}}>
           <div>
             <div style={{fontSize:18, fontWeight:600, color:'#e8e8f0'}}>My Profile</div>
-            <div style={{fontSize:12, color:'var(--text-muted)', marginTop:2}}>This info will be used for invoice generation</div>
+            <div style={{fontSize:12, color:'var(--text-muted)', marginTop:2}}>Used for invoice generation</div>
           </div>
           <button onClick={onClose} style={{background:'transparent', border:'none', color:'#404060', fontSize:20, cursor:'pointer', lineHeight:1}}>✕</button>
         </div>
 
         <div style={{display:'flex', flexDirection:'column', gap:14}}>
           {[
-            { label: 'Name',    field: 'name',    placeholder: 'Your full name' },
-            { label: 'Email',   field: 'email',   placeholder: 'Your email address' },
-            { label: 'Phone',   field: 'phone',   placeholder: 'Your phone number' },
-            { label: 'Address', field: 'address', placeholder: 'Your address', multiline: true },
-            { label: 'VAT No',  field: 'vat',     placeholder: 'VAT number (if applicable)' },
-            { label: 'IBAN',    field: 'iban',     placeholder: 'Your IBAN' },
+            { label: 'Name',                  field: 'name',        placeholder: 'Your full name' },
+            { label: 'Trading / Company Name', field: 'tradingName', placeholder: 'Leave blank to use your name' },
+            { label: 'Email',                 field: 'email',       placeholder: 'Your email address' },
+            { label: 'Phone',                 field: 'phone',       placeholder: 'Your phone number' },
+            { label: 'Address',               field: 'address',     placeholder: 'Your address', multiline: true },
+            { label: 'VAT No',                field: 'vat',         placeholder: 'VAT number (if applicable)' },
+            { label: 'IBAN',                  field: 'iban',        placeholder: 'Your IBAN' },
           ].map(({ label, field, placeholder, multiline }) => (
             <div key={field}>
               <div style={{fontSize:12, color:'var(--text-muted)', marginBottom:5, fontWeight:500}}>{label}</div>
