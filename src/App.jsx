@@ -91,7 +91,7 @@ export default function App() {
                 <div style={{fontSize:11,color:'#404060',marginTop:2}}>{user.email}</div>
               </div>
 
-              {profile.role === 'dj' && (
+              {(profile.role === 'dj' || profile.role === 'full_admin') && (
                 <button
                   onClick={() => { setShowMenu(false); setShowProfile(true); }}
                   style={{width:'100%',padding:'10px 14px',background:'transparent',border:'none',borderBottom:'1px solid #1e1e2e',color:'#e8e8f0',fontSize:13,fontWeight:500,textAlign:'left',cursor:'pointer',display:'flex',alignItems:'center',gap:8}}
