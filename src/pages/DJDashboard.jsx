@@ -43,8 +43,8 @@ function SelfAssignModal({ venues, profile, onClose, onBooked }) {
       djName:  profile.name,
       djEmail: profile.email || '',
       notes,
-      fee:         null,
-      assignedBy:  profile.name,
+      fee:        null,
+      assignedBy: profile.name,
     });
     setSaving(false);
     onBooked();
@@ -92,12 +92,12 @@ function SelfAssignModal({ venues, profile, onClose, onBooked }) {
 
 export default function DJDashboard() {
   const { user, profile } = useAuth();
-  const [tab, setTab]               = useState('schedule');
-  const [gigs, setGigs]             = useState([]);
-  const [unavail, setUnavail]       = useState([]);
-  const [loading, setLoading]       = useState(true);
-  const [showBooking, setShowBooking]   = useState(false);
-  const [invoiceGig, setInvoiceGig]     = useState(null);
+  const [tab, setTab]             = useState('schedule');
+  const [gigs, setGigs]           = useState([]);
+  const [unavail, setUnavail]     = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [showBooking, setShowBooking] = useState(false);
+  const [invoiceGig, setInvoiceGig]   = useState(null);
 
   const selfAssignVenues = profile?.selfAssignVenues || [];
 
@@ -124,14 +124,15 @@ export default function DJDashboard() {
   const today     = new Date().toISOString().split('T')[0];
   const now       = new Date();
   const pending   = gigs.filter(g => g.status === 'pending');
-  const confirmed = gigs.filter(g => g.status === 'confirmed' && g.date >= today);
-  const nextGig   = confirmed[0];
+  const confirmed = gigs.filter(g => g.status === 'confirmed');
+  const confirmedUpcoming = confirmed.filter(g => g.date >= today);
+  const nextGig   = confirmedUpcoming[0];
 
   const monthEarnings = gigs
     .filter(g => { if (g.status !== 'confirmed' || !g.fee) return false; const d = new Date(g.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); })
     .reduce((sum, g) => sum + Number(g.fee), 0);
 
-  const upcomingEarnings = confirmed.filter(g => g.fee).reduce((sum, g) => sum + Number(g.fee), 0);
+  const upcomingEarnings = confirmedUpcoming.filter(g => g.fee).reduce((sum, g) => sum + Number(g.fee), 0);
 
   if (loading) return <div className="loading">Loading...</div>;
 
@@ -155,7 +156,7 @@ export default function DJDashboard() {
           <div className="stats-row" style={{marginBottom:20}}>
             <div className="stat-card"><div className="stat-label">This month</div><div className="stat-val neon">€{monthEarnings}</div></div>
             <div className="stat-card"><div className="stat-label">Upcoming total</div><div className="stat-val" style={{color:'#a080ff'}}>€{upcomingEarnings}</div></div>
-            <div className="stat-card"><div className="stat-label">Confirmed gigs</div><div className="stat-val">{confirmed.length}</div></div>
+            <div className="stat-card"><div className="stat-label">Confirmed gigs</div><div className="stat-val">{confirmedUpcoming.length}</div></div>
           </div>
 
           {nextGig ? (
@@ -255,6 +256,7 @@ export default function DJDashboard() {
         <InvoiceModal
           gig={invoiceGig}
           userUid={user.uid}
+          allGigs={gigs}
           onClose={() => setInvoiceGig(null)}
         />
       )}
