@@ -390,6 +390,7 @@ export default function AdminDashboard() {
         <InvoiceModal
           gig={invoiceGig}
           userUid={user.uid}
+          allGigs={gigs}
           onClose={() => setInvoiceGig(null)}
         />
       )}
