@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getAllGigs, createGig, updateGig, deleteGig, getAllUsers, updateUserRole, getAllUnavailability, updateGigStatus, getGigsForDJ, getUnavailableDates, setUnavailableDates, getInvitedEmails, saveInvitedEmails, getVenues, saveVenues } from '../lib/db';
+import { getAllGigs, createGig, updateGig, deleteGig, getAllUsers, updateUserRole, updateUserSelfAssignVenues, getAllUnavailability, updateGigStatus, getGigsForDJ, getUnavailableDates, setUnavailableDates, getInvitedEmails, saveInvitedEmails, getVenues, saveVenues } from '../lib/db';
 import { getVenueColor, VENUE_ADMIN_SCOPES } from '../lib/venueGroups';
 import { useAuth } from '../hooks/useAuth';
 import CalendarView from '../components/CalendarView';
@@ -10,19 +10,16 @@ const DOT_COLORS = ['#00d4aa','#a080ff','#40a0ff','#ff60c0','#ffbb00','#80d040']
 function statusBadge(status) {
   return <span className={`badge badge-${status}`}>{status.charAt(0).toUpperCase() + status.slice(1)}</span>;
 }
-
 function formatDate(iso) {
   if (!iso) return '';
   const d = new Date(iso + 'T12:00:00');
   return d.toLocaleDateString('en-IE', { weekday:'short', day:'numeric', month:'short' });
 }
-
 function daysUntil(iso) {
   const today = new Date(); today.setHours(0,0,0,0);
   const gig = new Date(iso + 'T12:00:00');
   return Math.ceil((gig - today) / 86400000);
 }
-
 function VenueBadge({ venue }) {
   const { color, bg, group } = getVenueColor(venue);
   return (
@@ -86,30 +83,25 @@ export default function AdminDashboard() {
     await createGig({ ...gigData, assignedBy: 'Steve Howard' });
     load();
   }
-
   async function handleEdit(gigData) {
     await updateGig(editingGig.id, gigData);
     setEditingGig(null);
     load();
   }
-
   async function handleDelete(gig) {
     if (!window.confirm(`Delete this gig?\n\n${gig.venue} — ${formatDate(gig.date)}\n\nThis cannot be undone.`)) return;
     await deleteGig(gig.id);
     load();
   }
-
   async function handleConfirm(gigId) { await updateGigStatus(gigId, 'confirmed'); load(); }
   async function handleRejectGig(gigId) { await updateGigStatus(gigId, 'rejected'); load(); }
   async function handleAcceptMyGig(gig) { await updateGigStatus(gig.id, 'confirmed'); load(); }
   async function handleRejectMyGig(gig) { await updateGigStatus(gig.id, 'rejected'); load(); }
-
   async function handleToggleUnavail(isoDate) {
     const next = myUnavail.includes(isoDate) ? myUnavail.filter(d => d !== isoDate) : [...myUnavail, isoDate];
     setMyUnavail(next);
     await setUnavailableDates(profile.uid, next);
   }
-
   async function handleAddInvite() {
     const email = newEmail.trim().toLowerCase();
     if (!email || invites.includes(email)) return;
@@ -120,13 +112,11 @@ export default function AdminDashboard() {
     setInviteSaved(true);
     setTimeout(() => setInviteSaved(false), 2000);
   }
-
   async function handleRemoveInvite(email) {
     const updated = invites.filter(e => e !== email);
     setInvites(updated);
     await saveInvitedEmails(updated);
   }
-
   async function handleAddVenue() {
     const v = newVenue.trim();
     if (!v || venues.includes(v)) return;
@@ -137,14 +127,12 @@ export default function AdminDashboard() {
     setVenueSaved(true);
     setTimeout(() => setVenueSaved(false), 2000);
   }
-
   async function handleRemoveVenue(venue) {
     if (!window.confirm(`Remove "${venue}" from the venue list?`)) return;
     const updated = venues.filter(v => v !== venue);
     setVenues(updated);
     await saveVenues(updated);
   }
-
   async function handleRenameVenue() {
     const newName = editingVenueName.trim();
     if (!newName || newName === editingVenue) { setEditingVenue(null); return; }
@@ -154,7 +142,6 @@ export default function AdminDashboard() {
     setEditingVenue(null);
     setEditingVenueName('');
   }
-
   async function saveUserRole(uid, role, scope) {
     await updateUserRole(uid, role, role === 'venue_admin' ? scope : null);
     load();
@@ -239,7 +226,7 @@ export default function AdminDashboard() {
             </div>
             {users.length === 0 && <div className="empty-state">No DJs yet — share the link so they can log in.</div>}
             {users.map((u, i) => (
-              <RosterRow key={u.uid} user={u} dotColor={DOT_COLORS[i % DOT_COLORS.length]} onSave={saveUserRole} />
+              <RosterRow key={u.uid} user={u} dotColor={DOT_COLORS[i % DOT_COLORS.length]} onSave={saveUserRole} venues={venues} onSaveSelfAssign={updateUserSelfAssignVenues} />
             ))}
           </div>
         </div>
@@ -391,11 +378,14 @@ export default function AdminDashboard() {
   );
 }
 
-function RosterRow({ user, dotColor, onSave }) {
-  const [role, setRole]     = useState(user.role || 'dj');
-  const [scope, setScope]   = useState(user.venueScope || VENUE_ADMIN_SCOPES[0]?.label || '');
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved]   = useState(false);
+function RosterRow({ user, dotColor, onSave, venues, onSaveSelfAssign }) {
+  const [role, setRole]                 = useState(user.role || 'dj');
+  const [scope, setScope]               = useState(user.venueScope || VENUE_ADMIN_SCOPES[0]?.label || '');
+  const [selfAssign, setSelfAssign]     = useState(user.selfAssignVenues || []);
+  const [saving, setSaving]             = useState(false);
+  const [saved, setSaved]               = useState(false);
+  const [selfAssignSaved, setSelfAssignSaved] = useState(false);
+  const [showVenues, setShowVenues]     = useState(false);
 
   async function handleSave() {
     setSaving(true);
@@ -403,17 +393,25 @@ function RosterRow({ user, dotColor, onSave }) {
       await onSave(user.uid, role, scope);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-    } catch(e) {
-      console.error(e);
-    }
+    } catch(e) { console.error(e); }
     setSaving(false);
+  }
+
+  async function handleToggleVenue(venue) {
+    const updated = selfAssign.includes(venue)
+      ? selfAssign.filter(v => v !== venue)
+      : [...selfAssign, venue];
+    setSelfAssign(updated);
+    await onSaveSelfAssign(user.uid, updated);
+    setSelfAssignSaved(true);
+    setTimeout(() => setSelfAssignSaved(false), 2000);
   }
 
   const initials = user.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <div>
-      <div className="roster-row">
+    <div style={{borderBottom:'1px solid var(--bg-raised)'}}>
+      <div className="roster-row" style={{borderBottom:'none'}}>
         <div className="avatar" style={{background:dotColor+'20',color:dotColor,borderColor:dotColor+'40'}}>{initials}</div>
         <div style={{flex:1}}>
           <div style={{fontSize:13,fontWeight:500}}>{user.name}</div>
@@ -424,8 +422,9 @@ function RosterRow({ user, dotColor, onSave }) {
           <option value="venue_admin">Venue admin</option>
         </select>
       </div>
+
       {role === 'venue_admin' && (
-        <div style={{padding:'8px 16px 12px 58px',borderBottom:'1px solid var(--bg-raised)'}}>
+        <div style={{padding:'8px 16px 12px 58px'}}>
           <label style={{fontSize:10,color:'var(--text-muted)',display:'block',marginBottom:6,textTransform:'uppercase',letterSpacing:'0.07em'}}>Assigned scope</label>
           <div style={{display:'flex',gap:8,alignItems:'center'}}>
             <select className="perm-select" style={{flex:1}} value={scope} onChange={e => setScope(e.target.value)}>
@@ -438,13 +437,49 @@ function RosterRow({ user, dotColor, onSave }) {
           {user.venueScope && <div style={{fontSize:11,color:'var(--text-muted)',marginTop:6}}>Currently: {user.venueScope}</div>}
         </div>
       )}
+
       {role === 'dj' && user.role !== 'dj' && (
-        <div style={{padding:'8px 16px 12px 58px',borderBottom:'1px solid var(--bg-raised)'}}>
+        <div style={{padding:'8px 16px 12px 58px'}}>
           <button onClick={handleSave} className="btn btn-primary btn-sm" disabled={saving}>
             {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save as DJ'}
           </button>
         </div>
       )}
+
+      <div style={{padding:'0 16px 12px 58px'}}>
+        <button
+          onClick={() => setShowVenues(v => !v)}
+          style={{background:'transparent',border:'1px solid #1e1e2e',color:'#6060a0',borderRadius:5,padding:'3px 10px',fontSize:11,cursor:'pointer',marginBottom: showVenues ? 10 : 0}}
+        >
+          {showVenues ? 'Hide' : 'Self-assign venues'} {selfAssign.length > 0 ? `(${selfAssign.length})` : ''}
+        </button>
+
+        {showVenues && (
+          <div>
+            <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:8}}>
+              Tick venues this DJ can book themselves — goes straight to confirmed.
+            </div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+              {venues.map(venue => {
+                const checked = selfAssign.includes(venue);
+                const vc = getVenueColor(venue);
+                return (
+                  <label key={venue} style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',padding:'4px 10px',borderRadius:5,border:`1px solid ${checked ? vc.color+'60' : '#1e1e2e'}`,background: checked ? vc.color+'15' : 'transparent',fontSize:12,color: checked ? vc.color : '#6060a0',transition:'all 0.1s'}}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => handleToggleVenue(venue)}
+                      style={{accentColor: vc.color, width:12, height:12}}
+                    />
+                    {venue}
+                  </label>
+                );
+              })}
+            </div>
+            {selfAssignSaved && <div style={{fontSize:11,color:'#00ffcc',marginTop:8}}>✓ Saved</div>}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
