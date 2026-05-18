@@ -4,6 +4,7 @@ import { getVenueColor, VENUE_ADMIN_SCOPES } from '../lib/venueGroups';
 import { useAuth } from '../hooks/useAuth';
 import CalendarView from '../components/CalendarView';
 import AssignGigModal from '../components/AssignGigModal';
+import InvoiceModal from '../components/InvoiceModal';
 
 const DOT_COLORS = ['#00d4aa','#a080ff','#40a0ff','#ff60c0','#ffbb00','#80d040'];
 
@@ -31,7 +32,7 @@ function VenueBadge({ venue }) {
 }
 
 export default function AdminDashboard() {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const [tab, setTab]               = useState('list');
   const [gigs, setGigs]             = useState([]);
   const [myGigs, setMyGigs]         = useState([]);
@@ -50,6 +51,7 @@ export default function AdminDashboard() {
   const [invites, setInvites]       = useState([]);
   const [newEmail, setNewEmail]     = useState('');
   const [inviteSaved, setInviteSaved] = useState(false);
+  const [invoiceGig, setInvoiceGig] = useState(null);
 
   async function load() {
     try {
@@ -302,6 +304,14 @@ export default function AdminDashboard() {
                     {g.fee && <div style={{fontSize:12,color:'#00ffc2',fontWeight:600,marginTop:3}}>€{g.fee}</div>}
                     {g.notes && <div style={{fontSize:11,color:'var(--text-secondary)',marginTop:2}}>📌 {g.notes}</div>}
                   </div>
+                  {g.fee && (
+                    <button
+                      onClick={() => setInvoiceGig(g)}
+                      style={{background:'transparent',border:'1px solid #2a2a40',color:'#9090b0',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap',alignSelf:'center'}}
+                    >
+                      🧾 Invoice
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -374,6 +384,14 @@ export default function AdminDashboard() {
 
       {showModal && !editingGig && <AssignGigModal onClose={() => setShowModal(false)} onAssign={handleAssign} venues={venues} />}
       {showModal && editingGig && <AssignGigModal onClose={() => { setShowModal(false); setEditingGig(null); }} onAssign={handleEdit} existingGig={editingGig} venues={venues} />}
+
+      {invoiceGig && (
+        <InvoiceModal
+          gig={invoiceGig}
+          userUid={user.uid}
+          onClose={() => setInvoiceGig(null)}
+        />
+      )}
     </>
   );
 }
