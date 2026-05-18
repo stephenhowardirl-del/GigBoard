@@ -100,7 +100,7 @@ function DJColumn({ dj, gigs, dotColor, onConfirm, onReject, onEdit, onDelete })
 
 const DOT_COLORS = ['#00d4aa','#a080ff','#40a0ff','#ff60c0','#ffbb00','#80d040'];
 
-export default function GigList({ gigs, users, onConfirm, onReject, onEdit, onDelete }) {
+export default function GigList({ gigs, users = [], onConfirm, onReject, onEdit, onDelete }) {
   const [view, setView] = useState('columns');
   const today     = new Date().toISOString().split('T')[0];
   const now       = new Date();
@@ -179,19 +179,3 @@ export default function GigList({ gigs, users, onConfirm, onReject, onEdit, onDe
                   <div className="gig-meta">{g.djName}{g.fee ? <span style={{color:'#00ffc2',marginLeft:8}}>€{g.fee}</span> : null}</div>
                 </div>
                 <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
-                  {g.status === 'pending' && <>
-                    <button className="btn btn-primary btn-sm" onClick={() => onConfirm(g.id)}>Confirm</button>
-                    <button className="btn btn-danger btn-sm" onClick={() => onReject(g.id)}>Reject</button>
-                  </>}
-                  {g.status !== 'pending' && statusBadge(g.status)}
-                  <button className="btn btn-ghost btn-sm" onClick={() => onEdit(g)} style={{fontSize:11,padding:'3px 8px'}}>Edit</button>
-                  <button className="btn btn-danger btn-sm" onClick={() => onDelete(g)} style={{fontSize:11,padding:'3px 8px'}}>Delete</button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
