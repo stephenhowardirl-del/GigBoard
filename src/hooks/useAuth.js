@@ -21,49 +21,64 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    if (firebaseUser.email.toLowerCase() === FULL_ADMIN_EMAIL.toLowerCase()) {
+    try {
+      if (firebaseUser.email.toLowerCase() === FULL_ADMIN_EMAIL.toLowerCase()) {
+        setUser(firebaseUser);
+        const p = await getOrCreateUser(firebaseUser);
+        p.role = 'full_admin';
+        setProfile(p);
+        setAccessDenied(false);
+        setLoading(false);
+        return;
+      }
+
+      const invited = await isEmailInvited(firebaseUser.email);
+      if (!invited) {
+        setUser(firebaseUser);
+        setProfile(null);
+        setAccessDenied(true);
+        setLoading(false);
+        return;
+      }
+
       setUser(firebaseUser);
       const p = await getOrCreateUser(firebaseUser);
-      p.role = 'full_admin';
       setProfile(p);
       setAccessDenied(false);
       setLoading(false);
-      return;
-    }
 
-    const invited = await isEmailInvited(firebaseUser.email);
-    if (!invited) {
-      setUser(firebaseUser);
+    } catch (e) {
+      console.error('handleFirebaseUser error:', e);
+      setUser(null);
       setProfile(null);
-      setAccessDenied(true);
+      setAccessDenied(false);
       setLoading(false);
-      return;
     }
-
-    setUser(firebaseUser);
-    const p = await getOrCreateUser(firebaseUser);
-    setProfile(p);
-    setAccessDenied(false);
-    setLoading(false);
   }
 
   useEffect(() => {
+    let unsubscribe = null;
+
     async function init() {
       try {
         const result = await getRedirectResult(auth);
         if (result?.user) {
           await handleFirebaseUser(result.user);
-          return;
         }
       } catch (e) {
         console.error('Redirect error:', e);
+        setLoading(false);
       }
 
-      const unsub = onAuthStateChanged(auth, handleFirebaseUser);
-      return unsub;
+      // Always set up the listener regardless of redirect result
+      unsubscribe = onAuthStateChanged(auth, handleFirebaseUser);
     }
 
     init();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   async function login() {
