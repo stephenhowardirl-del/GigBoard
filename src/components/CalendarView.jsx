@@ -66,24 +66,24 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
   }
 
   function getDayStyle(d) {
-    const dayGigs   = gigsOnDay(d);
-    const today     = new Date();
-    const isToday   = year === today.getFullYear() && month === today.getMonth() && d === today.getDate();
-    const unavail   = isUnavail(d);
+    const dayGigs    = gigsOnDay(d);
+    const today      = new Date();
+    const isToday    = year === today.getFullYear() && month === today.getMonth() && d === today.getDate();
+    const unavail    = isUnavail(d);
     const anyUnavail = isAnyUnavail(d);
-    const confirmed = dayGigs.some(g => g.status === 'confirmed');
-    const pending   = dayGigs.some(g => g.status === 'pending');
+    const confirmed  = dayGigs.some(g => g.status === 'confirmed');
+    const pending    = dayGigs.some(g => g.status === 'pending');
 
-    let bg     = '#13131f';
-    let color  = '#7070a0';
-    let border = '1px solid #1e1e2e';
+    let bg     = '#0f0f1a';
+    let color  = '#6060a0';
+    let border = '1px solid #252538';
 
-    if (confirmed)    { bg = '#002a1a'; color = '#00ffcc'; border = '1px solid #00ffcc40'; }
-    else if (pending) { bg = '#2a1800'; color = '#ffcc00'; border = '1px solid #ffcc0040'; }
+    if (confirmed)    { bg = '#002a1a'; color = '#00ffcc'; border = '1px solid #00ffcc50'; }
+    else if (pending) { bg = '#2a1800'; color = '#ffcc00'; border = '1px solid #ffcc0050'; }
 
-    if (!readOnly && unavail)                { bg = '#2a0010'; color = '#ff6090'; border = '1px solid #ff407040'; }
-    if (readOnly && (unavail || anyUnavail)) { bg = '#1a000a'; color = '#ff407060'; border = '1px solid #ff407020'; }
-    if (isToday) { border = '1px solid #00ffc2'; if (!confirmed) color = '#00ffc2'; }
+    if (!readOnly && unavail)                { bg = '#2a0010'; color = '#ff6090'; border = '1px solid #ff407050'; }
+    if (readOnly && (unavail || anyUnavail)) { bg = '#1a000a'; color = '#ff407060'; border = '1px solid #ff407025'; }
+    if (isToday) { border = '2px solid #00ffc2'; if (!confirmed) color = '#00ffc2'; }
 
     return { background: bg, color, border };
   }
@@ -131,11 +131,11 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
       ) : (
         <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:3}} onClick={e => e.stopPropagation()}>
           {DAYS.map(d => (
-            <div key={d} style={{fontSize:10,color:'#7070a0',textAlign:'center',padding:'4px 0',letterSpacing:'0.05em',textTransform:'uppercase'}}>
+            <div key={d} style={{fontSize:10,color:'#5050808',textAlign:'center',padding:'4px 0',letterSpacing:'0.05em',textTransform:'uppercase'}}>
               {d}
             </div>
           ))}
-          {Array.from({ length: firstDow }, (_, i) => <div key={`e${i}`} />)}
+          {Array.from({ length: firstDow }, (_, i) => <div key={`e${i}`} style={{height:60}} />)}
           {Array.from({ length: daysInMonth }, (_, i) => {
             const d = i + 1;
             const dayGigs = gigsOnDay(d);
@@ -146,32 +146,34 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
                 onClick={() => handleClick(d)}
                 style={{
                   ...style,
-                  borderRadius: 5,
-                  padding: '5px 4px',
-                  minHeight: 52,
+                  borderRadius: 4,
+                  padding: '4px 5px',
+                  height: 60,
                   cursor: 'pointer',
                   userSelect: 'none',
                   transition: 'background 0.1s',
                   overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
                 }}
               >
-                <div style={{fontSize:11, fontFamily:'var(--font-mono)', fontWeight:600, marginBottom:3}}>
+                <div style={{fontSize:11, fontFamily:'var(--font-mono)', fontWeight:700, marginBottom:2, color: style.color}}>
                   {d}
                 </div>
-                {dayGigs.slice(0, 3).map((g, i) => (
+                {dayGigs.slice(0, 2).map((g, i) => (
                   <div key={i} style={{
                     fontSize: 9,
-                    lineHeight: 1.3,
+                    lineHeight: 1.4,
                     color: g.status === 'confirmed' ? '#00ffcc' : '#ffcc00',
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                   }}>
-                    {g.djName?.split(' ')[0]} · {g.venue?.split(' ').slice(0,2).join(' ')}
+                    {g.djName?.split(' ')[0]} · {g.venue?.split(' ')[0]}
                   </div>
                 ))}
-                {dayGigs.length > 3 && (
-                  <div style={{fontSize:8, color:'#7070a0', marginTop:1}}>+{dayGigs.length - 3} more</div>
+                {dayGigs.length > 2 && (
+                  <div style={{fontSize:8, color:'#6060a0', marginTop:1}}>+{dayGigs.length - 2} more</div>
                 )}
               </div>
             );
@@ -201,10 +203,10 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
       )}
 
       <div className="cal-legend">
-        <div className="cal-legend-item"><div className="cal-legend-dot" style={{background:'#002a1a',border:'1px solid #00ffcc40'}}></div>Confirmed</div>
-        <div className="cal-legend-item"><div className="cal-legend-dot" style={{background:'#2a1800',border:'1px solid #ffcc0040'}}></div>Pending</div>
-        {!readOnly && <div className="cal-legend-item"><div className="cal-legend-dot" style={{background:'#2a0010',border:'1px solid #ff407040'}}></div>Unavailable (tap to toggle)</div>}
-        {readOnly && <div className="cal-legend-item"><div className="cal-legend-dot" style={{background:'#1a000a',border:'1px solid #ff407020'}}></div>DJ unavailable</div>}
+        <div className="cal-legend-item"><div className="cal-legend-dot" style={{background:'#002a1a',border:'1px solid #00ffcc50'}}></div>Confirmed</div>
+        <div className="cal-legend-item"><div className="cal-legend-dot" style={{background:'#2a1800',border:'1px solid #ffcc0050'}}></div>Pending</div>
+        {!readOnly && <div className="cal-legend-item"><div className="cal-legend-dot" style={{background:'#2a0010',border:'1px solid #ff407050'}}></div>Unavailable (tap to toggle)</div>}
+        {readOnly && <div className="cal-legend-item"><div className="cal-legend-dot" style={{background:'#1a000a',border:'1px solid #ff407025'}}></div>DJ unavailable</div>}
       </div>
     </div>
   );
