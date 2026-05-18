@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, signInWithRedirect, getRedirectResult, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { getOrCreateUser, isEmailInvited } from '../lib/db';
 import { FULL_ADMIN_EMAIL } from '../lib/config';
@@ -57,32 +57,16 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    let unsubscribe = null;
-
-    async function init() {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result?.user) {
-          await handleFirebaseUser(result.user);
-        }
-      } catch (e) {
-        console.error('Redirect error:', e);
-        setLoading(false);
-      }
-
-      // Always set up the listener regardless of redirect result
-      unsubscribe = onAuthStateChanged(auth, handleFirebaseUser);
-    }
-
-    init();
-
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
+    const unsubscribe = onAuthStateChanged(auth, handleFirebaseUser);
+    return () => unsubscribe();
   }, []);
 
   async function login() {
-    await signInWithRedirect(auth, googleProvider);
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (e) {
+      console.error('Login error:', e);
+    }
   }
 
   async function logout() {
