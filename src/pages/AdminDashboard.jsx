@@ -154,11 +154,12 @@ export default function AdminDashboard() {
   const upcoming           = gigs.filter(g => g.status !== 'rejected' && g.date >= today);
   const pending            = gigs.filter(g => g.status === 'pending');
   const thisMonth          = gigs.filter(g => { const d = new Date(g.date); const n = new Date(); return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear(); });
-  const myConfirmed        = myGigs.filter(g => g.status === 'confirmed' && g.date >= today);
+  const myConfirmed        = myGigs.filter(g => g.status === 'confirmed');
   const myPending          = myGigs.filter(g => g.status === 'pending');
-  const nextGig            = myConfirmed[0];
+  const myConfirmedUpcoming = myConfirmed.filter(g => g.date >= today);
+  const nextGig            = myConfirmedUpcoming[0];
   const myMonthEarnings    = myGigs.filter(g => { if (g.status !== 'confirmed' || !g.fee) return false; const d = new Date(g.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).reduce((sum, g) => sum + Number(g.fee), 0);
-  const myUpcomingEarnings = myConfirmed.filter(g => g.fee).reduce((sum, g) => sum + Number(g.fee), 0);
+  const myUpcomingEarnings = myConfirmedUpcoming.filter(g => g.fee).reduce((sum, g) => sum + Number(g.fee), 0);
 
   if (loading) return <div className="loading">Loading…</div>;
   if (error)   return <div className="loading" style={{color:'#ff4070'}}>Error: {error} — try refreshing.</div>;
@@ -239,7 +240,7 @@ export default function AdminDashboard() {
           <div className="stats-row" style={{marginBottom:20}}>
             <div className="stat-card"><div className="stat-label">This month</div><div className="stat-val neon">€{myMonthEarnings}</div></div>
             <div className="stat-card"><div className="stat-label">Upcoming total</div><div className="stat-val" style={{color:'#a080ff'}}>€{myUpcomingEarnings}</div></div>
-            <div className="stat-card"><div className="stat-label">Confirmed</div><div className="stat-val">{myConfirmed.length}</div></div>
+            <div className="stat-card"><div className="stat-label">Confirmed</div><div className="stat-val">{myConfirmedUpcoming.length}</div></div>
           </div>
           {nextGig ? (
             <div className="next-gig-card" style={{borderColor: getVenueColor(nextGig.venue).color+'40'}}>
