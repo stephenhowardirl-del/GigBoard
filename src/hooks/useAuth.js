@@ -1,10 +1,15 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { getOrCreateUser, isEmailInvited } from '../lib/db';
 import { FULL_ADMIN_EMAIL } from '../lib/config';
 
 const AuthContext = createContext(null);
+
+function isMobileSafari() {
+  const ua = navigator.userAgent;
+  return /iP(ad|hone|od)/.test(ua) && /WebKit/.test(ua) && !/CriOS/.test(ua) && !/FxiOS/.test(ua);
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser]                 = useState(null);
@@ -20,7 +25,6 @@ export function AuthProvider({ children }) {
       setLoading(false);
       return;
     }
-
     try {
       if (firebaseUser.email.toLowerCase() === FULL_ADMIN_EMAIL.toLowerCase()) {
         setUser(firebaseUser);
@@ -31,7 +35,6 @@ export function AuthProvider({ children }) {
         setLoading(false);
         return;
       }
-
       const invited = await isEmailInvited(firebaseUser.email);
       if (!invited) {
         setUser(firebaseUser);
@@ -40,13 +43,11 @@ export function AuthProvider({ children }) {
         setLoading(false);
         return;
       }
-
       setUser(firebaseUser);
       const p = await getOrCreateUser(firebaseUser);
       setProfile(p);
       setAccessDenied(false);
       setLoading(false);
-
     } catch (e) {
       console.error('handleFirebaseUser error:', e);
       setUser(null);
@@ -57,13 +58,34 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, handleFirebaseUser);
-    return () => unsubscribe();
+    let unsubscribe = null;
+
+    async function init() {
+      if (isMobileSafari()) {
+        try {
+          const result = await getRedirectResult(auth);
+          if (result?.user) {
+            await handleFirebaseUser(result.user);
+          }
+        } catch (e) {
+          console.error('Redirect result error:', e);
+          setLoading(false);
+        }
+      }
+      unsubscribe = onAuthStateChanged(auth, handleFirebaseUser);
+    }
+
+    init();
+    return () => { if (unsubscribe) unsubscribe(); };
   }, []);
 
   async function login() {
     try {
-      await signInWithPopup(auth, googleProvider);
+      if (isMobileSafari()) {
+        await signInWithRedirect(auth, googleProvider);
+      } else {
+        await signInWithPopup(auth, googleProvider);
+      }
     } catch (e) {
       console.error('Login error:', e);
     }
