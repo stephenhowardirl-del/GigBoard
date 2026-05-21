@@ -4,6 +4,7 @@ import { getVenueColor } from '../lib/venueGroups';
 import { useAuth } from '../hooks/useAuth';
 import CalendarView from '../components/CalendarView';
 import InvoiceModal from '../components/InvoiceModal';
+import FinancialsTab from '../components/FinancialsTab';
 
 function formatDate(iso) {
   if (!iso) return '';
@@ -30,19 +31,8 @@ function VenueBadge({ venue }) {
 function NotesBanner({ notes }) {
   if (!notes) return null;
   return (
-    <div style={{
-      background: '#1a1400',
-      border: '1px solid #ffbb0040',
-      borderRadius: 6,
-      padding: '7px 10px',
-      marginTop: 8,
-      fontSize: 12,
-      color: '#ffdd80',
-      display: 'flex',
-      alignItems: 'flex-start',
-      gap: 7,
-    }}>
-      <span style={{fontSize:14, flexShrink:0}}>📌</span>
+    <div style={{background:'#1a1400',border:'1px solid #ffbb0040',borderRadius:6,padding:'7px 10px',marginTop:8,fontSize:12,color:'#ffdd80',display:'flex',alignItems:'flex-start',gap:7}}>
+      <span style={{fontSize:14,flexShrink:0}}>📌</span>
       <span>{notes}</span>
     </div>
   );
@@ -53,26 +43,8 @@ function SuccessToast({ message, onDone }) {
     const t = setTimeout(onDone, 3000);
     return () => clearTimeout(t);
   }, []);
-
   return (
-    <div style={{
-      position: 'fixed',
-      bottom: 30,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      background: '#002a1a',
-      border: '1px solid #00ffcc60',
-      borderRadius: 10,
-      padding: '14px 24px',
-      color: '#00ffcc',
-      fontSize: 14,
-      fontWeight: 600,
-      zIndex: 400,
-      boxShadow: '0 8px 24px #00000080',
-      display: 'flex',
-      alignItems: 'center',
-      gap: 10,
-    }}>
+    <div style={{position:'fixed',bottom:30,left:'50%',transform:'translateX(-50%)',background:'#002a1a',border:'1px solid #00ffcc60',borderRadius:10,padding:'14px 24px',color:'#00ffcc',fontSize:14,fontWeight:600,zIndex:400,boxShadow:'0 8px 24px #00000080',display:'flex',alignItems:'center',gap:10}}>
       <span style={{fontSize:18}}>✓</span>
       {message}
     </div>
@@ -108,29 +80,24 @@ function SelfAssignModal({ venues, profile, onClose, onBooked }) {
       <div style={{background:'#0d0d14',border:'1px solid #2a2a40',borderRadius:12,padding:28,width:'100%',maxWidth:400}} onClick={e => e.stopPropagation()}>
         <div style={{fontSize:17,fontWeight:600,color:'#e8e8f0',marginBottom:4}}>Book a gig</div>
         <div style={{fontSize:12,color:'var(--text-muted)',marginBottom:20}}>Goes straight to confirmed.</div>
-
         <div style={{marginBottom:14}}>
           <label style={{fontSize:11,color:'var(--text-muted)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Venue</label>
           <select value={venue} onChange={e => setVenue(e.target.value)} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'}}>
             {venues.map(v => <option key={v} value={v}>{v}</option>)}
           </select>
         </div>
-
         <div style={{marginBottom:14}}>
           <label style={{fontSize:11,color:'var(--text-muted)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Date</label>
           <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'}} />
         </div>
-
         <div style={{marginBottom:14}}>
           <label style={{fontSize:11,color:'var(--text-muted)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Time</label>
           <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'}} />
         </div>
-
         <div style={{marginBottom:20}}>
           <label style={{fontSize:11,color:'var(--text-muted)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Notes (optional)</label>
           <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px',resize:'vertical',fontFamily:'inherit'}} />
         </div>
-
         <div style={{display:'flex',gap:10}}>
           <button onClick={onClose} className="btn btn-ghost" style={{flex:1}}>Cancel</button>
           <button onClick={handleBook} disabled={!venue || !date || !time || saving} className="btn btn-primary" style={{flex:1}}>
@@ -186,10 +153,7 @@ export default function DJDashboard() {
   const confirmedUpcoming = confirmed.filter(g => g.date >= today);
   const nextGig           = confirmedUpcoming[0];
 
-  const monthEarnings = gigs
-    .filter(g => { if (g.status !== 'confirmed' || !g.fee) return false; const d = new Date(g.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); })
-    .reduce((sum, g) => sum + Number(g.fee), 0);
-
+  const monthEarnings    = gigs.filter(g => { if (g.status !== 'confirmed' || !g.fee) return false; const d = new Date(g.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).reduce((sum, g) => sum + Number(g.fee), 0);
   const upcomingEarnings = confirmedUpcoming.filter(g => g.fee).reduce((sum, g) => sum + Number(g.fee), 0);
 
   if (loading) return <div className="loading">Loading...</div>;
@@ -197,11 +161,12 @@ export default function DJDashboard() {
   return (
     <div>
       <div className="subnav">
-        <button className={'subnav-btn' + (tab === 'schedule' ? ' active' : '')} onClick={() => setTab('schedule')}>My schedule</button>
-        <button className={'subnav-btn' + (tab === 'calendar' ? ' active' : '')} onClick={() => setTab('calendar')}>Month view</button>
-        <button className={'subnav-btn' + (tab === 'pending'  ? ' active' : '')} onClick={() => setTab('pending')}>
+        <button className={'subnav-btn' + (tab === 'schedule'   ? ' active' : '')} onClick={() => setTab('schedule')}>My schedule</button>
+        <button className={'subnav-btn' + (tab === 'calendar'   ? ' active' : '')} onClick={() => setTab('calendar')}>Month view</button>
+        <button className={'subnav-btn' + (tab === 'pending'    ? ' active' : '')} onClick={() => setTab('pending')}>
           Pending{pending.length > 0 && <span className="notif-dot">{pending.length}</span>}
         </button>
+        <button className={'subnav-btn' + (tab === 'financials' ? ' active' : '')} onClick={() => setTab('financials')}>Financials</button>
         {selfAssignVenues.length > 0 && (
           <button className="subnav-btn" onClick={() => setShowBooking(true)} style={{color:'#00ffc2',borderBottom:'2px solid transparent'}}>
             + Book a gig
@@ -300,6 +265,10 @@ export default function DJDashboard() {
             );
           })}
         </div>
+      )}
+
+      {tab === 'financials' && (
+        <FinancialsTab gigs={gigs} profile={profile} userUid={user.uid} />
       )}
 
       {showBooking && (
