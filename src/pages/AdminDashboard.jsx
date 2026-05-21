@@ -12,6 +12,7 @@ import GigList from '../components/admin/GigList';
 import RosterTab from '../components/admin/RosterTab';
 import AccessTab from '../components/admin/AccessTab';
 import MyGigsTab from '../components/admin/MyGigsTab';
+import FinancialsTab from '../components/FinancialsTab';
 
 export default function AdminDashboard({ hideFees }) {
   const { user, profile } = useAuth();
@@ -50,7 +51,17 @@ export default function AdminDashboard({ hideFees }) {
           getGigsForDJ(profile.uid),
           getUnavailableDates(profile.uid),
         ]);
-        setMyGigs(mg);
+        // Also catch gigs assigned by name in case djUid doesn't match
+        const myGigsByName = g.filter(gig =>
+          gig.djName && profile.name &&
+          gig.djName.toLowerCase() === profile.name.toLowerCase()
+        );
+        const merged = [...mg];
+        myGigsByName.forEach(gig => {
+          if (!merged.find(m => m.id === gig.id)) merged.push(gig);
+        });
+        merged.sort((a, b) => a.date.localeCompare(b.date));
+        setMyGigs(merged);
         setMyUnavail(mun);
       }
       setLoading(false);
@@ -140,13 +151,14 @@ export default function AdminDashboard({ hideFees }) {
   return (
     <>
       <div className="subnav">
-        <button className={`subnav-btn${tab==='list'?' active':''}`}     onClick={() => setTab('list')}>Gig list</button>
-        <button className={`subnav-btn${tab==='calendar'?' active':''}`} onClick={() => setTab('calendar')}>Month view</button>
-        <button className={`subnav-btn${tab==='roster'?' active':''}`}   onClick={() => setTab('roster')}>DJ roster</button>
-        <button className={`subnav-btn${tab==='mygigs'?' active':''}`}   onClick={() => setTab('mygigs')}>
+        <button className={`subnav-btn${tab==='list'?' active':''}`}       onClick={() => setTab('list')}>Gig list</button>
+        <button className={`subnav-btn${tab==='calendar'?' active':''}`}   onClick={() => setTab('calendar')}>Month view</button>
+        <button className={`subnav-btn${tab==='roster'?' active':''}`}     onClick={() => setTab('roster')}>DJ roster</button>
+        <button className={`subnav-btn${tab==='mygigs'?' active':''}`}     onClick={() => setTab('mygigs')}>
           My gigs{myPending.length > 0 && <span className="notif-dot">{myPending.length}</span>}
         </button>
-        <button className={`subnav-btn${tab==='access'?' active':''}`}   onClick={() => setTab('access')}>Access</button>
+        <button className={`subnav-btn${tab==='financials'?' active':''}`} onClick={() => setTab('financials')}>Financials</button>
+        <button className={`subnav-btn${tab==='access'?' active':''}`}     onClick={() => setTab('access')}>Access</button>
       </div>
 
       {tab === 'list' && (
@@ -186,6 +198,14 @@ export default function AdminDashboard({ hideFees }) {
           onToggleUnavail={handleToggleUnavail}
           invoiceGig={invoiceGig}
           setInvoiceGig={setInvoiceGig}
+        />
+      )}
+
+      {tab === 'financials' && (
+        <FinancialsTab
+          gigs={myGigs}
+          profile={profile}
+          userUid={user.uid}
         />
       )}
 
