@@ -21,7 +21,7 @@ function VenueBadge({ venue }) {
   );
 }
 
-function DJColumn({ dj, gigs, dotColor, onConfirm, onReject, onEdit, onDelete }) {
+function DJColumn({ dj, gigs, dotColor, hideFees, onConfirm, onReject, onEdit, onDelete }) {
   const today    = new Date().toISOString().split('T')[0];
   const upcoming = gigs
     .filter(g => g.djUid === dj.uid && g.status !== 'rejected' && g.date >= today)
@@ -79,7 +79,7 @@ function DJColumn({ dj, gigs, dotColor, onConfirm, onReject, onEdit, onDelete })
               <VenueBadge venue={g.venue} />
               <div style={{fontSize:11, color:'var(--text-muted)', fontFamily:'var(--font-mono)', marginTop:4}}>{formatDate(g.date)}</div>
               <div style={{fontSize:11, color:'var(--text-muted)', fontFamily:'var(--font-mono)'}}>{g.time}</div>
-              {g.fee && <div style={{fontSize:11, color:'#00ffc2', fontWeight:600, marginTop:3}}>€{g.fee}</div>}
+              {!hideFees && g.fee && <div style={{fontSize:11, color:'#00ffc2', fontWeight:600, marginTop:3}}>€{g.fee}</div>}
               {g.notes && <div style={{fontSize:10, color:'#ffdd80', marginTop:4, background:'#1a1400', border:'1px solid #ffbb0030', borderRadius:4, padding:'4px 6px'}}>📌 {g.notes}</div>}
               <div style={{display:'flex', gap:4, marginTop:8, flexWrap:'wrap'}}>
                 {g.status === 'pending' && <>
@@ -100,7 +100,7 @@ function DJColumn({ dj, gigs, dotColor, onConfirm, onReject, onEdit, onDelete })
 
 const DOT_COLORS = ['#00d4aa','#a080ff','#40a0ff','#ff60c0','#ffbb00','#80d040'];
 
-export default function GigList({ gigs, users = [], onConfirm, onReject, onEdit, onDelete }) {
+export default function GigList({ gigs, users = [], hideFees, onConfirm, onReject, onEdit, onDelete }) {
   const [view, setView] = useState('columns');
   const today     = new Date().toISOString().split('T')[0];
   const now       = new Date();
@@ -155,6 +155,7 @@ export default function GigList({ gigs, users = [], onConfirm, onReject, onEdit,
               dj={dj}
               gigs={gigs}
               dotColor={DOT_COLORS[i % DOT_COLORS.length]}
+              hideFees={hideFees}
               onConfirm={onConfirm}
               onReject={onReject}
               onEdit={onEdit}
@@ -176,7 +177,7 @@ export default function GigList({ gigs, users = [], onConfirm, onReject, onEdit,
                   <div className="gig-venue">{g.venue}</div>
                   <VenueBadge venue={g.venue} />
                   <div className="gig-meta" style={{marginTop:4}}>{formatDate(g.date)} · {g.time}</div>
-                  <div className="gig-meta">{g.djName}{g.fee ? <span style={{color:'#00ffc2',marginLeft:8}}>€{g.fee}</span> : null}</div>
+                  <div className="gig-meta">{g.djName}{!hideFees && g.fee ? <span style={{color:'#00ffc2',marginLeft:8}}>€{g.fee}</span> : null}</div>
                 </div>
                 <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
                   {g.status === 'pending' && <>
