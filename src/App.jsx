@@ -55,6 +55,7 @@ export default function App() {
   const { user, profile, loading, accessDenied, logout } = useAuth();
   const [showMenu, setShowMenu]       = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [hideFees, setHideFees]       = useState(false);
 
   if (loading)      return <div className="loading">Loading GigBoard…</div>;
   if (!user)        return <LoginPage />;
@@ -84,7 +85,7 @@ export default function App() {
           </div>
           {showMenu && (
             <div
-              style={{position:'absolute',top:44,right:0,zIndex:200,background:'#0d0d14',border:'1px solid #2a2a40',borderRadius:8,minWidth:180,overflow:'hidden',boxShadow:'0 8px 24px #00000060'}}
+              style={{position:'absolute',top:44,right:0,zIndex:200,background:'#0d0d14',border:'1px solid #2a2a40',borderRadius:8,minWidth:200,overflow:'hidden',boxShadow:'0 8px 24px #00000060'}}
               onClick={e => e.stopPropagation()}
             >
               <div style={{padding:'10px 14px',borderBottom:'1px solid #1e1e2e'}}>
@@ -102,6 +103,25 @@ export default function App() {
               )}
 
               <button
+                onClick={() => setHideFees(h => !h)}
+                style={{width:'100%',padding:'10px 14px',background:'transparent',border:'none',borderBottom:'1px solid #1e1e2e',color:'#e8e8f0',fontSize:13,fontWeight:500,textAlign:'left',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between'}}
+              >
+                <span style={{display:'flex',alignItems:'center',gap:8}}>💰 Hide fees</span>
+                <span style={{
+                  width:32, height:18, borderRadius:9,
+                  background: hideFees ? '#00ffc2' : '#2a2a40',
+                  position:'relative', transition:'background 0.2s', flexShrink:0,
+                }}>
+                  <span style={{
+                    position:'absolute', top:2,
+                    left: hideFees ? 16 : 2,
+                    width:14, height:14, borderRadius:'50%',
+                    background:'#fff', transition:'left 0.2s',
+                  }} />
+                </span>
+              </button>
+
+              <button
                 onClick={() => { setShowMenu(false); logout(); }}
                 style={{width:'100%',padding:'10px 14px',background:'transparent',border:'none',color:'#ff4070',fontSize:13,fontWeight:500,textAlign:'left',cursor:'pointer',display:'flex',alignItems:'center',gap:8}}
               >
@@ -113,9 +133,9 @@ export default function App() {
       </div>
 
       <ErrorBoundary>
-        {profile.role === 'full_admin'  && <AdminDashboard />}
-        {profile.role === 'venue_admin' && <VenueAdminDashboard />}
-        {profile.role === 'dj'          && <DJDashboard />}
+        {profile.role === 'full_admin'  && <AdminDashboard hideFees={hideFees} />}
+        {profile.role === 'venue_admin' && <VenueAdminDashboard hideFees={hideFees} />}
+        {profile.role === 'dj'          && <DJDashboard hideFees={hideFees} />}
       </ErrorBoundary>
 
       {showProfile && <DJProfile onClose={() => setShowProfile(false)} />}
