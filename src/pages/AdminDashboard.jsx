@@ -13,7 +13,7 @@ import RosterTab from '../components/admin/RosterTab';
 import AccessTab from '../components/admin/AccessTab';
 import MyGigsTab from '../components/admin/MyGigsTab';
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ hideFees }) {
   const { user, profile } = useAuth();
   const [tab, setTab]               = useState('list');
   const [gigs, setGigs]             = useState([]);
@@ -153,6 +153,7 @@ export default function AdminDashboard() {
         <GigList
           gigs={gigs}
           users={users}
+          hideFees={hideFees}
           onConfirm={handleConfirm}
           onReject={handleRejectGig}
           onEdit={g => { setEditingGig(g); setShowModal(true); }}
@@ -179,6 +180,7 @@ export default function AdminDashboard() {
           myUnavail={myUnavail}
           userUid={user.uid}
           allGigs={gigs}
+          hideFees={hideFees}
           onAccept={handleAcceptMyGig}
           onReject={handleRejectMyGig}
           onToggleUnavail={handleToggleUnavail}
