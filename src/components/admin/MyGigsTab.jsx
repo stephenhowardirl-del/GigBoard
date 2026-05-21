@@ -25,7 +25,17 @@ function VenueBadge({ venue }) {
   );
 }
 
-export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, onAccept, onReject, onToggleUnavail, invoiceGig, setInvoiceGig }) {
+function NotesBanner({ notes }) {
+  if (!notes) return null;
+  return (
+    <div style={{background:'#1a1400',border:'1px solid #ffbb0040',borderRadius:6,padding:'7px 10px',marginTop:8,fontSize:12,color:'#ffdd80',display:'flex',alignItems:'flex-start',gap:7}}>
+      <span style={{fontSize:14,flexShrink:0}}>📌</span>
+      <span>{notes}</span>
+    </div>
+  );
+}
+
+export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, hideFees, onAccept, onReject, onToggleUnavail, invoiceGig, setInvoiceGig }) {
   const today   = new Date().toISOString().split('T')[0];
   const now     = new Date();
 
@@ -47,8 +57,8 @@ export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, onAccep
   return (
     <div className="page-body">
       <div className="stats-row" style={{marginBottom:20}}>
-        <div className="stat-card"><div className="stat-label">This month</div><div className="stat-val neon">€{myMonthEarnings}</div></div>
-        <div className="stat-card"><div className="stat-label">Upcoming total</div><div className="stat-val" style={{color:'#a080ff'}}>€{myUpcomingEarnings}</div></div>
+        <div className="stat-card"><div className="stat-label">This month</div><div className="stat-val neon">{hideFees ? '—' : `€${myMonthEarnings}`}</div></div>
+        <div className="stat-card"><div className="stat-label">Upcoming total</div><div className="stat-val" style={{color:'#a080ff'}}>{hideFees ? '—' : `€${myUpcomingEarnings}`}</div></div>
         <div className="stat-card"><div className="stat-label">Confirmed</div><div className="stat-val">{myConfirmedUpcoming.length}</div></div>
       </div>
 
@@ -59,7 +69,8 @@ export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, onAccep
             <div className="next-venue">{nextGig.venue}</div>
             <VenueBadge venue={nextGig.venue} />
             <div className="next-sub" style={{marginTop:6}}>{formatDate(nextGig.date)} · {nextGig.time}</div>
-            {nextGig.fee && <div style={{marginTop:6,fontSize:13,color:'#00ffc2',fontWeight:600}}>€{nextGig.fee}</div>}
+            {!hideFees && nextGig.fee && <div style={{marginTop:6,fontSize:13,color:'#00ffc2',fontWeight:600}}>€{nextGig.fee}</div>}
+            {nextGig.notes && <NotesBanner notes={nextGig.notes} />}
           </div>
           <div>
             <div className="countdown-num">{daysUntil(nextGig.date)}</div>
@@ -84,9 +95,9 @@ export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, onAccep
                   <div className="pending-venue">{g.venue}</div>
                   <VenueBadge venue={g.venue} />
                   <div className="pending-meta" style={{marginTop:8}}>{formatDate(g.date)} · {g.time}</div>
-                  {g.fee && <div style={{fontSize:15,color:'#00ffc2',fontWeight:700,marginBottom:10,marginTop:6}}>Fee: €{g.fee}</div>}
-                  {g.notes && <div style={{fontSize:12,color:'var(--text-secondary)',marginBottom:12}}>📌 {g.notes}</div>}
-                  <div className="pending-actions">
+                  {!hideFees && g.fee && <div style={{fontSize:15,color:'#00ffc2',fontWeight:700,marginBottom:10,marginTop:6}}>Fee: €{g.fee}</div>}
+                  {g.notes && <NotesBanner notes={g.notes} />}
+                  <div className="pending-actions" style={{marginTop:12}}>
                     <button className="btn btn-primary" onClick={() => onAccept(g)}>Accept</button>
                     <button className="btn btn-danger" onClick={() => onReject(g)}>Reject</button>
                   </div>
@@ -114,10 +125,10 @@ export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, onAccep
                 <div className="timeline-venue">{g.venue}</div>
                 <VenueBadge venue={g.venue} />
                 <div className="timeline-sub" style={{marginTop:4}}>{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
-                {g.fee && <div style={{fontSize:12,color:'#00ffc2',fontWeight:600,marginTop:3}}>€{g.fee}</div>}
-                {g.notes && <div style={{fontSize:11,color:'var(--text-secondary)',marginTop:2}}>📌 {g.notes}</div>}
+                {!hideFees && g.fee && <div style={{fontSize:12,color:'#00ffc2',fontWeight:600,marginTop:3}}>€{g.fee}</div>}
+                {g.notes && <NotesBanner notes={g.notes} />}
               </div>
-              {g.fee && (
+              {!hideFees && g.fee && (
                 <button
                   onClick={() => setInvoiceGig(g)}
                   style={{background:'transparent',border:'1px solid #2a2a40',color:'#9090b0',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap',alignSelf:'center'}}
