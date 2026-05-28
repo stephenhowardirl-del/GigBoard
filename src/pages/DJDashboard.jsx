@@ -12,10 +12,13 @@ function formatDate(iso) {
   return d.toLocaleDateString('en-IE', { weekday:'short', day:'numeric', month:'short' });
 }
 
-function daysUntil(iso) {
+function gigCountdown(iso) {
   const today = new Date(); today.setHours(0,0,0,0);
   const gig   = new Date(iso + 'T12:00:00');
-  return Math.ceil((gig - today) / 86400000);
+  const days  = Math.ceil((gig - today) / 86400000);
+  if (days === 0) return { label: 'TODAY', sub: 'tonight', urgent: true };
+  if (days === 1) return { label: 'TMRW',  sub: 'tomorrow', urgent: false };
+  return { label: String(days), sub: 'days away', urgent: false };
 }
 
 function VenueBadge({ venue }) {
@@ -78,34 +81,28 @@ function EditGigModal({ gig, venues, profile, onClose, onSaved }) {
       <div style={{background:'#0d0d14',border:'1px solid #2a2a40',borderRadius:12,padding:28,width:'100%',maxWidth:400}} onClick={e => e.stopPropagation()}>
         <div style={{fontSize:17,fontWeight:600,color:'#e8e8f0',marginBottom:4}}>Edit gig</div>
         <div style={{fontSize:12,color:'var(--text-muted)',marginBottom:20}}>Update the details for this gig.</div>
-
         <div style={{marginBottom:14}}>
           <label style={{fontSize:11,color:'var(--text-muted)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Venue</label>
           <select value={venue} onChange={e => setVenue(e.target.value)} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'}}>
             {venues.map(v => <option key={v} value={v}>{v}</option>)}
           </select>
         </div>
-
         <div style={{marginBottom:14}}>
           <label style={{fontSize:11,color:'var(--text-muted)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Date</label>
           <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'}} />
         </div>
-
         <div style={{marginBottom:14}}>
           <label style={{fontSize:11,color:'var(--text-muted)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Time</label>
           <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'}} />
         </div>
-
         <div style={{marginBottom:14}}>
           <label style={{fontSize:11,color:'var(--text-muted)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Fee (€)</label>
           <input type="number" value={fee} onChange={e => setFee(e.target.value)} placeholder="e.g. 150" style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'}} />
         </div>
-
         <div style={{marginBottom:20}}>
           <label style={{fontSize:11,color:'var(--text-muted)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Notes (optional)</label>
           <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px',resize:'vertical',fontFamily:'inherit'}} />
         </div>
-
         <div style={{display:'flex',gap:10}}>
           <button onClick={onClose} className="btn btn-ghost" style={{flex:1}}>Cancel</button>
           <button onClick={handleSave} disabled={!venue || !date || !time || saving} className="btn btn-primary" style={{flex:1}}>
@@ -208,15 +205,8 @@ export default function DJDashboard() {
     await setUnavailableDates(profile.uid, next);
   }
 
-  function handleBooked() {
-    load();
-    setToast('Gig booked and confirmed!');
-  }
-
-  function handleSaved() {
-    load();
-    setToast('Gig updated!');
-  }
+  function handleBooked() { load(); setToast('Gig booked and confirmed!'); }
+  function handleSaved()  { load(); setToast('Gig updated!'); }
 
   const today             = new Date().toISOString().split('T')[0];
   const now               = new Date();
@@ -254,22 +244,36 @@ export default function DJDashboard() {
             <div className="stat-card"><div className="stat-label">Confirmed gigs</div><div className="stat-val">{confirmedUpcoming.length}</div></div>
           </div>
 
-          {nextGig ? (
-            <div className="next-gig-card" style={{borderColor: getVenueColor(nextGig.venue).color + '40'}}>
-              <div style={{flex:1}}>
-                <div className="next-label">Next up</div>
-                <div className="next-venue">{nextGig.venue}</div>
-                <VenueBadge venue={nextGig.venue} />
-                <div className="next-sub" style={{marginTop:6}}>{formatDate(nextGig.date)} · {nextGig.time}</div>
-                {nextGig.fee && <div style={{marginTop:6,fontSize:13,color:'#00ffc2',fontWeight:600}}>€{nextGig.fee}</div>}
-                {nextGig.notes && <NotesBanner notes={nextGig.notes} />}
+          {nextGig ? (() => {
+            const countdown = gigCountdown(nextGig.date);
+            return (
+              <div className="next-gig-card" style={{borderColor: getVenueColor(nextGig.venue).color + '40'}}>
+                <div style={{flex:1}}>
+                  <div className="next-label">Next up</div>
+                  <div className="next-venue">{nextGig.venue}</div>
+                  <VenueBadge venue={nextGig.venue} />
+                  <div className="next-sub" style={{marginTop:6}}>{formatDate(nextGig.date)} · {nextGig.time}</div>
+                  {nextGig.fee && <div style={{marginTop:6,fontSize:13,color:'#00ffc2',fontWeight:600}}>€{nextGig.fee}</div>}
+                  {nextGig.notes && <NotesBanner notes={nextGig.notes} />}
+                </div>
+                <div style={{textAlign:'center'}}>
+                  <div style={{
+                    fontSize: countdown.urgent ? 20 : 30,
+                    fontWeight: 700,
+                    fontFamily: 'var(--font-mono)',
+                    color: countdown.urgent ? '#ff9900' : '#00ffc2',
+                    lineHeight: 1,
+                    letterSpacing: countdown.urgent ? '0.05em' : 0,
+                  }}>
+                    {countdown.label}
+                  </div>
+                  <div style={{fontSize:10, color:'var(--text-muted)', letterSpacing:'0.1em', textTransform:'uppercase', marginTop:3}}>
+                    {countdown.sub}
+                  </div>
+                </div>
               </div>
-              <div>
-                <div className="countdown-num">{daysUntil(nextGig.date)}</div>
-                <div className="countdown-unit">days away</div>
-              </div>
-            </div>
-          ) : (
+            );
+          })() : (
             <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,padding:20,marginBottom:20,textAlign:'center',color:'var(--text-muted)',fontSize:13}}>
               No upcoming confirmed gigs. Check the Pending tab for any offers.
             </div>
