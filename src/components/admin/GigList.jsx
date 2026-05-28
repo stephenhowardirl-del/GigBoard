@@ -21,13 +21,33 @@ function VenueBadge({ venue }) {
   );
 }
 
-function DJColumn({ dj, gigs, dotColor, hideFees, onConfirm, onReject, onEdit, onDelete }) {
+function getDateRange(filter) {
+  const now   = new Date();
+  const today = new Date(); today.setHours(0,0,0,0);
+  if (filter === 'week') {
+    const end = new Date(today); end.setDate(end.getDate() + 7);
+    return { from: today.toISOString().split('T')[0], to: end.toISOString().split('T')[0] };
+  }
+  if (filter === 'month') {
+    const end = new Date(today); end.setMonth(end.getMonth() + 1);
+    return { from: today.toISOString().split('T')[0], to: end.toISOString().split('T')[0] };
+  }
+  return null;
+}
+
+function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, onEdit, onDelete }) {
   const today    = new Date().toISOString().split('T')[0];
+  const range    = getDateRange(filter);
+
   const upcoming = gigs
     .filter(g => {
       const matchUid  = g.djUid === dj.uid;
       const matchName = g.djName && dj.name && g.djName.toLowerCase() === dj.name.toLowerCase();
-      return (matchUid || matchName) && g.status !== 'rejected' && g.date >= today;
+      if (!(matchUid || matchName)) return false;
+      if (g.status === 'rejected') return false;
+      if (g.date < today) return false;
+      if (range) return g.date >= range.from && g.date <= range.to;
+      return true;
     })
     .sort((a, b) => a.date.localeCompare(b.date));
 
@@ -62,13 +82,13 @@ function DJColumn({ dj, gigs, dotColor, hideFees, onConfirm, onReject, onEdit, o
         </div>
         <div style={{flex:1, minWidth:0}}>
           <div style={{fontSize:12, fontWeight:600, color:'#e8e8f0', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{dj.name}</div>
-          <div style={{fontSize:10, color:'var(--text-muted)', marginTop:1}}>{upcoming.length} upcoming</div>
+          <div style={{fontSize:10, color:'var(--text-muted)', marginTop:1}}>{upcoming.length} gigs</div>
         </div>
       </div>
 
       {upcoming.length === 0 ? (
         <div style={{padding:'20px 14px', textAlign:'center', color:'var(--text-muted)', fontSize:12}}>
-          No upcoming gigs
+          No gigs in this period
         </div>
       ) : (
         upcoming.map(g => {
@@ -103,9 +123,16 @@ function DJColumn({ dj, gigs, dotColor, hideFees, onConfirm, onReject, onEdit, o
 }
 
 const DOT_COLORS = ['#00d4aa','#a080ff','#40a0ff','#ff60c0','#ffbb00','#80d040'];
+const FILTERS = [
+  { key: 'week',  label: 'This week' },
+  { key: 'month', label: 'This month' },
+  { key: 'all',   label: 'All' },
+];
 
 export default function GigList({ gigs, users = [], hideFees, onConfirm, onReject, onEdit, onDelete }) {
-  const [view, setView] = useState('columns');
+  const [view, setView]     = useState('columns');
+  const [filter, setFilter] = useState('month');
+
   const today     = new Date().toISOString().split('T')[0];
   const now       = new Date();
   const upcoming  = gigs.filter(g => g.status !== 'rejected' && g.date >= today);
@@ -148,6 +175,24 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
             List
           </button>
         </div>
+
+        <div style={{display:'flex', gap:4}}>
+          {view === 'columns' && FILTERS.map(f => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              style={{
+                background: filter === f.key ? '#00ffc220' : 'transparent',
+                border: `1px solid ${filter === f.key ? '#00ffc250' : 'var(--border)'}`,
+                color: filter === f.key ? '#00ffc2' : 'var(--text-muted)',
+                borderRadius: 5, padding: '4px 12px', fontSize: 11, cursor: 'pointer',
+              }}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
         <button className="btn btn-primary btn-sm" onClick={() => onEdit(null)}>+ Assign gig</button>
       </div>
 
@@ -160,6 +205,7 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
               gigs={gigs}
               dotColor={DOT_COLORS[i % DOT_COLORS.length]}
               hideFees={hideFees}
+              filter={filter}
               onConfirm={onConfirm}
               onReject={onReject}
               onEdit={onEdit}
