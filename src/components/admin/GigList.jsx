@@ -24,7 +24,11 @@ function VenueBadge({ venue }) {
 function DJColumn({ dj, gigs, dotColor, hideFees, onConfirm, onReject, onEdit, onDelete }) {
   const today    = new Date().toISOString().split('T')[0];
   const upcoming = gigs
-    .filter(g => g.djUid === dj.uid && g.status !== 'rejected' && g.date >= today)
+    .filter(g => {
+      const matchUid  = g.djUid === dj.uid;
+      const matchName = g.djName && dj.name && g.djName.toLowerCase() === dj.name.toLowerCase();
+      return (matchUid || matchName) && g.status !== 'rejected' && g.date >= today;
+    })
     .sort((a, b) => a.date.localeCompare(b.date));
 
   const initials = dj.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
