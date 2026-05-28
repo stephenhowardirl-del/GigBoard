@@ -88,12 +88,17 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
     if (confirmed)    { bg = '#002a1a'; color = '#00ffcc'; border = '1px solid #00ffcc50'; }
     else if (pending) { bg = '#2a1800'; color = '#ffcc00'; border = '1px solid #ffcc0050'; }
 
-    // Only show red unavail for the DJ's own calendar (not readOnly admin view)
     if (!readOnly && unavail) { bg = '#2a0010'; color = '#ff6090'; border = '1px solid #ff407050'; }
 
-    if (isToday) { border = '2px solid #00ffc2'; if (!confirmed) color = '#00ffc2'; }
+    if (isToday) {
+      border = '2px solid #00ffc2';
+      if (!confirmed && !pending && !unavail) {
+        bg = '#0a1a14';
+        color = '#00ffc2';
+      }
+    }
 
-    return { background: bg, color, border };
+    return { background: bg, color, border, isToday };
   }
 
   function handleClick(d) {
@@ -165,7 +170,9 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
                 key={d}
                 onClick={() => handleClick(d)}
                 style={{
-                  ...style,
+                  background: style.background,
+                  color: style.color,
+                  border: style.border,
                   borderRadius: 4,
                   padding: '4px 5px',
                   height: 60,
@@ -175,10 +182,26 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
                   overflow: 'hidden',
                   display: 'flex',
                   flexDirection: 'column',
+                  position: 'relative',
                 }}
               >
-                <div style={{fontSize:11, fontFamily:'var(--font-mono)', fontWeight:700, marginBottom:2, color: style.color}}>
+                <div style={{
+                  fontSize: 11,
+                  fontFamily: 'var(--font-mono)',
+                  fontWeight: 700,
+                  marginBottom: 2,
+                  color: style.color,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 3,
+                }}>
                   {d}
+                  {style.isToday && (
+                    <span style={{
+                      width: 4, height: 4, borderRadius: '50%',
+                      background: '#00ffc2', flexShrink: 0,
+                    }} />
+                  )}
                 </div>
                 {dayGigs.slice(0, 2).map((g, i) => (
                   <div key={i} style={{
@@ -189,7 +212,10 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                   }}>
-                    {g.djName?.split(' ')[0]} · {g.venue?.split(' ')[0]}
+                    {showDJPicker
+                      ? `${g.djName?.split(' ')[0]} · ${g.venue?.split(' ')[0]}`
+                      : `${g.venue?.split(' ')[0]} ${g.time ? g.time.slice(0,5) : ''}`
+                    }
                   </div>
                 ))}
                 {dayGigs.length > 2 && (
@@ -218,7 +244,9 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
             <div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 0',borderBottom:'1px solid #1e1e2e'}}>
               <div style={{width:6,height:6,borderRadius:'50%',background: g.status === 'confirmed' ? '#00ffcc' : '#ffcc00',flexShrink:0}} />
               <div>
-                <div style={{fontSize:13,fontWeight:500,color:'#e8e8f0'}}>{g.djName} — {g.venue}</div>
+                <div style={{fontSize:13,fontWeight:500,color:'#e8e8f0'}}>
+                  {showDJPicker ? `${g.djName} — ${g.venue}` : g.venue}
+                </div>
                 <div style={{fontSize:11,color:'#6060a0',fontFamily:'var(--font-mono)'}}>{g.time}{g.fee ? ` · €${g.fee}` : ''}</div>
               </div>
             </div>
