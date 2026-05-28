@@ -13,11 +13,12 @@ function formatDate(iso) {
 }
 
 function gigCountdown(iso) {
+  const todayStr = new Date().toLocaleDateString('en-CA');
+  if (iso === todayStr) return { label: 'TODAY', sub: 'tonight', urgent: true };
   const today = new Date(); today.setHours(0,0,0,0);
-  const gig   = new Date(iso + 'T00:00:00');
+  const gig   = new Date(iso + 'T12:00:00');
   const days  = Math.round((gig - today) / 86400000);
-  if (days === 0) return { label: 'TODAY', sub: 'tonight', urgent: true };
-  if (days === 1) return { label: 'TMRW',  sub: 'tomorrow', urgent: false };
+  if (days === 1) return { label: 'TMRW', sub: 'tomorrow', urgent: false };
   return { label: String(days), sub: 'days away', urgent: false };
 }
 
@@ -208,7 +209,7 @@ export default function DJDashboard() {
   function handleBooked() { load(); setToast('Gig booked and confirmed!'); }
   function handleSaved()  { load(); setToast('Gig updated!'); }
 
-  const today             = new Date().toISOString().split('T')[0];
+  const today             = new Date().toLocaleDateString('en-CA');
   const now               = new Date();
   const pending           = gigs.filter(g => g.status === 'pending');
   const confirmed         = gigs.filter(g => g.status === 'confirmed');
