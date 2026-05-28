@@ -12,15 +12,9 @@ function formatDate(iso) {
   return d.toLocaleDateString('en-IE', { weekday:'short', day:'numeric', month:'short' });
 }
 
-function gigCountdown(iso) {
-  const now = new Date();
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-  if (iso === todayStr) return { label: 'TODAY', sub: 'tonight', urgent: true };
-  const today = new Date(); today.setHours(0,0,0,0);
-  const gig   = new Date(iso + 'T12:00:00');
-  const days  = Math.round((gig - today) / 86400000);
-  if (days === 1) return { label: 'TMRW', sub: 'tomorrow', urgent: false };
-  return { label: String(days), sub: 'days away', urgent: false };
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
 function VenueBadge({ venue }) {
@@ -174,16 +168,51 @@ function SelfAssignModal({ venues, profile, onClose, onBooked }) {
   );
 }
 
+function GigRow({ g, profile, onEdit, onInvoice }) {
+  const d  = new Date(g.date + 'T12:00:00');
+  const vc = getVenueColor(g.venue);
+  const isSelfAssigned = g.assignedBy === profile.name;
+  return (
+    <div className="timeline-item" style={{borderLeft:`3px solid ${vc.color}`, flexWrap:'wrap'}}>
+      <div className="timeline-date">
+        <div className="timeline-day" style={{color:vc.color}}>{d.getDate()}</div>
+        <div className="timeline-month">{d.toLocaleDateString('en-IE',{month:'short'})}</div>
+      </div>
+      <div className="timeline-line" style={{background:vc.color+'40'}} />
+      <div style={{flex:1, minWidth:0}}>
+        <div className="timeline-venue">{g.venue}</div>
+        <VenueBadge venue={g.venue} />
+        <div className="timeline-sub" style={{marginTop:4}}>{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
+        {g.fee && <div style={{fontSize:12,color:'#00ffc2',fontWeight:600,marginTop:3}}>€{g.fee}</div>}
+        {g.notes && <NotesBanner notes={g.notes} />}
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:6,alignSelf:'center'}}>
+        {isSelfAssigned && (
+          <button onClick={() => onEdit(g)} style={{background:'transparent',border:'1px solid #2a2a40',color:'#9090b0',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>
+            ✏️ Edit
+          </button>
+        )}
+        {g.fee && (
+          <button onClick={() => onInvoice(g)} style={{background:'transparent',border:'1px solid #2a2a40',color:'#9090b0',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>
+            🧾 Invoice
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function DJDashboard() {
   const { user, profile } = useAuth();
-  const [tab, setTab]                 = useState('schedule');
-  const [gigs, setGigs]               = useState([]);
-  const [unavail, setUnavail]         = useState([]);
-  const [loading, setLoading]         = useState(true);
-  const [showBooking, setShowBooking] = useState(false);
-  const [invoiceGig, setInvoiceGig]   = useState(null);
-  const [editingGig, setEditingGig]   = useState(null);
-  const [toast, setToast]             = useState(null);
+  const [tab, setTab]                   = useState('schedule');
+  const [gigs, setGigs]                 = useState([]);
+  const [unavail, setUnavail]           = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [showBooking, setShowBooking]   = useState(false);
+  const [invoiceGig, setInvoiceGig]     = useState(null);
+  const [editingGig, setEditingGig]     = useState(null);
+  const [toast, setToast]               = useState(null);
+  const [showPastGigs, setShowPastGigs] = useState(false);
 
   const selfAssignVenues = profile?.selfAssignVenues || [];
 
@@ -210,15 +239,19 @@ export default function DJDashboard() {
   function handleBooked() { load(); setToast('Gig booked and confirmed!'); }
   function handleSaved()  { load(); setToast('Gig updated!'); }
 
-  const now               = new Date();
-  const today             = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-  const pending           = gigs.filter(g => g.status === 'pending');
-  const confirmed         = gigs.filter(g => g.status === 'confirmed');
-  const confirmedUpcoming = confirmed.filter(g => g.date >= today);
-  const nextGig           = confirmedUpcoming[0];
+  const today   = new Date().toISOString().split('T')[0];
+  const now     = new Date();
+  const pending = gigs.filter(g => g.status === 'pending');
+
+  const confirmed        = gigs.filter(g => g.status === 'confirmed');
+  const tonightGigs      = confirmed.filter(g => g.date === todayStr());
+  const upcomingGigs     = confirmed.filter(g => g.date > todayStr());
+  const pastGigs         = confirmed.filter(g => g.date < todayStr()).reverse();
+
+  const nextGig          = tonightGigs.length > 0 ? tonightGigs[0] : upcomingGigs[0];
 
   const monthEarnings    = gigs.filter(g => { if (g.status !== 'confirmed' || !g.fee) return false; const d = new Date(g.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).reduce((sum, g) => sum + Number(g.fee), 0);
-  const upcomingEarnings = confirmedUpcoming.filter(g => g.fee).reduce((sum, g) => sum + Number(g.fee), 0);
+  const upcomingEarnings = upcomingGigs.filter(g => g.fee).reduce((sum, g) => sum + Number(g.fee), 0);
 
   if (loading) return <div className="loading">Loading...</div>;
 
@@ -243,87 +276,92 @@ export default function DJDashboard() {
           <div className="stats-row" style={{marginBottom:20}}>
             <div className="stat-card"><div className="stat-label">This month</div><div className="stat-val neon">€{monthEarnings}</div></div>
             <div className="stat-card"><div className="stat-label">Upcoming total</div><div className="stat-val" style={{color:'#a080ff'}}>€{upcomingEarnings}</div></div>
-            <div className="stat-card"><div className="stat-label">Confirmed gigs</div><div className="stat-val">{confirmedUpcoming.length}</div></div>
+            <div className="stat-card"><div className="stat-label">Confirmed gigs</div><div className="stat-val">{upcomingGigs.length + tonightGigs.length}</div></div>
           </div>
 
-          {nextGig ? (() => {
-            const countdown = gigCountdown(nextGig.date);
-            return (
-              <div className="next-gig-card" style={{borderColor: getVenueColor(nextGig.venue).color + '40'}}>
-                <div style={{flex:1}}>
-                  <div className="next-label">Next up</div>
-                  <div className="next-venue">{nextGig.venue}</div>
-                  <VenueBadge venue={nextGig.venue} />
-                  <div className="next-sub" style={{marginTop:6}}>{formatDate(nextGig.date)} · {nextGig.time}</div>
-                  {nextGig.fee && <div style={{marginTop:6,fontSize:13,color:'#00ffc2',fontWeight:600}}>€{nextGig.fee}</div>}
-                  {nextGig.notes && <NotesBanner notes={nextGig.notes} />}
-                </div>
-                <div style={{textAlign:'center'}}>
-                  <div style={{
-                    fontSize: countdown.urgent ? 20 : 30,
-                    fontWeight: 700,
-                    fontFamily: 'var(--font-mono)',
-                    color: countdown.urgent ? '#ff9900' : '#00ffc2',
-                    lineHeight: 1,
-                    letterSpacing: countdown.urgent ? '0.05em' : 0,
-                  }}>
-                    {countdown.label}
-                  </div>
-                  <div style={{fontSize:10, color:'var(--text-muted)', letterSpacing:'0.1em', textTransform:'uppercase', marginTop:3}}>
-                    {countdown.sub}
-                  </div>
-                </div>
+          {/* TONIGHT banner */}
+          {tonightGigs.length > 0 && (
+            <div style={{background:'#1a0a00',border:'2px solid #ff990060',borderRadius:10,padding:'14px 18px',marginBottom:20}}>
+              <div style={{fontSize:11,fontWeight:700,color:'#ff9900',letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:10}}>
+                🎧 Tonight
               </div>
-            );
-          })() : (
+              {tonightGigs.map(g => {
+                const vc = getVenueColor(g.venue);
+                return (
+                  <div key={g.id} style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12}}>
+                    <div>
+                      <div style={{fontSize:18,fontWeight:700,color:'#e8e8f0'}}>{g.venue}</div>
+                      <VenueBadge venue={g.venue} />
+                      <div style={{fontSize:13,color:'var(--text-muted)',marginTop:6}}>{g.time}</div>
+                      {g.fee && <div style={{fontSize:13,color:'#00ffc2',fontWeight:600,marginTop:4}}>€{g.fee}</div>}
+                      {g.notes && <NotesBanner notes={g.notes} />}
+                    </div>
+                    <div style={{textAlign:'center',flexShrink:0}}>
+                      <div style={{fontSize:22,fontWeight:700,fontFamily:'var(--font-mono)',color:'#ff9900',lineHeight:1}}>TONIGHT</div>
+                      <div style={{fontSize:10,color:'var(--text-muted)',letterSpacing:'0.1em',textTransform:'uppercase',marginTop:3}}>{g.time}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Next up — only show if no tonight gig */}
+          {tonightGigs.length === 0 && nextGig && (
+            <div className="next-gig-card" style={{borderColor: getVenueColor(nextGig.venue).color + '40'}}>
+              <div style={{flex:1}}>
+                <div className="next-label">Next up</div>
+                <div className="next-venue">{nextGig.venue}</div>
+                <VenueBadge venue={nextGig.venue} />
+                <div className="next-sub" style={{marginTop:6}}>{formatDate(nextGig.date)} · {nextGig.time}</div>
+                {nextGig.fee && <div style={{marginTop:6,fontSize:13,color:'#00ffc2',fontWeight:600}}>€{nextGig.fee}</div>}
+                {nextGig.notes && <NotesBanner notes={nextGig.notes} />}
+              </div>
+              <div style={{textAlign:'center'}}>
+                <div style={{fontSize:30,fontWeight:700,fontFamily:'var(--font-mono)',color:'#00ffc2',lineHeight:1}}>
+                  {Math.round((new Date(nextGig.date + 'T12:00:00') - new Date().setHours(0,0,0,0)) / 86400000)}
+                </div>
+                <div style={{fontSize:10,color:'var(--text-muted)',letterSpacing:'0.1em',textTransform:'uppercase',marginTop:3}}>days away</div>
+              </div>
+            </div>
+          )}
+
+          {tonightGigs.length === 0 && !nextGig && (
             <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,padding:20,marginBottom:20,textAlign:'center',color:'var(--text-muted)',fontSize:13}}>
               No upcoming confirmed gigs. Check the Pending tab for any offers.
             </div>
           )}
 
-          <div className="section-title">Confirmed gigs</div>
-          <div className="panel">
-            {confirmed.length === 0 && <div className="empty-state">No confirmed gigs yet.</div>}
-            {confirmed.map(g => {
-              const d  = new Date(g.date + 'T12:00:00');
-              const vc = getVenueColor(g.venue);
-              const isSelfAssigned = g.assignedBy === profile.name;
-              return (
-                <div key={g.id} className="timeline-item" style={{borderLeft:`3px solid ${vc.color}`, flexWrap:'wrap'}}>
-                  <div className="timeline-date">
-                    <div className="timeline-day" style={{color:vc.color}}>{d.getDate()}</div>
-                    <div className="timeline-month">{d.toLocaleDateString('en-IE',{month:'short'})}</div>
-                  </div>
-                  <div className="timeline-line" style={{background:vc.color+'40'}} />
-                  <div style={{flex:1, minWidth:0}}>
-                    <div className="timeline-venue">{g.venue}</div>
-                    <VenueBadge venue={g.venue} />
-                    <div className="timeline-sub" style={{marginTop:4}}>{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
-                    {g.fee && <div style={{fontSize:12,color:'#00ffc2',fontWeight:600,marginTop:3}}>€{g.fee}</div>}
-                    {g.notes && <NotesBanner notes={g.notes} />}
-                  </div>
-                  <div style={{display:'flex',flexDirection:'column',gap:6,alignSelf:'center'}}>
-                    {isSelfAssigned && (
-                      <button
-                        onClick={() => setEditingGig(g)}
-                        style={{background:'transparent',border:'1px solid #2a2a40',color:'#9090b0',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}
-                      >
-                        ✏️ Edit
-                      </button>
-                    )}
-                    {g.fee && (
-                      <button
-                        onClick={() => setInvoiceGig(g)}
-                        style={{background:'transparent',border:'1px solid #2a2a40',color:'#9090b0',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}
-                      >
-                        🧾 Invoice
-                      </button>
-                    )}
-                  </div>
+          {/* Upcoming gigs */}
+          {upcomingGigs.length > 0 && (
+            <>
+              <div className="section-title">Upcoming gigs</div>
+              <div className="panel">
+                {upcomingGigs.map(g => (
+                  <GigRow key={g.id} g={g} profile={profile} onEdit={setEditingGig} onInvoice={setInvoiceGig} />
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Past gigs — collapsible */}
+          {pastGigs.length > 0 && (
+            <div style={{marginTop:20}}>
+              <button
+                onClick={() => setShowPastGigs(p => !p)}
+                style={{background:'transparent',border:'1px solid var(--border)',borderRadius:6,color:'var(--text-muted)',fontSize:12,padding:'6px 14px',cursor:'pointer',marginBottom:10,display:'flex',alignItems:'center',gap:6}}
+              >
+                {showPastGigs ? '▲' : '▼'} Past gigs ({pastGigs.length})
+              </button>
+              {showPastGigs && (
+                <div className="panel">
+                  {pastGigs.map(g => (
+                    <GigRow key={g.id} g={g} profile={profile} onEdit={setEditingGig} onInvoice={setInvoiceGig} />
+                  ))}
                 </div>
-              );
-            })}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
