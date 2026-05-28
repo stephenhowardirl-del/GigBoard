@@ -21,6 +21,7 @@ export default function AdminDashboard({ hideFees }) {
   const [myGigs, setMyGigs]         = useState([]);
   const [myUnavail, setMyUnavail]   = useState([]);
   const [users, setUsers]           = useState([]);
+  const [allUsers, setAllUsers]     = useState([]);
   const [unavail, setUnavail]       = useState([]);
   const [venues, setVenues]         = useState([]);
   const [newVenue, setNewVenue]     = useState('');
@@ -42,15 +43,22 @@ export default function AdminDashboard({ hideFees }) {
         getAllGigs(), getAllUsers(), getAllUnavailability(), getInvitedEmails(), getVenues(),
       ]);
       setGigs(g);
-      setUsers(u.filter(x => x.role !== 'full_admin'));
+
+      // All users except full admin for roster/access management
+      const djUsers = u.filter(x => x.role !== 'full_admin');
+      setUsers(djUsers);
+      setAllUsers(u);
+
       setUnavail(un);
       setInvites(inv);
       setVenues(v);
+
       if (profile?.uid) {
         const [mg, mun] = await Promise.all([
           getGigsForDJ(profile.uid),
           getUnavailableDates(profile.uid),
         ]);
+
         // Also catch gigs assigned by name in case djUid doesn't match
         const myGigsByName = g.filter(gig =>
           gig.djName && profile.name &&
@@ -145,6 +153,12 @@ export default function AdminDashboard({ hideFees }) {
 
   const myPending = myGigs.filter(g => g.status === 'pending');
 
+  // Build the list for the gig board — DJs plus Steve Howard at the front
+  const gigListUsers = profile ? [
+    { uid: profile.uid, name: profile.name, role: 'full_admin' },
+    ...users,
+  ] : users;
+
   if (loading) return <div className="loading">Loading…</div>;
   if (error)   return <div className="loading" style={{color:'#ff4070'}}>Error: {error} — try refreshing.</div>;
 
@@ -164,7 +178,7 @@ export default function AdminDashboard({ hideFees }) {
       {tab === 'list' && (
         <GigList
           gigs={gigs}
-          users={users}
+          users={gigListUsers}
           hideFees={hideFees}
           onConfirm={handleConfirm}
           onReject={handleRejectGig}
