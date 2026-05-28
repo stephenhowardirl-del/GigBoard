@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getGigsForDJ, updateGigStatus, getUnavailableDates, setUnavailableDates, createGigConfirmed } from '../lib/db';
+import { getGigsForDJ, updateGigStatus, getUnavailableDates, setUnavailableDates, createGigConfirmed, updateGig } from '../lib/db';
 import { getVenueColor } from '../lib/venueGroups';
 import { useAuth } from '../hooks/useAuth';
 import CalendarView from '../components/CalendarView';
@@ -47,6 +47,72 @@ function SuccessToast({ message, onDone }) {
     <div style={{position:'fixed',bottom:30,left:'50%',transform:'translateX(-50%)',background:'#002a1a',border:'1px solid #00ffcc60',borderRadius:10,padding:'14px 24px',color:'#00ffcc',fontSize:14,fontWeight:600,zIndex:400,boxShadow:'0 8px 24px #00000080',display:'flex',alignItems:'center',gap:10}}>
       <span style={{fontSize:18}}>✓</span>
       {message}
+    </div>
+  );
+}
+
+function EditGigModal({ gig, venues, profile, onClose, onSaved }) {
+  const [venue, setVenue]   = useState(gig.venue);
+  const [date, setDate]     = useState(gig.date);
+  const [time, setTime]     = useState(gig.time);
+  const [notes, setNotes]   = useState(gig.notes || '');
+  const [fee, setFee]       = useState(gig.fee || '');
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    if (!venue || !date || !time) return;
+    setSaving(true);
+    await updateGig(gig.id, {
+      venue, date, time, notes, fee,
+      djUid:   gig.djUid,
+      djName:  gig.djName,
+      djEmail: gig.djEmail || '',
+    });
+    setSaving(false);
+    onSaved();
+    onClose();
+  }
+
+  return (
+    <div style={{position:'fixed',inset:0,background:'#00000080',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:20}} onClick={onClose}>
+      <div style={{background:'#0d0d14',border:'1px solid #2a2a40',borderRadius:12,padding:28,width:'100%',maxWidth:400}} onClick={e => e.stopPropagation()}>
+        <div style={{fontSize:17,fontWeight:600,color:'#e8e8f0',marginBottom:4}}>Edit gig</div>
+        <div style={{fontSize:12,color:'var(--text-muted)',marginBottom:20}}>Update the details for this gig.</div>
+
+        <div style={{marginBottom:14}}>
+          <label style={{fontSize:11,color:'var(--text-muted)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Venue</label>
+          <select value={venue} onChange={e => setVenue(e.target.value)} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'}}>
+            {venues.map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </div>
+
+        <div style={{marginBottom:14}}>
+          <label style={{fontSize:11,color:'var(--text-muted)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Date</label>
+          <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'}} />
+        </div>
+
+        <div style={{marginBottom:14}}>
+          <label style={{fontSize:11,color:'var(--text-muted)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Time</label>
+          <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'}} />
+        </div>
+
+        <div style={{marginBottom:14}}>
+          <label style={{fontSize:11,color:'var(--text-muted)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Fee (€)</label>
+          <input type="number" value={fee} onChange={e => setFee(e.target.value)} placeholder="e.g. 150" style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'}} />
+        </div>
+
+        <div style={{marginBottom:20}}>
+          <label style={{fontSize:11,color:'var(--text-muted)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Notes (optional)</label>
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px',resize:'vertical',fontFamily:'inherit'}} />
+        </div>
+
+        <div style={{display:'flex',gap:10}}>
+          <button onClick={onClose} className="btn btn-ghost" style={{flex:1}}>Cancel</button>
+          <button onClick={handleSave} disabled={!venue || !date || !time || saving} className="btn btn-primary" style={{flex:1}}>
+            {saving ? 'Saving…' : 'Save changes'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -117,6 +183,7 @@ export default function DJDashboard() {
   const [loading, setLoading]         = useState(true);
   const [showBooking, setShowBooking] = useState(false);
   const [invoiceGig, setInvoiceGig]   = useState(null);
+  const [editingGig, setEditingGig]   = useState(null);
   const [toast, setToast]             = useState(null);
 
   const selfAssignVenues = profile?.selfAssignVenues || [];
@@ -144,6 +211,11 @@ export default function DJDashboard() {
   function handleBooked() {
     load();
     setToast('Gig booked and confirmed!');
+  }
+
+  function handleSaved() {
+    load();
+    setToast('Gig updated!');
   }
 
   const today             = new Date().toISOString().split('T')[0];
@@ -209,6 +281,7 @@ export default function DJDashboard() {
             {confirmed.map(g => {
               const d  = new Date(g.date + 'T12:00:00');
               const vc = getVenueColor(g.venue);
+              const isSelfAssigned = g.assignedBy === profile.name;
               return (
                 <div key={g.id} className="timeline-item" style={{borderLeft:`3px solid ${vc.color}`, flexWrap:'wrap'}}>
                   <div className="timeline-date">
@@ -223,14 +296,24 @@ export default function DJDashboard() {
                     {g.fee && <div style={{fontSize:12,color:'#00ffc2',fontWeight:600,marginTop:3}}>€{g.fee}</div>}
                     {g.notes && <NotesBanner notes={g.notes} />}
                   </div>
-                  {g.fee && (
-                    <button
-                      onClick={() => setInvoiceGig(g)}
-                      style={{background:'transparent',border:'1px solid #2a2a40',color:'#9090b0',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap',alignSelf:'center'}}
-                    >
-                      🧾 Invoice
-                    </button>
-                  )}
+                  <div style={{display:'flex',flexDirection:'column',gap:6,alignSelf:'center'}}>
+                    {isSelfAssigned && (
+                      <button
+                        onClick={() => setEditingGig(g)}
+                        style={{background:'transparent',border:'1px solid #2a2a40',color:'#9090b0',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}
+                      >
+                        ✏️ Edit
+                      </button>
+                    )}
+                    {g.fee && (
+                      <button
+                        onClick={() => setInvoiceGig(g)}
+                        style={{background:'transparent',border:'1px solid #2a2a40',color:'#9090b0',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}
+                      >
+                        🧾 Invoice
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -277,6 +360,16 @@ export default function DJDashboard() {
           profile={profile}
           onClose={() => setShowBooking(false)}
           onBooked={handleBooked}
+        />
+      )}
+
+      {editingGig && (
+        <EditGigModal
+          gig={editingGig}
+          venues={selfAssignVenues}
+          profile={profile}
+          onClose={() => setEditingGig(null)}
+          onSaved={handleSaved}
         />
       )}
 
