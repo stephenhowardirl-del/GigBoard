@@ -182,7 +182,6 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
                   overflow: 'hidden',
                   display: 'flex',
                   flexDirection: 'column',
-                  position: 'relative',
                 }}
               >
                 <div style={{
@@ -197,14 +196,11 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
                 }}>
                   {d}
                   {style.isToday && (
-                    <span style={{
-                      width: 4, height: 4, borderRadius: '50%',
-                      background: '#00ffc2', flexShrink: 0,
-                    }} />
+                    <span style={{width:4, height:4, borderRadius:'50%', background:'#00ffc2', flexShrink:0}} />
                   )}
                 </div>
-                {dayGigs.slice(0, 2).map((g, i) => (
-                  <div key={i} style={{
+                {dayGigs.slice(0, 2).map((g, idx) => (
+                  <div key={idx} style={{
                     fontSize: 9,
                     lineHeight: 1.4,
                     color: g.status === 'confirmed' ? '#00ffcc' : '#ffcc00',
@@ -213,8 +209,8 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
                     textOverflow: 'ellipsis',
                   }}>
                     {showDJPicker
-                      ? `${g.djName?.split(' ')[0]} · ${g.venue?.split(' ')[0]}`
-                      : `${g.venue?.split(' ')[0]} ${g.time ? g.time.slice(0,5) : ''}`
+                      ? `${g.djName?.split(' ')[0]} · ${g.venue}`
+                      : `${g.venue} ${g.time ? g.time.slice(0,5) : ''}`
                     }
                   </div>
                 ))}
