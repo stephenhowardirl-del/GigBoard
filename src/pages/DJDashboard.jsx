@@ -14,8 +14,8 @@ function formatDate(iso) {
 
 function gigCountdown(iso) {
   const today = new Date(); today.setHours(0,0,0,0);
-  const gig   = new Date(iso + 'T12:00:00');
-  const days  = Math.ceil((gig - today) / 86400000);
+  const gig   = new Date(iso + 'T00:00:00');
+  const days  = Math.round((gig - today) / 86400000);
   if (days === 0) return { label: 'TODAY', sub: 'tonight', urgent: true };
   if (days === 1) return { label: 'TMRW',  sub: 'tomorrow', urgent: false };
   return { label: String(days), sub: 'days away', urgent: false };
