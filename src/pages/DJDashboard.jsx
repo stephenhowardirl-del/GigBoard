@@ -6,6 +6,15 @@ import CalendarView from '../components/CalendarView';
 import InvoiceModal from '../components/InvoiceModal';
 import FinancialsTab from '../components/FinancialsTab';
 
+const TIMES = Array.from({length: 48}, (_, i) => {
+  const h = Math.floor(i / 2).toString().padStart(2, '0');
+  const m = i % 2 === 0 ? '00' : '30';
+  return `${h}:${m}`;
+});
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS   = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
 function formatDate(iso) {
   if (!iso) return '';
   const d = new Date(iso + 'T12:00:00');
@@ -15,6 +24,77 @@ function formatDate(iso) {
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function isoForDate(year, month, day) {
+  return `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+}
+
+function MiniCalendar({ selected, onChange, gigDates = [] }) {
+  const now = new Date();
+  const [year, setYear]   = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth());
+
+  function prevMonth() { if (month === 0) { setMonth(11); setYear(y => y-1); } else setMonth(m => m-1); }
+  function nextMonth() { if (month === 11) { setMonth(0); setYear(y => y+1); } else setMonth(m => m+1); }
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDow    = (new Date(year, month, 1).getDay() + 6) % 7;
+  const today       = todayStr();
+
+  return (
+    <div style={{background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:8,padding:12}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+        <button onClick={prevMonth} style={{background:'transparent',border:'none',color:'#6060a0',fontSize:16,cursor:'pointer',padding:'0 6px'}}>‹</button>
+        <div style={{fontSize:12,color:'#e8e8f0',fontWeight:600}}>{MONTHS[month]} {year}</div>
+        <button onClick={nextMonth} style={{background:'transparent',border:'none',color:'#6060a0',fontSize:16,cursor:'pointer',padding:'0 6px'}}>›</button>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2,marginBottom:4}}>
+        {DAYS.map(d => (
+          <div key={d} style={{fontSize:9,color:'#404060',textAlign:'center',padding:'2px 0',textTransform:'uppercase'}}>{d}</div>
+        ))}
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2}}>
+        {Array.from({length: firstDow}, (_, i) => <div key={`e${i}`} />)}
+        {Array.from({length: daysInMonth}, (_, i) => {
+          const d   = i + 1;
+          const iso = isoForDate(year, month, d);
+          const isSelected  = iso === selected;
+          const isToday     = iso === today;
+          const isPast      = iso < today;
+          const hasGig      = gigDates.includes(iso);
+          return (
+            <div
+              key={d}
+              onClick={() => !isPast && onChange(iso)}
+              style={{
+                textAlign: 'center',
+                padding: '5px 0',
+                borderRadius: 4,
+                fontSize: 11,
+                cursor: isPast ? 'not-allowed' : 'pointer',
+                fontWeight: isSelected ? 700 : 400,
+                background: isSelected ? '#00ffc2' : isToday ? '#0a1a14' : 'transparent',
+                color: isSelected ? '#000' : isPast ? '#2a2a40' : isToday ? '#00ffc2' : hasGig ? '#ffbb00' : '#c0c0d0',
+                border: isToday && !isSelected ? '1px solid #00ffc230' : '1px solid transparent',
+                position: 'relative',
+              }}
+            >
+              {d}
+              {hasGig && !isSelected && (
+                <div style={{width:3,height:3,borderRadius:'50%',background:'#ffbb00',position:'absolute',bottom:2,left:'50%',transform:'translateX(-50%)'}} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {selected && (
+        <div style={{marginTop:10,fontSize:11,color:'#00ffc2',textAlign:'center',fontWeight:600}}>
+          {formatDate(selected)}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function VenueBadge({ venue }) {
@@ -53,7 +133,7 @@ function SuccessToast({ message, onDone }) {
 function EditGigModal({ gig, venues, profile, onClose, onSaved }) {
   const [venue, setVenue]   = useState(gig.venue);
   const [date, setDate]     = useState(gig.date);
-  const [time, setTime]     = useState(gig.time);
+  const [time, setTime]     = useState(gig.time || '');
   const [notes, setNotes]   = useState(gig.notes || '');
   const [fee, setFee]       = useState(gig.fee || '');
   const [saving, setSaving] = useState(false);
@@ -74,7 +154,7 @@ function EditGigModal({ gig, venues, profile, onClose, onSaved }) {
 
   return (
     <div style={{position:'fixed',inset:0,background:'#00000080',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:20}} onClick={onClose}>
-      <div style={{background:'#0d0d14',border:'1px solid #2a2a40',borderRadius:12,padding:28,width:'100%',maxWidth:400}} onClick={e => e.stopPropagation()}>
+      <div style={{background:'#0d0d14',border:'1px solid #2a2a40',borderRadius:12,padding:28,width:'100%',maxWidth:420,maxHeight:'90vh',overflowY:'auto'}} onClick={e => e.stopPropagation()}>
         <div style={{fontSize:17,fontWeight:600,color:'#e8e8f0',marginBottom:4}}>Edit gig</div>
         <div style={{fontSize:12,color:'var(--text-muted)',marginBottom:20}}>Update the details for this gig.</div>
         <div style={{marginBottom:14}}>
@@ -85,11 +165,14 @@ function EditGigModal({ gig, venues, profile, onClose, onSaved }) {
         </div>
         <div style={{marginBottom:14}}>
           <label style={{fontSize:11,color:'var(--text-muted)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Date</label>
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'}} />
+          <MiniCalendar selected={date} onChange={setDate} />
         </div>
         <div style={{marginBottom:14}}>
           <label style={{fontSize:11,color:'var(--text-muted)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Time</label>
-          <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'}} />
+          <select value={time} onChange={e => setTime(e.target.value)} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'}}>
+            <option value=''>Select time</option>
+            {TIMES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
         </div>
         <div style={{marginBottom:14}}>
           <label style={{fontSize:11,color:'var(--text-muted)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Fee (€)</label>
@@ -110,12 +193,14 @@ function EditGigModal({ gig, venues, profile, onClose, onSaved }) {
   );
 }
 
-function SelfAssignModal({ venues, profile, onClose, onBooked }) {
+function SelfAssignModal({ venues, profile, gigs, onClose, onBooked }) {
   const [venue, setVenue]   = useState(venues[0] || '');
   const [date, setDate]     = useState('');
   const [time, setTime]     = useState('');
   const [notes, setNotes]   = useState('');
   const [saving, setSaving] = useState(false);
+
+  const gigDates = gigs.filter(g => g.status === 'confirmed').map(g => g.date);
 
   async function handleBook() {
     if (!venue || !date || !time) return;
@@ -136,7 +221,7 @@ function SelfAssignModal({ venues, profile, onClose, onBooked }) {
 
   return (
     <div style={{position:'fixed',inset:0,background:'#00000080',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:20}} onClick={onClose}>
-      <div style={{background:'#0d0d14',border:'1px solid #2a2a40',borderRadius:12,padding:28,width:'100%',maxWidth:400}} onClick={e => e.stopPropagation()}>
+      <div style={{background:'#0d0d14',border:'1px solid #2a2a40',borderRadius:12,padding:28,width:'100%',maxWidth:420,maxHeight:'90vh',overflowY:'auto'}} onClick={e => e.stopPropagation()}>
         <div style={{fontSize:17,fontWeight:600,color:'#e8e8f0',marginBottom:4}}>Book a gig</div>
         <div style={{fontSize:12,color:'var(--text-muted)',marginBottom:20}}>Goes straight to confirmed.</div>
         <div style={{marginBottom:14}}>
@@ -147,11 +232,14 @@ function SelfAssignModal({ venues, profile, onClose, onBooked }) {
         </div>
         <div style={{marginBottom:14}}>
           <label style={{fontSize:11,color:'var(--text-muted)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Date</label>
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'}} />
+          <MiniCalendar selected={date} onChange={setDate} gigDates={gigDates} />
         </div>
         <div style={{marginBottom:14}}>
           <label style={{fontSize:11,color:'var(--text-muted)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Time</label>
-          <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'}} />
+          <select value={time} onChange={e => setTime(e.target.value)} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'}}>
+            <option value=''>Select time</option>
+            {TIMES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
         </div>
         <div style={{marginBottom:20}}>
           <label style={{fontSize:11,color:'var(--text-muted)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Notes (optional)</label>
@@ -239,16 +327,14 @@ export default function DJDashboard() {
   function handleBooked() { load(); setToast('Gig booked and confirmed!'); }
   function handleSaved()  { load(); setToast('Gig updated!'); }
 
-  const today   = new Date().toISOString().split('T')[0];
-  const now     = new Date();
-  const pending = gigs.filter(g => g.status === 'pending');
-
-  const confirmed        = gigs.filter(g => g.status === 'confirmed');
-  const tonightGigs      = confirmed.filter(g => g.date === todayStr());
-  const upcomingGigs     = confirmed.filter(g => g.date > todayStr());
-  const pastGigs         = confirmed.filter(g => g.date < todayStr()).reverse();
-
-  const nextGig          = tonightGigs.length > 0 ? tonightGigs[0] : upcomingGigs[0];
+  const today        = new Date().toISOString().split('T')[0];
+  const now          = new Date();
+  const pending      = gigs.filter(g => g.status === 'pending');
+  const confirmed    = gigs.filter(g => g.status === 'confirmed');
+  const tonightGigs  = confirmed.filter(g => g.date === todayStr());
+  const upcomingGigs = confirmed.filter(g => g.date > todayStr());
+  const pastGigs     = confirmed.filter(g => g.date < todayStr()).reverse();
+  const nextGig      = tonightGigs.length > 0 ? tonightGigs[0] : upcomingGigs[0];
 
   const monthEarnings    = gigs.filter(g => { if (g.status !== 'confirmed' || !g.fee) return false; const d = new Date(g.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).reduce((sum, g) => sum + Number(g.fee), 0);
   const upcomingEarnings = upcomingGigs.filter(g => g.fee).reduce((sum, g) => sum + Number(g.fee), 0);
@@ -279,7 +365,6 @@ export default function DJDashboard() {
             <div className="stat-card"><div className="stat-label">Confirmed gigs</div><div className="stat-val">{upcomingGigs.length + tonightGigs.length}</div></div>
           </div>
 
-          {/* TONIGHT banner */}
           {tonightGigs.length > 0 && (
             <div style={{background:'#1a0a00',border:'2px solid #ff990060',borderRadius:10,padding:'14px 18px',marginBottom:20}}>
               <div style={{fontSize:11,fontWeight:700,color:'#ff9900',letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:10}}>
@@ -306,7 +391,6 @@ export default function DJDashboard() {
             </div>
           )}
 
-          {/* Next up — only show if no tonight gig */}
           {tonightGigs.length === 0 && nextGig && (
             <div className="next-gig-card" style={{borderColor: getVenueColor(nextGig.venue).color + '40'}}>
               <div style={{flex:1}}>
@@ -332,7 +416,6 @@ export default function DJDashboard() {
             </div>
           )}
 
-          {/* Upcoming gigs */}
           {upcomingGigs.length > 0 && (
             <>
               <div className="section-title">Upcoming gigs</div>
@@ -344,7 +427,6 @@ export default function DJDashboard() {
             </>
           )}
 
-          {/* Past gigs — collapsible */}
           {pastGigs.length > 0 && (
             <div style={{marginTop:20}}>
               <button
@@ -402,6 +484,7 @@ export default function DJDashboard() {
         <SelfAssignModal
           venues={selfAssignVenues}
           profile={profile}
+          gigs={gigs}
           onClose={() => setShowBooking(false)}
           onBooked={handleBooked}
         />
