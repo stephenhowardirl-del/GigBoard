@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getGigsForDJ, updateGigStatus, getUnavailableDates, setUnavailableDates, createGigConfirmed, updateGig } from '../lib/db';
-import { getVenueColor } from '../lib/venueGroups';
+import { getVenueColor, getVenueLogo } from '../lib/venueGroups';
 import { useAuth } from '../hooks/useAuth';
 import CalendarView from '../components/CalendarView';
 import InvoiceModal from '../components/InvoiceModal';
@@ -197,6 +197,7 @@ function SelfAssignModal({ venues, profile, gigs, onClose, onBooked }) {
   const [venue, setVenue]   = useState(venues[0] || '');
   const [date, setDate]     = useState('');
   const [time, setTime]     = useState('');
+  const [fee, setFee]       = useState('');
   const [notes, setNotes]   = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -211,7 +212,7 @@ function SelfAssignModal({ venues, profile, gigs, onClose, onBooked }) {
       djName:  profile.name,
       djEmail: profile.email || '',
       notes,
-      fee:        null,
+      fee:        fee || null,
       assignedBy: profile.name,
     });
     setSaving(false);
@@ -241,6 +242,10 @@ function SelfAssignModal({ venues, profile, gigs, onClose, onBooked }) {
             {TIMES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
+        <div style={{marginBottom:14}}>
+          <label style={{fontSize:11,color:'var(--text-muted)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Fee (€)</label>
+          <input type="number" value={fee} onChange={e => setFee(e.target.value)} placeholder="e.g. 150" style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'}} />
+        </div>
         <div style={{marginBottom:20}}>
           <label style={{fontSize:11,color:'var(--text-muted)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Notes (optional)</label>
           <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px',resize:'vertical',fontFamily:'inherit'}} />
@@ -259,6 +264,7 @@ function SelfAssignModal({ venues, profile, gigs, onClose, onBooked }) {
 function GigRow({ g, profile, onEdit, onInvoice }) {
   const d  = new Date(g.date + 'T12:00:00');
   const vc = getVenueColor(g.venue);
+  const logo = getVenueLogo(g.venue);
   const isSelfAssigned = g.assignedBy === profile.name;
   return (
     <div className="timeline-item" style={{borderLeft:`3px solid ${vc.color}`, flexWrap:'wrap'}}>
@@ -268,8 +274,17 @@ function GigRow({ g, profile, onEdit, onInvoice }) {
       </div>
       <div className="timeline-line" style={{background:vc.color+'40'}} />
       <div style={{flex:1, minWidth:0}}>
-        <div className="timeline-venue">{g.venue}</div>
-        <VenueBadge venue={g.venue} />
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+          {logo && (
+            <img
+              src={logo}
+              alt={g.venue}
+              style={{width:28,height:28,borderRadius:5,objectFit:'cover',flexShrink:0,border:`1px solid ${vc.color}30`}}
+              onError={e => { e.target.style.display='none'; }}
+            />
+          )}
+          <div className="timeline-venue">{g.venue}</div>
+        </div>
         <div className="timeline-sub" style={{marginTop:4}}>{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
         {g.fee && <div style={{fontSize:12,color:'#00ffc2',fontWeight:600,marginTop:3}}>€{g.fee}</div>}
         {g.notes && <NotesBanner notes={g.notes} />}
@@ -371,13 +386,18 @@ export default function DJDashboard() {
                 🎧 Tonight
               </div>
               {tonightGigs.map(g => {
-                const vc = getVenueColor(g.venue);
+                const vc   = getVenueColor(g.venue);
+                const logo = getVenueLogo(g.venue);
                 return (
                   <div key={g.id} style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12}}>
                     <div>
-                      <div style={{fontSize:18,fontWeight:700,color:'#e8e8f0'}}>{g.venue}</div>
-                      <VenueBadge venue={g.venue} />
-                      <div style={{fontSize:13,color:'var(--text-muted)',marginTop:6}}>{g.time}</div>
+                      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+                        {logo && (
+                          <img src={logo} alt={g.venue} style={{width:32,height:32,borderRadius:6,objectFit:'cover',border:`1px solid ${vc.color}30`}} onError={e=>{e.target.style.display='none';}} />
+                        )}
+                        <div style={{fontSize:18,fontWeight:700,color:'#e8e8f0'}}>{g.venue}</div>
+                      </div>
+                      <div style={{fontSize:13,color:'var(--text-muted)',marginTop:4}}>{g.time}</div>
                       {g.fee && <div style={{fontSize:13,color:'#00ffc2',fontWeight:600,marginTop:4}}>€{g.fee}</div>}
                       {g.notes && <NotesBanner notes={g.notes} />}
                     </div>
@@ -395,8 +415,12 @@ export default function DJDashboard() {
             <div className="next-gig-card" style={{borderColor: getVenueColor(nextGig.venue).color + '40'}}>
               <div style={{flex:1}}>
                 <div className="next-label">Next up</div>
-                <div className="next-venue">{nextGig.venue}</div>
-                <VenueBadge venue={nextGig.venue} />
+                <div style={{display:'flex',alignItems:'center',gap:8,margin:'4px 0'}}>
+                  {getVenueLogo(nextGig.venue) && (
+                    <img src={getVenueLogo(nextGig.venue)} alt={nextGig.venue} style={{width:32,height:32,borderRadius:6,objectFit:'cover'}} onError={e=>{e.target.style.display='none';}} />
+                  )}
+                  <div className="next-venue">{nextGig.venue}</div>
+                </div>
                 <div className="next-sub" style={{marginTop:6}}>{formatDate(nextGig.date)} · {nextGig.time}</div>
                 {nextGig.fee && <div style={{marginTop:6,fontSize:13,color:'#00ffc2',fontWeight:600}}>€{nextGig.fee}</div>}
                 {nextGig.notes && <NotesBanner notes={nextGig.notes} />}
@@ -455,13 +479,18 @@ export default function DJDashboard() {
         <div className="page-body">
           {pending.length === 0 && <div className="empty-state">No pending gigs right now.</div>}
           {pending.map(g => {
-            const vc = getVenueColor(g.venue);
+            const vc   = getVenueColor(g.venue);
+            const logo = getVenueLogo(g.venue);
             return (
               <div key={g.id} className="pending-card" style={{borderColor:vc.color+'40'}}>
                 <div className="pending-head" style={{background:vc.bg, color:vc.color}}>⏳ Gig offer — action required</div>
                 <div className="pending-body">
-                  <div className="pending-venue">{g.venue}</div>
-                  <VenueBadge venue={g.venue} />
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+                    {logo && (
+                      <img src={logo} alt={g.venue} style={{width:32,height:32,borderRadius:6,objectFit:'cover',border:`1px solid ${vc.color}30`}} onError={e=>{e.target.style.display='none';}} />
+                    )}
+                    <div className="pending-venue">{g.venue}</div>
+                  </div>
                   <div className="pending-meta" style={{marginTop:8}}>{formatDate(g.date)} · {g.time}</div>
                   {g.fee && <div style={{fontSize:15,color:'#00ffc2',fontWeight:700,marginBottom:10,marginTop:6}}>Fee: €{g.fee}</div>}
                   {g.notes && <NotesBanner notes={g.notes} />}
