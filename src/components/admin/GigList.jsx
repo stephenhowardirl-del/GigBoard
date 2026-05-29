@@ -11,46 +11,6 @@ function formatDate(iso) {
   return d.toLocaleDateString('en-IE', { weekday:'short', day:'numeric', month:'short' });
 }
 
-function VenueBadge({ venue }) {
-  const { color, bg, group } = getVenueColor(venue);
-  return (
-    <div style={{display:'flex', alignItems:'center', gap:6, marginTop:3}}>
-      <div style={{width:7, height:7, borderRadius:'50%', background:color, flexShrink:0}} />
-      {group && <span style={{fontSize:10, color, background:bg, padding:'1px 6px', borderRadius:4, fontWeight:500}}>{group}</span>}
-    </div>
-  );
-}
-
-function VenueHeader({ venue }) {
-  const logo = getVenueLogo(venue);
-  const { color, bg } = getVenueColor(venue);
-  return (
-    <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:4}}>
-      {logo ? (
-        <img
-          src={logo}
-          alt={venue}
-          style={{
-            width: 28, height: 28, borderRadius: 6,
-            objectFit: 'cover', flexShrink: 0,
-            border: `1px solid ${color}40`,
-          }}
-          onError={e => { e.target.style.display = 'none'; }}
-        />
-      ) : (
-        <div style={{
-          width: 28, height: 28, borderRadius: 6,
-          background: bg, border: `1px solid ${color}40`,
-          flexShrink: 0, display:'flex', alignItems:'center', justifyContent:'center',
-        }}>
-          <div style={{width:8, height:8, borderRadius:'50%', background:color}} />
-        </div>
-      )}
-      <div style={{fontSize:12, fontWeight:500, color:'#e8e8f0', lineHeight:1.3}}>{venue}</div>
-    </div>
-  );
-}
-
 function getDateRange(filter) {
   const today = new Date(); today.setHours(0,0,0,0);
   if (filter === 'week') {
@@ -62,6 +22,71 @@ function getDateRange(filter) {
     return { from: today.toISOString().split('T')[0], to: end.toISOString().split('T')[0] };
   }
   return null;
+}
+
+function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete }) {
+  const vc   = getVenueColor(g.venue);
+  const logo = getVenueLogo(g.venue);
+
+  return (
+    <div style={{
+      borderBottom: '1px solid var(--bg-raised)',
+      borderLeft: `3px solid ${vc.color}`,
+      padding: '12px 14px',
+    }}>
+      {/* Venue logo + name */}
+      <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:8}}>
+        {logo ? (
+          <img
+            src={logo}
+            alt={g.venue}
+            style={{
+              width: 40, height: 40, borderRadius: 8,
+              objectFit: 'cover', flexShrink: 0,
+              border: `1px solid ${vc.color}30`,
+            }}
+            onError={e => { e.target.style.display = 'none'; }}
+          />
+        ) : (
+          <div style={{
+            width: 40, height: 40, borderRadius: 8,
+            background: vc.bg, border: `1px solid ${vc.color}40`,
+            flexShrink: 0, display:'flex', alignItems:'center', justifyContent:'center',
+          }}>
+            <div style={{width:10, height:10, borderRadius:'50%', background:vc.color}} />
+          </div>
+        )}
+        <div style={{fontSize:13, fontWeight:600, color:'#e8e8f0', lineHeight:1.3}}>{g.venue}</div>
+      </div>
+
+      {/* Date + time */}
+      <div style={{fontSize:12, color:'var(--text-muted)', fontFamily:'var(--font-mono)', marginBottom:2}}>{formatDate(g.date)}</div>
+      <div style={{fontSize:12, color:'var(--text-muted)', fontFamily:'var(--font-mono)', marginBottom:4}}>{g.time}</div>
+
+      {/* Fee */}
+      {!hideFees && g.fee && (
+        <div style={{fontSize:13, color:'#00ffc2', fontWeight:700, marginBottom:6}}>€{g.fee}</div>
+      )}
+
+      {/* Notes */}
+      {g.notes && (
+        <div style={{fontSize:11, color:'#ffdd80', marginBottom:8, background:'#1a1400', border:'1px solid #ffbb0030', borderRadius:4, padding:'5px 8px'}}>
+          📌 {g.notes}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div style={{display:'flex', gap:4, flexWrap:'wrap'}}>
+        {g.status === 'pending' && <>
+          <button className="btn btn-primary btn-sm" onClick={() => onConfirm(g.id)} style={{fontSize:10,padding:'3px 10px'}}>Confirm</button>
+          <button className="btn btn-danger btn-sm" onClick={() => onReject(g.id)} style={{fontSize:10,padding:'3px 10px'}}>Reject</button>
+        </>}
+        {g.status !== 'pending' && statusBadge(g.status)}
+        <button className="btn btn-ghost btn-sm" onClick={() => onEdit(g)} style={{fontSize:10,padding:'3px 10px'}}>Edit</button>
+        <button className="btn btn-danger btn-sm" onClick={() => onDelete(g)} style={{fontSize:10,padding:'3px 10px'}}>Del</button>
+      </div>
+    </div>
+  );
 }
 
 function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, onEdit, onDelete }) {
@@ -88,65 +113,50 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
       border: '1px solid var(--border)',
       borderRadius: 10,
       overflow: 'hidden',
-      minWidth: 0,
-      flex: '1 1 200px',
+      minWidth: 220,
+      flex: '1 1 220px',
     }}>
       {/* DJ header */}
       <div style={{
-        padding: '10px 14px',
+        padding: '12px 14px',
         borderBottom: '1px solid var(--border)',
         display: 'flex',
         alignItems: 'center',
-        gap: 8,
+        gap: 10,
         background: 'var(--bg-raised)',
       }}>
         <div style={{
-          width: 28, height: 28, borderRadius: '50%',
+          width: 34, height: 34, borderRadius: '50%',
           background: dotColor + '20', color: dotColor,
           border: `1px solid ${dotColor}40`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 10, fontWeight: 700, fontFamily: 'var(--font-mono)',
+          fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-mono)',
           flexShrink: 0,
         }}>
           {initials}
         </div>
         <div style={{flex:1, minWidth:0}}>
-          <div style={{fontSize:12, fontWeight:600, color:'#e8e8f0', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{dj.name}</div>
-          <div style={{fontSize:10, color:'var(--text-muted)', marginTop:1}}>{upcoming.length} gigs</div>
+          <div style={{fontSize:13, fontWeight:600, color:'#e8e8f0', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{dj.name}</div>
+          <div style={{fontSize:11, color:'var(--text-muted)', marginTop:2}}>{upcoming.length} gig{upcoming.length !== 1 ? 's' : ''}</div>
         </div>
       </div>
 
       {upcoming.length === 0 ? (
-        <div style={{padding:'20px 14px', textAlign:'center', color:'var(--text-muted)', fontSize:12}}>
+        <div style={{padding:'24px 14px', textAlign:'center', color:'var(--text-muted)', fontSize:12}}>
           No gigs in this period
         </div>
       ) : (
-        upcoming.map(g => {
-          const vc = getVenueColor(g.venue);
-          return (
-            <div key={g.id} style={{
-              padding: '10px 14px',
-              borderBottom: '1px solid var(--bg-raised)',
-              borderLeft: `3px solid ${vc.color}`,
-            }}>
-              <VenueHeader venue={g.venue} />
-              <VenueBadge venue={g.venue} />
-              <div style={{fontSize:11, color:'var(--text-muted)', fontFamily:'var(--font-mono)', marginTop:4}}>{formatDate(g.date)}</div>
-              <div style={{fontSize:11, color:'var(--text-muted)', fontFamily:'var(--font-mono)'}}>{g.time}</div>
-              {!hideFees && g.fee && <div style={{fontSize:11, color:'#00ffc2', fontWeight:600, marginTop:3}}>€{g.fee}</div>}
-              {g.notes && <div style={{fontSize:10, color:'#ffdd80', marginTop:4, background:'#1a1400', border:'1px solid #ffbb0030', borderRadius:4, padding:'4px 6px'}}>📌 {g.notes}</div>}
-              <div style={{display:'flex', gap:4, marginTop:8, flexWrap:'wrap'}}>
-                {g.status === 'pending' && <>
-                  <button className="btn btn-primary btn-sm" onClick={() => onConfirm(g.id)} style={{fontSize:10,padding:'2px 8px'}}>Confirm</button>
-                  <button className="btn btn-danger btn-sm" onClick={() => onReject(g.id)} style={{fontSize:10,padding:'2px 8px'}}>Reject</button>
-                </>}
-                {g.status !== 'pending' && statusBadge(g.status)}
-                <button className="btn btn-ghost btn-sm" onClick={() => onEdit(g)} style={{fontSize:10,padding:'2px 8px'}}>Edit</button>
-                <button className="btn btn-danger btn-sm" onClick={() => onDelete(g)} style={{fontSize:10,padding:'2px 8px'}}>Del</button>
-              </div>
-            </div>
-          );
-        })
+        upcoming.map(g => (
+          <GigCard
+            key={g.id}
+            g={g}
+            hideFees={hideFees}
+            onConfirm={onConfirm}
+            onReject={onReject}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        ))
       )}
     </div>
   );
@@ -227,7 +237,7 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
       </div>
 
       {view === 'columns' && (
-        <div style={{display:'flex', gap:12, flexWrap:'wrap', alignItems:'flex-start'}}>
+        <div style={{display:'flex', gap:14, flexWrap:'wrap', alignItems:'flex-start'}}>
           {users.map((dj, i) => (
             <DJColumn
               key={dj.uid}
@@ -250,21 +260,25 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
           <div className="panel-head">All venues — all DJs</div>
           {gigs.length === 0 && <div className="empty-state">No gigs yet. Assign one above.</div>}
           {gigs.map(g => {
-            const vc = getVenueColor(g.venue);
+            const vc   = getVenueColor(g.venue);
+            const logo = getVenueLogo(g.venue);
             return (
               <div key={g.id} className="gig-row" style={{flexWrap:'wrap',gap:8,borderLeft:`3px solid ${vc.color}`}}>
                 <div className="gig-info" style={{display:'flex',alignItems:'center',gap:10}}>
-                  {getVenueLogo(g.venue) && (
+                  {logo ? (
                     <img
-                      src={getVenueLogo(g.venue)}
+                      src={logo}
                       alt={g.venue}
-                      style={{width:32,height:32,borderRadius:6,objectFit:'cover',flexShrink:0,border:`1px solid ${vc.color}40`}}
+                      style={{width:36,height:36,borderRadius:6,objectFit:'cover',flexShrink:0,border:`1px solid ${vc.color}30`}}
                       onError={e => { e.target.style.display = 'none'; }}
                     />
+                  ) : (
+                    <div style={{width:36,height:36,borderRadius:6,background:vc.bg,border:`1px solid ${vc.color}40`,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      <div style={{width:8,height:8,borderRadius:'50%',background:vc.color}} />
+                    </div>
                   )}
                   <div>
                     <div className="gig-venue">{g.venue}</div>
-                    <VenueBadge venue={g.venue} />
                     <div className="gig-meta" style={{marginTop:4}}>{formatDate(g.date)} · {g.time}</div>
                     <div className="gig-meta">{g.djName}{!hideFees && g.fee ? <span style={{color:'#00ffc2',marginLeft:8}}>€{g.fee}</span> : null}</div>
                   </div>
