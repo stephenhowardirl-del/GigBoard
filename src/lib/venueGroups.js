@@ -1,3 +1,21 @@
+export const VENUE_LOGOS = {
+  'Dwyers':                     '/logos/dwyers.jpg',
+  'Seventy Seven':              '/logos/seventyseven.jpg',
+  'Seventy Seven (1st Floor)':  '/logos/seventyseven.jpg',
+  'Seventy Seven (Stamp Room)': '/logos/stamproom.jpg',
+  'Clancys Cork':               '/logos/clancys.png',
+  'JJ Walsh':                   '/logos/jjs.png',
+  'Sky Bar':                    '/logos/skybar.jpg',
+  'The Wilton':                 '/logos/wilton.jpg',
+  'Wedding':                    '/logos/wedding.jpeg',
+  'Private Event':              '/logos/event.png',
+  'The Wash':                   '/logos/thewash.jpg',
+  'The Pav':                    '/logos/thepav.png',
+  'The Dean':                   '/logos/thedean.png',
+  'The Woodford':               null,
+  'Mardyke':                    '/logos/mardyke.jpeg',
+};
+
 export const VENUE_GROUPS = {
   'Dwyers Group': {
     color: '#a080ff',
@@ -36,6 +54,10 @@ export const VENUE_COLORS = {
 
 export function getVenueColor(venue) {
   return VENUE_COLORS[venue] || { color: '#9090b0', bg: '#1a1a2e', group: null };
+}
+
+export function getVenueLogo(venue) {
+  return VENUE_LOGOS[venue] || null;
 }
 
 export function getVenueGroup(venue) {
