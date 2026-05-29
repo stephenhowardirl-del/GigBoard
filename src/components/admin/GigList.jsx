@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getVenueColor } from '../../lib/venueGroups';
+import { getVenueColor, getVenueLogo } from '../../lib/venueGroups';
 
 function statusBadge(status) {
   return <span className={`badge badge-${status}`}>{status.charAt(0).toUpperCase() + status.slice(1)}</span>;
@@ -21,8 +21,37 @@ function VenueBadge({ venue }) {
   );
 }
 
+function VenueHeader({ venue }) {
+  const logo = getVenueLogo(venue);
+  const { color, bg } = getVenueColor(venue);
+  return (
+    <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:4}}>
+      {logo ? (
+        <img
+          src={logo}
+          alt={venue}
+          style={{
+            width: 28, height: 28, borderRadius: 6,
+            objectFit: 'cover', flexShrink: 0,
+            border: `1px solid ${color}40`,
+          }}
+          onError={e => { e.target.style.display = 'none'; }}
+        />
+      ) : (
+        <div style={{
+          width: 28, height: 28, borderRadius: 6,
+          background: bg, border: `1px solid ${color}40`,
+          flexShrink: 0, display:'flex', alignItems:'center', justifyContent:'center',
+        }}>
+          <div style={{width:8, height:8, borderRadius:'50%', background:color}} />
+        </div>
+      )}
+      <div style={{fontSize:12, fontWeight:500, color:'#e8e8f0', lineHeight:1.3}}>{venue}</div>
+    </div>
+  );
+}
+
 function getDateRange(filter) {
-  const now   = new Date();
   const today = new Date(); today.setHours(0,0,0,0);
   if (filter === 'week') {
     const end = new Date(today); end.setDate(end.getDate() + 7);
@@ -36,8 +65,8 @@ function getDateRange(filter) {
 }
 
 function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, onEdit, onDelete }) {
-  const today    = new Date().toISOString().split('T')[0];
-  const range    = getDateRange(filter);
+  const today = new Date().toISOString().split('T')[0];
+  const range = getDateRange(filter);
 
   const upcoming = gigs
     .filter(g => {
@@ -62,6 +91,7 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
       minWidth: 0,
       flex: '1 1 200px',
     }}>
+      {/* DJ header */}
       <div style={{
         padding: '10px 14px',
         borderBottom: '1px solid var(--border)',
@@ -99,7 +129,7 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
               borderBottom: '1px solid var(--bg-raised)',
               borderLeft: `3px solid ${vc.color}`,
             }}>
-              <div style={{fontSize:12, fontWeight:500, color:'#e8e8f0'}}>{g.venue}</div>
+              <VenueHeader venue={g.venue} />
               <VenueBadge venue={g.venue} />
               <div style={{fontSize:11, color:'var(--text-muted)', fontFamily:'var(--font-mono)', marginTop:4}}>{formatDate(g.date)}</div>
               <div style={{fontSize:11, color:'var(--text-muted)', fontFamily:'var(--font-mono)'}}>{g.time}</div>
@@ -223,11 +253,21 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
             const vc = getVenueColor(g.venue);
             return (
               <div key={g.id} className="gig-row" style={{flexWrap:'wrap',gap:8,borderLeft:`3px solid ${vc.color}`}}>
-                <div className="gig-info">
-                  <div className="gig-venue">{g.venue}</div>
-                  <VenueBadge venue={g.venue} />
-                  <div className="gig-meta" style={{marginTop:4}}>{formatDate(g.date)} · {g.time}</div>
-                  <div className="gig-meta">{g.djName}{!hideFees && g.fee ? <span style={{color:'#00ffc2',marginLeft:8}}>€{g.fee}</span> : null}</div>
+                <div className="gig-info" style={{display:'flex',alignItems:'center',gap:10}}>
+                  {getVenueLogo(g.venue) && (
+                    <img
+                      src={getVenueLogo(g.venue)}
+                      alt={g.venue}
+                      style={{width:32,height:32,borderRadius:6,objectFit:'cover',flexShrink:0,border:`1px solid ${vc.color}40`}}
+                      onError={e => { e.target.style.display = 'none'; }}
+                    />
+                  )}
+                  <div>
+                    <div className="gig-venue">{g.venue}</div>
+                    <VenueBadge venue={g.venue} />
+                    <div className="gig-meta" style={{marginTop:4}}>{formatDate(g.date)} · {g.time}</div>
+                    <div className="gig-meta">{g.djName}{!hideFees && g.fee ? <span style={{color:'#00ffc2',marginLeft:8}}>€{g.fee}</span> : null}</div>
+                  </div>
                 </div>
                 <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
                   {g.status === 'pending' && <>
