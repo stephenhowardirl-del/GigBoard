@@ -31,7 +31,6 @@ function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete }) {
   return (
     <div style={{
       borderBottom: '1px solid var(--bg-raised)',
-      borderLeft: `3px solid ${vc.color}`,
       padding: '12px 14px',
     }}>
       <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:8}}>
@@ -39,12 +38,16 @@ function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete }) {
           <img
             src={logo}
             alt={g.venue}
-            style={{width:40, height:40, borderRadius:8, objectFit:'cover', flexShrink:0, border:`1px solid ${vc.color}30`}}
+            style={{width:40, height:40, borderRadius:8, objectFit:'cover', flexShrink:0}}
             onError={e => { e.target.style.display='none'; }}
           />
         ) : (
-          <div style={{width:40, height:40, borderRadius:8, background:vc.bg, border:`1px solid ${vc.color}40`, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center'}}>
-            <div style={{width:10, height:10, borderRadius:'50%', background:vc.color}} />
+          <div style={{
+            width:40, height:40, borderRadius:8,
+            background:'var(--bg-raised)', flexShrink:0,
+            display:'flex', alignItems:'center', justifyContent:'center',
+          }}>
+            <div style={{width:10, height:10, borderRadius:'50%', background:'#4040608'}} />
           </div>
         )}
         <div style={{fontSize:13, fontWeight:600, color:'#e8e8f0', lineHeight:1.3}}>{g.venue}</div>
@@ -147,8 +150,7 @@ const FILTERS = [
 ];
 
 export default function GigList({ gigs, users = [], hideFees, onConfirm, onReject, onEdit, onDelete }) {
-  const [view, setView]         = useState('columns');
-  const [filter, setFilter]     = useState('month');
+  const [filter, setFilter]       = useState('month');
   const [hiddenDJs, setHiddenDJs] = useState({});
 
   const today     = new Date().toISOString().split('T')[0];
@@ -177,32 +179,7 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
       {/* Controls row */}
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8, flexWrap:'wrap', gap:8}}>
         <div style={{display:'flex', gap:4}}>
-          <button
-            onClick={() => setView('columns')}
-            style={{
-              background: view === 'columns' ? '#00ffc220' : 'transparent',
-              border: `1px solid ${view === 'columns' ? '#00ffc250' : 'var(--border)'}`,
-              color: view === 'columns' ? '#00ffc2' : 'var(--text-muted)',
-              borderRadius: 5, padding: '4px 12px', fontSize: 11, cursor: 'pointer',
-            }}
-          >
-            By DJ
-          </button>
-          <button
-            onClick={() => setView('list')}
-            style={{
-              background: view === 'list' ? '#00ffc220' : 'transparent',
-              border: `1px solid ${view === 'list' ? '#00ffc250' : 'var(--border)'}`,
-              color: view === 'list' ? '#00ffc2' : 'var(--text-muted)',
-              borderRadius: 5, padding: '4px 12px', fontSize: 11, cursor: 'pointer',
-            }}
-          >
-            List
-          </button>
-        </div>
-
-        <div style={{display:'flex', gap:4}}>
-          {view === 'columns' && FILTERS.map(f => (
+          {FILTERS.map(f => (
             <button
               key={f.key}
               onClick={() => setFilter(f.key)}
@@ -217,101 +194,58 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
             </button>
           ))}
         </div>
-
         <button className="btn btn-primary btn-sm" onClick={() => onEdit(null)}>+ Assign gig</button>
       </div>
 
       {/* DJ toggle pills */}
-      {view === 'columns' && (
-        <div style={{display:'flex', gap:6, flexWrap:'wrap', marginBottom:12}}>
-          {users.map((dj, i) => {
-            const hidden   = hiddenDJs[dj.uid];
-            const dotColor = DOT_COLORS[i % DOT_COLORS.length];
-            return (
-              <button
-                key={dj.uid}
-                onClick={() => toggleDJ(dj.uid)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  background: hidden ? 'transparent' : dotColor + '15',
-                  border: `1px solid ${hidden ? 'var(--border)' : dotColor + '50'}`,
-                  borderRadius: 20, padding: '4px 10px', cursor: 'pointer',
-                  color: hidden ? 'var(--text-muted)' : dotColor,
-                  fontSize: 11, fontWeight: 500,
-                  opacity: hidden ? 0.5 : 1,
-                  transition: 'all 0.15s',
-                }}
-              >
-                <div style={{width:6, height:6, borderRadius:'50%', background: hidden ? 'var(--text-muted)' : dotColor}} />
-                {dj.name.split(' ')[0]}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {view === 'columns' && (
-        <div style={{
-          display: 'flex',
-          gap: 14,
-          overflowX: 'auto',
-          alignItems: 'flex-start',
-          paddingBottom: 16,
-        }}>
-          {visibleUsers.map((dj, i) => (
-            <DJColumn
+      <div style={{display:'flex', gap:6, flexWrap:'wrap', marginBottom:12}}>
+        {users.map((dj, i) => {
+          const hidden   = hiddenDJs[dj.uid];
+          const dotColor = DOT_COLORS[i % DOT_COLORS.length];
+          return (
+            <button
               key={dj.uid}
-              dj={dj}
-              gigs={gigs}
-              dotColor={DOT_COLORS[users.indexOf(dj) % DOT_COLORS.length]}
-              hideFees={hideFees}
-              filter={filter}
-              onConfirm={onConfirm}
-              onReject={onReject}
-              onEdit={onEdit}
-              onDelete={onDelete}
-            />
-          ))}
-        </div>
-      )}
+              onClick={() => toggleDJ(dj.uid)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: hidden ? 'transparent' : dotColor + '15',
+                border: `1px solid ${hidden ? 'var(--border)' : dotColor + '50'}`,
+                borderRadius: 20, padding: '4px 10px', cursor: 'pointer',
+                color: hidden ? 'var(--text-muted)' : dotColor,
+                fontSize: 11, fontWeight: 500,
+                opacity: hidden ? 0.5 : 1,
+                transition: 'all 0.15s',
+              }}
+            >
+              <div style={{width:6, height:6, borderRadius:'50%', background: hidden ? 'var(--text-muted)' : dotColor}} />
+              {dj.name.split(' ')[0]}
+            </button>
+          );
+        })}
+      </div>
 
-      {view === 'list' && (
-        <div className="panel">
-          <div className="panel-head">All venues — all DJs</div>
-          {gigs.length === 0 && <div className="empty-state">No gigs yet. Assign one above.</div>}
-          {gigs.map(g => {
-            const vc   = getVenueColor(g.venue);
-            const logo = getVenueLogo(g.venue);
-            return (
-              <div key={g.id} className="gig-row" style={{flexWrap:'wrap',gap:8,borderLeft:`3px solid ${vc.color}`}}>
-                <div className="gig-info" style={{display:'flex',alignItems:'center',gap:10}}>
-                  {logo ? (
-                    <img src={logo} alt={g.venue} style={{width:36,height:36,borderRadius:6,objectFit:'cover',flexShrink:0,border:`1px solid ${vc.color}30`}} onError={e=>{e.target.style.display='none';}} />
-                  ) : (
-                    <div style={{width:36,height:36,borderRadius:6,background:vc.bg,border:`1px solid ${vc.color}40`,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                      <div style={{width:8,height:8,borderRadius:'50%',background:vc.color}} />
-                    </div>
-                  )}
-                  <div>
-                    <div className="gig-venue">{g.venue}</div>
-                    <div className="gig-meta" style={{marginTop:4}}>{formatDate(g.date)} · {g.time}</div>
-                    <div className="gig-meta">{g.djName}{!hideFees && g.fee ? <span style={{color:'#00ffc2',marginLeft:8}}>€{g.fee}</span> : null}</div>
-                  </div>
-                </div>
-                <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
-                  {g.status === 'pending' && <>
-                    <button className="btn btn-primary btn-sm" onClick={() => onConfirm(g.id)}>Confirm</button>
-                    <button className="btn btn-danger btn-sm" onClick={() => onReject(g.id)}>Reject</button>
-                  </>}
-                  {g.status !== 'pending' && statusBadge(g.status)}
-                  <button className="btn btn-ghost btn-sm" onClick={() => onEdit(g)} style={{fontSize:11,padding:'3px 8px'}}>Edit</button>
-                  <button className="btn btn-danger btn-sm" onClick={() => onDelete(g)} style={{fontSize:11,padding:'3px 8px'}}>Delete</button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <div style={{
+        display: 'flex',
+        gap: 14,
+        overflowX: 'auto',
+        alignItems: 'flex-start',
+        paddingBottom: 16,
+      }}>
+        {visibleUsers.map((dj, i) => (
+          <DJColumn
+            key={dj.uid}
+            dj={dj}
+            gigs={gigs}
+            dotColor={DOT_COLORS[users.indexOf(dj) % DOT_COLORS.length]}
+            hideFees={hideFees}
+            filter={filter}
+            onConfirm={onConfirm}
+            onReject={onReject}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        ))}
+      </div>
     </div>
   );
 }
