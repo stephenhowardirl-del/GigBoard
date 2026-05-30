@@ -138,12 +138,7 @@ function EditGigModal({ gig, venues, onClose, onSaved }) {
   async function handleSave() {
     if (!venue || !date || !time) return;
     setSaving(true);
-    await updateGig(gig.id, {
-      venue, date, time, notes, fee,
-      djUid:   gig.djUid,
-      djName:  gig.djName,
-      djEmail: gig.djEmail || '',
-    });
+    await updateGig(gig.id, { venue, date, time, notes, fee, djUid: gig.djUid, djName: gig.djName, djEmail: gig.djEmail || '' });
     setSaving(false);
     onSaved();
     onClose();
@@ -205,12 +200,8 @@ function SelfAssignModal({ venues, profile, gigs, onClose, onBooked }) {
     setSaving(true);
     await createGigConfirmed({
       venue, date, time,
-      djUid:   profile.uid,
-      djName:  profile.name,
-      djEmail: profile.email || '',
-      notes,
-      fee:        fee || null,
-      assignedBy: profile.name,
+      djUid: profile.uid, djName: profile.name, djEmail: profile.email || '',
+      notes, fee: fee || null, assignedBy: profile.name,
     });
     setSaving(false);
     onBooked();
@@ -272,9 +263,7 @@ function GigRow({ g, profile, isPreview, onEdit, onInvoice }) {
       <div className="timeline-line" style={{background:vc.color+'40'}} />
       <div style={{flex:1, minWidth:0}}>
         <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
-          {logo && (
-            <img src={logo} alt={g.venue} style={{width:28,height:28,borderRadius:5,objectFit:'cover',flexShrink:0,border:`1px solid ${vc.color}30`}} onError={e=>{e.target.style.display='none';}} />
-          )}
+          {logo && <img src={logo} alt={g.venue} style={{width:28,height:28,borderRadius:5,objectFit:'cover',flexShrink:0,border:`1px solid ${vc.color}30`}} onError={e=>{e.target.style.display='none';}} />}
           <div className="timeline-venue">{g.venue}</div>
         </div>
         <div className="timeline-sub" style={{marginTop:4}}>{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
@@ -284,14 +273,10 @@ function GigRow({ g, profile, isPreview, onEdit, onInvoice }) {
       {!isPreview && (
         <div style={{display:'flex',flexDirection:'column',gap:6,alignSelf:'center'}}>
           {isSelfAssigned && (
-            <button onClick={() => onEdit(g)} style={{background:'transparent',border:'1px solid #2a2a40',color:'#9090b0',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>
-              ✏️ Edit
-            </button>
+            <button onClick={() => onEdit(g)} style={{background:'transparent',border:'1px solid #2a2a40',color:'#9090b0',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>✏️ Edit</button>
           )}
           {g.fee && (
-            <button onClick={() => onInvoice(g)} style={{background:'transparent',border:'1px solid #2a2a40',color:'#9090b0',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>
-              🧾 Invoice
-            </button>
+            <button onClick={() => onInvoice(g)} style={{background:'transparent',border:'1px solid #2a2a40',color:'#9090b0',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>🧾 Invoice</button>
           )}
         </div>
       )}
@@ -301,7 +286,7 @@ function GigRow({ g, profile, isPreview, onEdit, onInvoice }) {
 
 export default function DJDashboard({ previewProfile }) {
   const { user, profile: authProfile } = useAuth();
-  const profile = previewProfile || authProfile;
+  const profile   = previewProfile || authProfile;
   const isPreview = !!previewProfile;
 
   const [tab, setTab]                   = useState('schedule');
@@ -326,9 +311,7 @@ export default function DJDashboard({ previewProfile }) {
     setLoading(false);
   }
 
-  useEffect(() => {
-    if (profile?.uid) load();
-  }, [profile?.uid]);
+  useEffect(() => { if (profile?.uid) load(); }, [profile?.uid]);
 
   async function handleAccept(gig) { await updateGigStatus(gig.id, 'confirmed'); load(); }
   async function handleReject(gig) { await updateGigStatus(gig.id, 'rejected');  load(); }
@@ -363,7 +346,7 @@ export default function DJDashboard({ previewProfile }) {
         <button className={'subnav-btn' + (tab === 'pending'    ? ' active' : '')} onClick={() => setTab('pending')}>
           Pending{pending.length > 0 && <span className="notif-dot">{pending.length}</span>}
         </button>
-        {!isPreview && <button className={'subnav-btn' + (tab === 'financials' ? ' active' : '')} onClick={() => setTab('financials')}>Financials</button>}
+        <button className={'subnav-btn' + (tab === 'financials' ? ' active' : '')} onClick={() => setTab('financials')}>Financials</button>
         {!isPreview && selfAssignVenues.length > 0 && (
           <button className="subnav-btn" onClick={() => setShowBooking(true)} style={{color:'#00ffc2',borderBottom:'2px solid transparent'}}>
             + Book a gig
@@ -381,17 +364,14 @@ export default function DJDashboard({ previewProfile }) {
 
           {tonightGigs.length > 0 && (
             <div style={{background:'#1a0a00',border:'2px solid #ff990060',borderRadius:10,padding:'14px 18px',marginBottom:20}}>
-              <div style={{fontSize:11,fontWeight:700,color:'#ff9900',letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:10}}>
-                🎧 Tonight
-              </div>
+              <div style={{fontSize:11,fontWeight:700,color:'#ff9900',letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:10}}>🎧 Tonight</div>
               {tonightGigs.map(g => {
-                const vc   = getVenueColor(g.venue);
-                const logo = getVenueLogo(g.venue);
+                const vc = getVenueColor(g.venue); const logo = getVenueLogo(g.venue);
                 return (
                   <div key={g.id} style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12}}>
                     <div>
                       <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
-                        {logo && <img src={logo} alt={g.venue} style={{width:32,height:32,borderRadius:6,objectFit:'cover',border:`1px solid ${vc.color}30`}} onError={e=>{e.target.style.display='none';}} />}
+                        {logo && <img src={logo} alt={g.venue} style={{width:32,height:32,borderRadius:6,objectFit:'cover'}} onError={e=>{e.target.style.display='none';}} />}
                         <div style={{fontSize:18,fontWeight:700,color:'#e8e8f0'}}>{g.venue}</div>
                       </div>
                       <div style={{fontSize:13,color:'var(--text-muted)',marginTop:4}}>{g.time}</div>
@@ -474,14 +454,13 @@ export default function DJDashboard({ previewProfile }) {
         <div className="page-body">
           {pending.length === 0 && <div className="empty-state">No pending gigs right now.</div>}
           {pending.map(g => {
-            const vc   = getVenueColor(g.venue);
-            const logo = getVenueLogo(g.venue);
+            const vc = getVenueColor(g.venue); const logo = getVenueLogo(g.venue);
             return (
               <div key={g.id} className="pending-card" style={{borderColor:vc.color+'40'}}>
                 <div className="pending-head" style={{background:vc.bg, color:vc.color}}>⏳ Gig offer — action required</div>
                 <div className="pending-body">
                   <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
-                    {logo && <img src={logo} alt={g.venue} style={{width:32,height:32,borderRadius:6,objectFit:'cover',border:`1px solid ${vc.color}30`}} onError={e=>{e.target.style.display='none';}} />}
+                    {logo && <img src={logo} alt={g.venue} style={{width:32,height:32,borderRadius:6,objectFit:'cover'}} onError={e=>{e.target.style.display='none';}} />}
                     <div className="pending-venue">{g.venue}</div>
                   </div>
                   <div className="pending-meta" style={{marginTop:8}}>{formatDate(g.date)} · {g.time}</div>
@@ -500,44 +479,23 @@ export default function DJDashboard({ previewProfile }) {
         </div>
       )}
 
-      {tab === 'financials' && !isPreview && (
-        <FinancialsTab gigs={gigs} profile={profile} userUid={user.uid} />
+      {tab === 'financials' && (
+        <FinancialsTab gigs={gigs} profile={profile} userUid={profile.uid} />
       )}
 
       {!isPreview && showBooking && (
-        <SelfAssignModal
-          venues={selfAssignVenues}
-          profile={profile}
-          gigs={gigs}
-          onClose={() => setShowBooking(false)}
-          onBooked={handleBooked}
-        />
+        <SelfAssignModal venues={selfAssignVenues} profile={profile} gigs={gigs} onClose={() => setShowBooking(false)} onBooked={handleBooked} />
       )}
 
       {!isPreview && editingGig && (
-        <EditGigModal
-          gig={editingGig}
-          venues={selfAssignVenues}
-          onClose={() => setEditingGig(null)}
-          onSaved={handleSaved}
-        />
+        <EditGigModal gig={editingGig} venues={selfAssignVenues} onClose={() => setEditingGig(null)} onSaved={handleSaved} />
       )}
 
       {!isPreview && invoiceGig && (
-        <InvoiceModal
-          gig={invoiceGig}
-          userUid={user.uid}
-          allGigs={gigs}
-          onClose={() => setInvoiceGig(null)}
-        />
+        <InvoiceModal gig={invoiceGig} userUid={user.uid} allGigs={gigs} onClose={() => setInvoiceGig(null)} />
       )}
 
-      {toast && (
-        <SuccessToast
-          message={toast}
-          onDone={() => setToast(null)}
-        />
-      )}
+      {toast && <SuccessToast message={toast} onDone={() => setToast(null)} />}
     </div>
   );
 }
