@@ -30,6 +30,12 @@ function isoForDate(year, month, day) {
   return `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
 }
 
+function isNightTime(time) {
+  if (!time) return false;
+  const hour = parseInt(time.split(':')[0], 10);
+  return hour >= 18 || hour < 6;
+}
+
 function MiniCalendar({ selected, onChange, gigDates = [] }) {
   const now = new Date();
   const [year, setYear]   = useState(now.getFullYear());
@@ -59,16 +65,16 @@ function MiniCalendar({ selected, onChange, gigDates = [] }) {
         {Array.from({length: daysInMonth}, (_, i) => {
           const d   = i + 1;
           const iso = isoForDate(year, month, d);
-          const isSelected  = iso === selected;
-          const isToday     = iso === today;
-          const isPast      = iso < today;
-          const hasGig      = gigDates.includes(iso);
+          const isSelected = iso === selected;
+          const isToday    = iso === today;
+          const isPast     = iso < today;
+          const hasGig     = gigDates.includes(iso);
           return (
             <div
               key={d}
               onClick={() => !isPast && onChange(iso)}
               style={{
-                textAlign: 'center', padding: '5px 0', borderRadius: 4, fontSize: 11,
+                textAlign:'center', padding:'5px 0', borderRadius:4, fontSize:11,
                 cursor: isPast ? 'not-allowed' : 'pointer',
                 fontWeight: isSelected ? 700 : 400,
                 background: isSelected ? '#00ffc2' : isToday ? '#0a1a14' : 'transparent',
@@ -90,16 +96,6 @@ function MiniCalendar({ selected, onChange, gigDates = [] }) {
           {formatDate(selected)}
         </div>
       )}
-    </div>
-  );
-}
-
-function VenueBadge({ venue }) {
-  const { color, bg, group } = getVenueColor(venue);
-  return (
-    <div style={{display:'flex', alignItems:'center', gap:6, marginTop:4}}>
-      <div style={{width:8, height:8, borderRadius:'50%', background:color, flexShrink:0}} />
-      {group && <span style={{fontSize:10, color, background:bg, padding:'1px 6px', borderRadius:4, fontWeight:500}}>{group}</span>}
     </div>
   );
 }
@@ -262,12 +258,16 @@ function GigRow({ g, profile, isPreview, onEdit, onInvoice }) {
       </div>
       <div className="timeline-line" style={{background:vc.color+'40'}} />
       <div style={{flex:1, minWidth:0}}>
-        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
-          {logo && <img src={logo} alt={g.venue} style={{width:28,height:28,borderRadius:5,objectFit:'cover',flexShrink:0,border:`1px solid ${vc.color}30`}} onError={e=>{e.target.style.display='none';}} />}
-          <div className="timeline-venue">{g.venue}</div>
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:6}}>
+          {logo && (
+            <img src={logo} alt={g.venue} style={{width:44,height:44,borderRadius:8,objectFit:'cover',flexShrink:0}} onError={e=>{e.target.style.display='none';}} />
+          )}
+          <div>
+            <div className="timeline-venue" style={{fontSize:15,fontWeight:700}}>{g.venue}</div>
+            <div style={{fontSize:13,color:'#c0c0d8',fontWeight:500,marginTop:2}}>{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
+          </div>
         </div>
-        <div className="timeline-sub" style={{marginTop:4}}>{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
-        {g.fee && <div style={{fontSize:12,color:'#00ffc2',fontWeight:600,marginTop:3}}>€{g.fee}</div>}
+        {g.fee && <div style={{fontSize:14,color:'#00ffc2',fontWeight:700,marginTop:2}}>€{g.fee}</div>}
         {g.notes && <NotesBanner notes={g.notes} />}
       </div>
       {!isPreview && (
@@ -280,6 +280,61 @@ function GigRow({ g, profile, isPreview, onEdit, onInvoice }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function TodayBanner({ gigs }) {
+  const sorted = [...gigs].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+  const hasNight = sorted.some(g => isNightTime(g.time));
+  const label = hasNight ? '🎧 Tonight' : '📅 Today';
+  const accent = hasNight ? '#ff9900' : '#00ffc2';
+  const bg     = hasNight ? '#1a0a00' : '#001a10';
+  const border = hasNight ? '#ff990060' : '#00ffc240';
+
+  return (
+    <div style={{background:bg, border:`2px solid ${border}`, borderRadius:10, padding:'16px 18px', marginBottom:20}}>
+      <div style={{fontSize:11,fontWeight:700,color:accent,letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:12}}>
+        {label}
+      </div>
+      {sorted.map((g, i) => {
+        const vc   = getVenueColor(g.venue);
+        const logo = getVenueLogo(g.venue);
+        const night = isNightTime(g.time);
+        return (
+          <div key={g.id} style={{
+            display:'flex', alignItems:'center', gap:14,
+            padding: i > 0 ? '12px 0 0 0' : '0',
+            borderTop: i > 0 ? `1px solid ${accent}20` : 'none',
+            marginTop: i > 0 ? 12 : 0,
+          }}>
+            {logo ? (
+              <img src={logo} alt={g.venue} style={{width:52,height:52,borderRadius:10,objectFit:'cover',flexShrink:0}} onError={e=>{e.target.style.display='none';}} />
+            ) : (
+              <div style={{width:52,height:52,borderRadius:10,background:vc.bg,border:`1px solid ${vc.color}40`,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <div style={{width:12,height:12,borderRadius:'50%',background:vc.color}} />
+              </div>
+            )}
+            <div style={{flex:1}}>
+              <div style={{fontSize:17,fontWeight:700,color:'#e8e8f0'}}>{g.venue}</div>
+              <div style={{fontSize:13,color:'#c0c0d8',fontWeight:500,marginTop:3}}>
+                {g.time}
+                <span style={{
+                  marginLeft:8, fontSize:10, fontWeight:700,
+                  color: night ? '#ff9900' : '#00ffc2',
+                  background: night ? '#ff990015' : '#00ffc215',
+                  border: `1px solid ${night ? '#ff990040' : '#00ffc240'}`,
+                  borderRadius:4, padding:'1px 6px', textTransform:'uppercase', letterSpacing:'0.06em',
+                }}>
+                  {night ? 'Tonight' : 'Today'}
+                </span>
+              </div>
+              {g.fee && <div style={{fontSize:14,color:'#00ffc2',fontWeight:700,marginTop:4}}>€{g.fee}</div>}
+              {g.notes && <NotesBanner notes={g.notes} />}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -328,10 +383,10 @@ export default function DJDashboard({ previewProfile }) {
   const now          = new Date();
   const pending      = gigs.filter(g => g.status === 'pending');
   const confirmed    = gigs.filter(g => g.status === 'confirmed');
-  const tonightGigs  = confirmed.filter(g => g.date === todayStr());
+  const todayGigs    = confirmed.filter(g => g.date === todayStr());
   const upcomingGigs = confirmed.filter(g => g.date > todayStr());
   const pastGigs     = confirmed.filter(g => g.date < todayStr()).reverse();
-  const nextGig      = tonightGigs.length > 0 ? tonightGigs[0] : upcomingGigs[0];
+  const nextGig      = upcomingGigs[0];
 
   const monthEarnings    = gigs.filter(g => { if (g.status !== 'confirmed' || !g.fee) return false; const d = new Date(g.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).reduce((sum, g) => sum + Number(g.fee), 0);
   const upcomingEarnings = upcomingGigs.filter(g => g.fee).reduce((sum, g) => sum + Number(g.fee), 0);
@@ -359,57 +414,39 @@ export default function DJDashboard({ previewProfile }) {
           <div className="stats-row" style={{marginBottom:20}}>
             <div className="stat-card"><div className="stat-label">This month</div><div className="stat-val neon">€{monthEarnings}</div></div>
             <div className="stat-card"><div className="stat-label">Upcoming total</div><div className="stat-val" style={{color:'#a080ff'}}>€{upcomingEarnings}</div></div>
-            <div className="stat-card"><div className="stat-label">Confirmed gigs</div><div className="stat-val">{upcomingGigs.length + tonightGigs.length}</div></div>
+            <div className="stat-card"><div className="stat-label">Confirmed gigs</div><div className="stat-val">{upcomingGigs.length + todayGigs.length}</div></div>
           </div>
 
-          {tonightGigs.length > 0 && (
-            <div style={{background:'#1a0a00',border:'2px solid #ff990060',borderRadius:10,padding:'14px 18px',marginBottom:20}}>
-              <div style={{fontSize:11,fontWeight:700,color:'#ff9900',letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:10}}>🎧 Tonight</div>
-              {tonightGigs.map(g => {
-                const vc = getVenueColor(g.venue); const logo = getVenueLogo(g.venue);
-                return (
-                  <div key={g.id} style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12}}>
-                    <div>
-                      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
-                        {logo && <img src={logo} alt={g.venue} style={{width:32,height:32,borderRadius:6,objectFit:'cover'}} onError={e=>{e.target.style.display='none';}} />}
-                        <div style={{fontSize:18,fontWeight:700,color:'#e8e8f0'}}>{g.venue}</div>
-                      </div>
-                      <div style={{fontSize:13,color:'var(--text-muted)',marginTop:4}}>{g.time}</div>
-                      {g.fee && <div style={{fontSize:13,color:'#00ffc2',fontWeight:600,marginTop:4}}>€{g.fee}</div>}
-                      {g.notes && <NotesBanner notes={g.notes} />}
-                    </div>
-                    <div style={{textAlign:'center',flexShrink:0}}>
-                      <div style={{fontSize:22,fontWeight:700,fontFamily:'var(--font-mono)',color:'#ff9900',lineHeight:1}}>TONIGHT</div>
-                      <div style={{fontSize:10,color:'var(--text-muted)',letterSpacing:'0.1em',textTransform:'uppercase',marginTop:3}}>{g.time}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          {/* Today/Tonight banner — shows all gigs today */}
+          {todayGigs.length > 0 && <TodayBanner gigs={todayGigs} />}
 
-          {tonightGigs.length === 0 && nextGig && (
-            <div className="next-gig-card" style={{borderColor: getVenueColor(nextGig.venue).color + '40'}}>
+          {/* Next up card — only when no today gigs */}
+          {todayGigs.length === 0 && nextGig && (
+            <div className="next-gig-card" style={{borderColor: getVenueColor(nextGig.venue).color + '40', marginBottom:20}}>
               <div style={{flex:1}}>
                 <div className="next-label">Next up</div>
-                <div style={{display:'flex',alignItems:'center',gap:8,margin:'4px 0'}}>
-                  {getVenueLogo(nextGig.venue) && <img src={getVenueLogo(nextGig.venue)} alt={nextGig.venue} style={{width:32,height:32,borderRadius:6,objectFit:'cover'}} onError={e=>{e.target.style.display='none';}} />}
-                  <div className="next-venue">{nextGig.venue}</div>
+                <div style={{display:'flex',alignItems:'center',gap:12,margin:'8px 0'}}>
+                  {getVenueLogo(nextGig.venue) && (
+                    <img src={getVenueLogo(nextGig.venue)} alt={nextGig.venue} style={{width:48,height:48,borderRadius:10,objectFit:'cover'}} onError={e=>{e.target.style.display='none';}} />
+                  )}
+                  <div>
+                    <div className="next-venue" style={{fontSize:20,fontWeight:700}}>{nextGig.venue}</div>
+                    <div style={{fontSize:13,color:'#c0c0d8',fontWeight:500,marginTop:3}}>{formatDate(nextGig.date)} · {nextGig.time}</div>
+                  </div>
                 </div>
-                <div className="next-sub" style={{marginTop:6}}>{formatDate(nextGig.date)} · {nextGig.time}</div>
-                {nextGig.fee && <div style={{marginTop:6,fontSize:13,color:'#00ffc2',fontWeight:600}}>€{nextGig.fee}</div>}
+                {nextGig.fee && <div style={{fontSize:15,color:'#00ffc2',fontWeight:700,marginTop:4}}>€{nextGig.fee}</div>}
                 {nextGig.notes && <NotesBanner notes={nextGig.notes} />}
               </div>
-              <div style={{textAlign:'center'}}>
-                <div style={{fontSize:30,fontWeight:700,fontFamily:'var(--font-mono)',color:'#00ffc2',lineHeight:1}}>
+              <div style={{textAlign:'center',flexShrink:0}}>
+                <div style={{fontSize:36,fontWeight:700,fontFamily:'var(--font-mono)',color:'#00ffc2',lineHeight:1}}>
                   {Math.round((new Date(nextGig.date + 'T12:00:00') - new Date().setHours(0,0,0,0)) / 86400000)}
                 </div>
-                <div style={{fontSize:10,color:'var(--text-muted)',letterSpacing:'0.1em',textTransform:'uppercase',marginTop:3}}>days away</div>
+                <div style={{fontSize:11,color:'var(--text-muted)',letterSpacing:'0.1em',textTransform:'uppercase',marginTop:4}}>days away</div>
               </div>
             </div>
           )}
 
-          {tonightGigs.length === 0 && !nextGig && (
+          {todayGigs.length === 0 && !nextGig && (
             <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,padding:20,marginBottom:20,textAlign:'center',color:'var(--text-muted)',fontSize:13}}>
               No upcoming confirmed gigs.
             </div>
@@ -459,12 +496,14 @@ export default function DJDashboard({ previewProfile }) {
               <div key={g.id} className="pending-card" style={{borderColor:vc.color+'40'}}>
                 <div className="pending-head" style={{background:vc.bg, color:vc.color}}>⏳ Gig offer — action required</div>
                 <div className="pending-body">
-                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
-                    {logo && <img src={logo} alt={g.venue} style={{width:32,height:32,borderRadius:6,objectFit:'cover'}} onError={e=>{e.target.style.display='none';}} />}
-                    <div className="pending-venue">{g.venue}</div>
+                  <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:8}}>
+                    {logo && <img src={logo} alt={g.venue} style={{width:48,height:48,borderRadius:10,objectFit:'cover'}} onError={e=>{e.target.style.display='none';}} />}
+                    <div>
+                      <div className="pending-venue" style={{fontSize:16,fontWeight:700}}>{g.venue}</div>
+                      <div style={{fontSize:13,color:'#c0c0d8',fontWeight:500,marginTop:3}}>{formatDate(g.date)} · {g.time}</div>
+                    </div>
                   </div>
-                  <div className="pending-meta" style={{marginTop:8}}>{formatDate(g.date)} · {g.time}</div>
-                  {g.fee && <div style={{fontSize:15,color:'#00ffc2',fontWeight:700,marginBottom:10,marginTop:6}}>Fee: €{g.fee}</div>}
+                  {g.fee && <div style={{fontSize:15,color:'#00ffc2',fontWeight:700,marginBottom:10}}>Fee: €{g.fee}</div>}
                   {g.notes && <NotesBanner notes={g.notes} />}
                   {!isPreview && (
                     <div className="pending-actions" style={{marginTop:12}}>
