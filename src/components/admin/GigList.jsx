@@ -34,48 +34,25 @@ function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete }) {
       borderLeft: `3px solid ${vc.color}`,
       padding: '12px 14px',
     }}>
-      {/* Venue logo + name */}
       <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:8}}>
         {logo ? (
           <img
             src={logo}
             alt={g.venue}
-            style={{
-              width: 40, height: 40, borderRadius: 8,
-              objectFit: 'cover', flexShrink: 0,
-              border: `1px solid ${vc.color}30`,
-            }}
-            onError={e => { e.target.style.display = 'none'; }}
+            style={{width:40, height:40, borderRadius:8, objectFit:'cover', flexShrink:0, border:`1px solid ${vc.color}30`}}
+            onError={e => { e.target.style.display='none'; }}
           />
         ) : (
-          <div style={{
-            width: 40, height: 40, borderRadius: 8,
-            background: vc.bg, border: `1px solid ${vc.color}40`,
-            flexShrink: 0, display:'flex', alignItems:'center', justifyContent:'center',
-          }}>
+          <div style={{width:40, height:40, borderRadius:8, background:vc.bg, border:`1px solid ${vc.color}40`, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center'}}>
             <div style={{width:10, height:10, borderRadius:'50%', background:vc.color}} />
           </div>
         )}
         <div style={{fontSize:13, fontWeight:600, color:'#e8e8f0', lineHeight:1.3}}>{g.venue}</div>
       </div>
-
-      {/* Date + time */}
       <div style={{fontSize:12, color:'var(--text-muted)', fontFamily:'var(--font-mono)', marginBottom:2}}>{formatDate(g.date)}</div>
       <div style={{fontSize:12, color:'var(--text-muted)', fontFamily:'var(--font-mono)', marginBottom:4}}>{g.time}</div>
-
-      {/* Fee */}
-      {!hideFees && g.fee && (
-        <div style={{fontSize:13, color:'#00ffc2', fontWeight:700, marginBottom:6}}>€{g.fee}</div>
-      )}
-
-      {/* Notes */}
-      {g.notes && (
-        <div style={{fontSize:11, color:'#ffdd80', marginBottom:8, background:'#1a1400', border:'1px solid #ffbb0030', borderRadius:4, padding:'5px 8px'}}>
-          📌 {g.notes}
-        </div>
-      )}
-
-      {/* Actions */}
+      {!hideFees && g.fee && <div style={{fontSize:13, color:'#00ffc2', fontWeight:700, marginBottom:6}}>€{g.fee}</div>}
+      {g.notes && <div style={{fontSize:11, color:'#ffdd80', marginBottom:8, background:'#1a1400', border:'1px solid #ffbb0030', borderRadius:4, padding:'5px 8px'}}>📌 {g.notes}</div>}
       <div style={{display:'flex', gap:4, flexWrap:'wrap'}}>
         {g.status === 'pending' && <>
           <button className="btn btn-primary btn-sm" onClick={() => onConfirm(g.id)} style={{fontSize:10,padding:'3px 10px'}}>Confirm</button>
@@ -113,10 +90,10 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
       border: '1px solid var(--border)',
       borderRadius: 10,
       overflow: 'hidden',
-      minWidth: 220,
-      flex: '1 1 220px',
+      width: 260,
+      minWidth: 260,
+      flexShrink: 0,
     }}>
-      {/* DJ header */}
       <div style={{
         padding: '12px 14px',
         borderBottom: '1px solid var(--border)',
@@ -170,8 +147,9 @@ const FILTERS = [
 ];
 
 export default function GigList({ gigs, users = [], hideFees, onConfirm, onReject, onEdit, onDelete }) {
-  const [view, setView]     = useState('columns');
-  const [filter, setFilter] = useState('month');
+  const [view, setView]         = useState('columns');
+  const [filter, setFilter]     = useState('month');
+  const [hiddenDJs, setHiddenDJs] = useState({});
 
   const today     = new Date().toISOString().split('T')[0];
   const now       = new Date();
@@ -182,6 +160,12 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
 
+  function toggleDJ(uid) {
+    setHiddenDJs(h => ({ ...h, [uid]: !h[uid] }));
+  }
+
+  const visibleUsers = users.filter(dj => !hiddenDJs[dj.uid]);
+
   return (
     <div className="page-body">
       <div className="stats-row">
@@ -190,7 +174,8 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
         <div className="stat-card"><div className="stat-label">This month</div><div className="stat-val">{thisMonth.length}</div></div>
       </div>
 
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
+      {/* Controls row */}
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8, flexWrap:'wrap', gap:8}}>
         <div style={{display:'flex', gap:4}}>
           <button
             onClick={() => setView('columns')}
@@ -236,14 +221,49 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
         <button className="btn btn-primary btn-sm" onClick={() => onEdit(null)}>+ Assign gig</button>
       </div>
 
+      {/* DJ toggle pills */}
       {view === 'columns' && (
-        <div style={{display:'flex', gap:14, flexWrap:'wrap', alignItems:'flex-start'}}>
-          {users.map((dj, i) => (
+        <div style={{display:'flex', gap:6, flexWrap:'wrap', marginBottom:12}}>
+          {users.map((dj, i) => {
+            const hidden   = hiddenDJs[dj.uid];
+            const dotColor = DOT_COLORS[i % DOT_COLORS.length];
+            return (
+              <button
+                key={dj.uid}
+                onClick={() => toggleDJ(dj.uid)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  background: hidden ? 'transparent' : dotColor + '15',
+                  border: `1px solid ${hidden ? 'var(--border)' : dotColor + '50'}`,
+                  borderRadius: 20, padding: '4px 10px', cursor: 'pointer',
+                  color: hidden ? 'var(--text-muted)' : dotColor,
+                  fontSize: 11, fontWeight: 500,
+                  opacity: hidden ? 0.5 : 1,
+                  transition: 'all 0.15s',
+                }}
+              >
+                <div style={{width:6, height:6, borderRadius:'50%', background: hidden ? 'var(--text-muted)' : dotColor}} />
+                {dj.name.split(' ')[0]}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {view === 'columns' && (
+        <div style={{
+          display: 'flex',
+          gap: 14,
+          overflowX: 'auto',
+          alignItems: 'flex-start',
+          paddingBottom: 16,
+        }}>
+          {visibleUsers.map((dj, i) => (
             <DJColumn
               key={dj.uid}
               dj={dj}
               gigs={gigs}
-              dotColor={DOT_COLORS[i % DOT_COLORS.length]}
+              dotColor={DOT_COLORS[users.indexOf(dj) % DOT_COLORS.length]}
               hideFees={hideFees}
               filter={filter}
               onConfirm={onConfirm}
@@ -266,12 +286,7 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
               <div key={g.id} className="gig-row" style={{flexWrap:'wrap',gap:8,borderLeft:`3px solid ${vc.color}`}}>
                 <div className="gig-info" style={{display:'flex',alignItems:'center',gap:10}}>
                   {logo ? (
-                    <img
-                      src={logo}
-                      alt={g.venue}
-                      style={{width:36,height:36,borderRadius:6,objectFit:'cover',flexShrink:0,border:`1px solid ${vc.color}30`}}
-                      onError={e => { e.target.style.display = 'none'; }}
-                    />
+                    <img src={logo} alt={g.venue} style={{width:36,height:36,borderRadius:6,objectFit:'cover',flexShrink:0,border:`1px solid ${vc.color}30`}} onError={e=>{e.target.style.display='none';}} />
                   ) : (
                     <div style={{width:36,height:36,borderRadius:6,background:vc.bg,border:`1px solid ${vc.color}40`,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
                       <div style={{width:8,height:8,borderRadius:'50%',background:vc.color}} />
