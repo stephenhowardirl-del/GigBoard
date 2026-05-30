@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getVenueColor } from '../../lib/venueGroups';
+import { getVenueColor, getVenueLogo } from '../../lib/venueGroups';
 import CalendarView from '../CalendarView';
 import InvoiceModal from '../InvoiceModal';
 
@@ -14,14 +14,10 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-function VenueBadge({ venue }) {
-  const { color, bg, group } = getVenueColor(venue);
-  return (
-    <div style={{display:'flex', alignItems:'center', gap:6, marginTop:3}}>
-      <div style={{width:7, height:7, borderRadius:'50%', background:color, flexShrink:0}} />
-      {group && <span style={{fontSize:10, color, background:bg, padding:'1px 6px', borderRadius:4, fontWeight:500}}>{group}</span>}
-    </div>
-  );
+function isNightTime(time) {
+  if (!time) return false;
+  const hour = parseInt(time.split(':')[0], 10);
+  return hour >= 18 || hour < 6;
 }
 
 function NotesBanner({ notes }) {
@@ -34,21 +30,71 @@ function NotesBanner({ notes }) {
   );
 }
 
+function TodayBanner({ gigs, hideFees }) {
+  const sorted = [...gigs].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+  const allDay = sorted.every(g => !isNightTime(g.time));
+  const label  = allDay ? '📅 Today' : '🎧 Tonight';
+  const accent = allDay ? '#00ffc2' : '#ff9900';
+  const bg     = allDay ? '#001a10' : '#1a0a00';
+  const border = allDay ? '#00ffc240' : '#ff990060';
+
+  return (
+    <div style={{background:bg, border:`2px solid ${border}`, borderRadius:12, padding:'16px 20px', marginBottom:20}}>
+      <div style={{fontSize:12,fontWeight:700,color:accent,letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:14}}>
+        {label}
+      </div>
+      {sorted.map((g, i) => {
+        const vc   = getVenueColor(g.venue);
+        const logo = getVenueLogo(g.venue);
+        return (
+          <div key={g.id} style={{
+            display:'flex', alignItems:'center', gap:14,
+            paddingTop: i > 0 ? 14 : 0,
+            marginTop: i > 0 ? 14 : 0,
+            borderTop: i > 0 ? `1px solid ${accent}20` : 'none',
+          }}>
+            {logo ? (
+              <img src={logo} alt={g.venue} style={{width:54,height:54,borderRadius:10,objectFit:'cover',flexShrink:0}} onError={e=>{e.target.style.display='none';}} />
+            ) : (
+              <div style={{width:54,height:54,borderRadius:10,background:vc.bg,border:`1px solid ${vc.color}40`,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <div style={{width:14,height:14,borderRadius:'50%',background:vc.color}} />
+              </div>
+            )}
+            <div style={{flex:1}}>
+              <div style={{fontSize:18,fontWeight:700,color:'#ffffff',marginBottom:4}}>{g.venue}</div>
+              <div style={{fontSize:14,color:'#d0d0e8',fontWeight:500}}>{g.time}</div>
+              {!hideFees && g.fee && <div style={{fontSize:15,color:'#00ffc2',fontWeight:700,marginTop:6}}>€{g.fee}</div>}
+              {g.notes && <NotesBanner notes={g.notes} />}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function GigRow({ g, hideFees, onInvoice }) {
-  const d  = new Date(g.date + 'T12:00:00');
-  const vc = getVenueColor(g.venue);
+  const d    = new Date(g.date + 'T12:00:00');
+  const vc   = getVenueColor(g.venue);
+  const logo = getVenueLogo(g.venue);
   return (
     <div className="timeline-item" style={{borderLeft:`3px solid ${vc.color}`}}>
       <div className="timeline-date">
-        <div className="timeline-day" style={{color:vc.color}}>{d.getDate()}</div>
-        <div className="timeline-month">{d.toLocaleDateString('en-IE',{month:'short'})}</div>
+        <div className="timeline-day" style={{color:vc.color, fontSize:18, fontWeight:700}}>{d.getDate()}</div>
+        <div className="timeline-month" style={{color:'#8080a0', fontSize:11}}>{d.toLocaleDateString('en-IE',{month:'short'})}</div>
       </div>
       <div className="timeline-line" style={{background:vc.color+'40'}} />
-      <div style={{flex:1}}>
-        <div className="timeline-venue">{g.venue}</div>
-        <VenueBadge venue={g.venue} />
-        <div className="timeline-sub" style={{marginTop:4}}>{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
-        {!hideFees && g.fee && <div style={{fontSize:12,color:'#00ffc2',fontWeight:600,marginTop:3}}>€{g.fee}</div>}
+      <div style={{flex:1, minWidth:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:6}}>
+          {logo && (
+            <img src={logo} alt={g.venue} style={{width:44,height:44,borderRadius:8,objectFit:'cover',flexShrink:0}} onError={e=>{e.target.style.display='none';}} />
+          )}
+          <div>
+            <div style={{fontSize:15,fontWeight:700,color:'#ffffff'}}>{g.venue}</div>
+            <div style={{fontSize:13,color:'#d0d0e8',fontWeight:500,marginTop:2}}>{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
+          </div>
+        </div>
+        {!hideFees && g.fee && <div style={{fontSize:14,color:'#00ffc2',fontWeight:700,marginTop:2}}>€{g.fee}</div>}
         {g.notes && <NotesBanner notes={g.notes} />}
       </div>
       {!hideFees && g.fee && (
@@ -65,15 +111,15 @@ function GigRow({ g, hideFees, onInvoice }) {
 
 export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, hideFees, onAccept, onReject, onToggleUnavail, invoiceGig, setInvoiceGig }) {
   const [showPastGigs, setShowPastGigs] = useState(false);
-  const now     = new Date();
-  const today   = todayStr();
+  const now   = new Date();
+  const today = todayStr();
 
   const myConfirmed  = myGigs.filter(g => g.status === 'confirmed');
   const myPending    = myGigs.filter(g => g.status === 'pending');
-  const tonightGigs  = myConfirmed.filter(g => g.date === today);
+  const todayGigs    = myConfirmed.filter(g => g.date === today);
   const upcomingGigs = myConfirmed.filter(g => g.date > today);
   const pastGigs     = myConfirmed.filter(g => g.date < today).reverse();
-  const nextGig      = tonightGigs.length > 0 ? tonightGigs[0] : upcomingGigs[0];
+  const nextGig      = upcomingGigs[0];
 
   const myMonthEarnings    = myGigs.filter(g => {
     if (g.status !== 'confirmed' || !g.fee) return false;
@@ -88,76 +134,60 @@ export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, hideFee
       <div className="stats-row" style={{marginBottom:20}}>
         <div className="stat-card"><div className="stat-label">This month</div><div className="stat-val neon">{hideFees ? '—' : `€${myMonthEarnings}`}</div></div>
         <div className="stat-card"><div className="stat-label">Upcoming total</div><div className="stat-val" style={{color:'#a080ff'}}>{hideFees ? '—' : `€${myUpcomingEarnings}`}</div></div>
-        <div className="stat-card"><div className="stat-label">Confirmed</div><div className="stat-val">{upcomingGigs.length + tonightGigs.length}</div></div>
+        <div className="stat-card"><div className="stat-label">Confirmed</div><div className="stat-val">{upcomingGigs.length + todayGigs.length}</div></div>
       </div>
 
-      {/* TONIGHT banner */}
-      {tonightGigs.length > 0 && (
-        <div style={{background:'#1a0a00',border:'2px solid #ff990060',borderRadius:10,padding:'14px 18px',marginBottom:20}}>
-          <div style={{fontSize:11,fontWeight:700,color:'#ff9900',letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:10}}>
-            🎧 Tonight
-          </div>
-          {tonightGigs.map(g => {
-            const vc = getVenueColor(g.venue);
-            return (
-              <div key={g.id} style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12}}>
-                <div>
-                  <div style={{fontSize:18,fontWeight:700,color:'#e8e8f0'}}>{g.venue}</div>
-                  <VenueBadge venue={g.venue} />
-                  <div style={{fontSize:13,color:'var(--text-muted)',marginTop:6}}>{g.time}</div>
-                  {!hideFees && g.fee && <div style={{fontSize:13,color:'#00ffc2',fontWeight:600,marginTop:4}}>€{g.fee}</div>}
-                  {g.notes && <NotesBanner notes={g.notes} />}
-                </div>
-                <div style={{textAlign:'center',flexShrink:0}}>
-                  <div style={{fontSize:22,fontWeight:700,fontFamily:'var(--font-mono)',color:'#ff9900',lineHeight:1}}>TONIGHT</div>
-                  <div style={{fontSize:10,color:'var(--text-muted)',letterSpacing:'0.1em',textTransform:'uppercase',marginTop:3}}>{g.time}</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {todayGigs.length > 0 && <TodayBanner gigs={todayGigs} hideFees={hideFees} />}
 
-      {/* Next up — only show if no tonight gig */}
-      {tonightGigs.length === 0 && nextGig && (
-        <div className="next-gig-card" style={{borderColor: getVenueColor(nextGig.venue).color+'40'}}>
+      {todayGigs.length === 0 && nextGig && (
+        <div className="next-gig-card" style={{borderColor: getVenueColor(nextGig.venue).color+'40', marginBottom:20}}>
           <div style={{flex:1}}>
-            <div className="next-label">Next up</div>
-            <div className="next-venue">{nextGig.venue}</div>
-            <VenueBadge venue={nextGig.venue} />
-            <div className="next-sub" style={{marginTop:6}}>{formatDate(nextGig.date)} · {nextGig.time}</div>
-            {!hideFees && nextGig.fee && <div style={{marginTop:6,fontSize:13,color:'#00ffc2',fontWeight:600}}>€{nextGig.fee}</div>}
+            <div style={{fontSize:11,fontWeight:700,color:'#8080a0',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}}>Next up</div>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:8}}>
+              {getVenueLogo(nextGig.venue) && (
+                <img src={getVenueLogo(nextGig.venue)} alt={nextGig.venue} style={{width:52,height:52,borderRadius:10,objectFit:'cover'}} onError={e=>{e.target.style.display='none';}} />
+              )}
+              <div>
+                <div style={{fontSize:20,fontWeight:700,color:'#ffffff'}}>{nextGig.venue}</div>
+                <div style={{fontSize:14,color:'#d0d0e8',fontWeight:500,marginTop:3}}>{formatDate(nextGig.date)} · {nextGig.time}</div>
+              </div>
+            </div>
+            {!hideFees && nextGig.fee && <div style={{fontSize:16,color:'#00ffc2',fontWeight:700}}>€{nextGig.fee}</div>}
             {nextGig.notes && <NotesBanner notes={nextGig.notes} />}
           </div>
-          <div style={{textAlign:'center'}}>
-            <div style={{fontSize:30,fontWeight:700,fontFamily:'var(--font-mono)',color:'#00ffc2',lineHeight:1}}>
+          <div style={{textAlign:'center',flexShrink:0}}>
+            <div style={{fontSize:40,fontWeight:700,fontFamily:'var(--font-mono)',color:'#00ffc2',lineHeight:1}}>
               {Math.round((new Date(nextGig.date + 'T12:00:00') - new Date().setHours(0,0,0,0)) / 86400000)}
             </div>
-            <div style={{fontSize:10,color:'var(--text-muted)',letterSpacing:'0.1em',textTransform:'uppercase',marginTop:3}}>days away</div>
+            <div style={{fontSize:11,color:'#8080a0',letterSpacing:'0.1em',textTransform:'uppercase',marginTop:4}}>days away</div>
           </div>
         </div>
       )}
 
-      {tonightGigs.length === 0 && !nextGig && upcomingGigs.length === 0 && (
-        <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,padding:20,marginBottom:20,textAlign:'center',color:'var(--text-muted)',fontSize:13}}>
+      {todayGigs.length === 0 && !nextGig && upcomingGigs.length === 0 && (
+        <div style={{background:'#0d0d18',border:'1px solid #1e1e30',borderRadius:10,padding:20,marginBottom:20,textAlign:'center',color:'#505070',fontSize:13}}>
           No upcoming confirmed gigs assigned to you yet.
         </div>
       )}
 
-      {/* Pending */}
       {myPending.length > 0 && (
         <>
           <div className="section-title" style={{color:'#ffbb00'}}>Pending — action required</div>
           {myPending.map(g => {
-            const vc = getVenueColor(g.venue);
+            const vc   = getVenueColor(g.venue);
+            const logo = getVenueLogo(g.venue);
             return (
               <div key={g.id} className="pending-card" style={{marginBottom:12,borderColor:vc.color+'40'}}>
                 <div className="pending-head" style={{background:vc.bg,color:vc.color}}>⏳ Gig offer</div>
                 <div className="pending-body">
-                  <div className="pending-venue">{g.venue}</div>
-                  <VenueBadge venue={g.venue} />
-                  <div className="pending-meta" style={{marginTop:8}}>{formatDate(g.date)} · {g.time}</div>
-                  {!hideFees && g.fee && <div style={{fontSize:15,color:'#00ffc2',fontWeight:700,marginBottom:10,marginTop:6}}>Fee: €{g.fee}</div>}
+                  <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:8}}>
+                    {logo && <img src={logo} alt={g.venue} style={{width:44,height:44,borderRadius:8,objectFit:'cover'}} onError={e=>{e.target.style.display='none';}} />}
+                    <div>
+                      <div style={{fontSize:16,fontWeight:700,color:'#ffffff'}}>{g.venue}</div>
+                      <div style={{fontSize:13,color:'#d0d0e8',fontWeight:500,marginTop:2}}>{formatDate(g.date)} · {g.time}</div>
+                    </div>
+                  </div>
+                  {!hideFees && g.fee && <div style={{fontSize:15,color:'#00ffc2',fontWeight:700,marginBottom:10}}>Fee: €{g.fee}</div>}
                   {g.notes && <NotesBanner notes={g.notes} />}
                   <div className="pending-actions" style={{marginTop:12}}>
                     <button className="btn btn-primary" onClick={() => onAccept(g)}>Accept</button>
@@ -170,7 +200,6 @@ export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, hideFee
         </>
       )}
 
-      {/* Upcoming gigs */}
       {upcomingGigs.length > 0 && (
         <>
           <div className="section-title">Upcoming gigs</div>
@@ -182,12 +211,11 @@ export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, hideFee
         </>
       )}
 
-      {/* Past gigs — collapsible */}
       {pastGigs.length > 0 && (
         <div style={{marginTop:20}}>
           <button
             onClick={() => setShowPastGigs(p => !p)}
-            style={{background:'transparent',border:'1px solid var(--border)',borderRadius:6,color:'var(--text-muted)',fontSize:12,padding:'6px 14px',cursor:'pointer',marginBottom:10,display:'flex',alignItems:'center',gap:6}}
+            style={{background:'transparent',border:'1px solid #2a2a40',borderRadius:6,color:'#8080a0',fontSize:12,padding:'6px 14px',cursor:'pointer',marginBottom:10,display:'flex',alignItems:'center',gap:6}}
           >
             {showPastGigs ? '▲' : '▼'} Past gigs ({pastGigs.length})
           </button>
