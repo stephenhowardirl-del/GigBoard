@@ -29,33 +29,25 @@ function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete }) {
   const logo = getVenueLogo(g.venue);
 
   return (
-    <div style={{
-      borderBottom: '1px solid var(--bg-raised)',
-      padding: '12px 14px',
-    }}>
-      <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:8}}>
+    <div style={{borderBottom:'1px solid #1a1a2e', padding:'14px 16px'}}>
+      <div style={{display:'flex', alignItems:'center', gap:12, marginBottom:10}}>
         {logo ? (
-          <img
-            src={logo}
-            alt={g.venue}
-            style={{width:40, height:40, borderRadius:8, objectFit:'cover', flexShrink:0}}
-            onError={e => { e.target.style.display='none'; }}
-          />
+          <img src={logo} alt={g.venue} style={{width:44, height:44, borderRadius:8, objectFit:'cover', flexShrink:0}} onError={e=>{e.target.style.display='none';}} />
         ) : (
-          <div style={{
-            width:40, height:40, borderRadius:8,
-            background:'var(--bg-raised)', flexShrink:0,
-            display:'flex', alignItems:'center', justifyContent:'center',
-          }}>
-            <div style={{width:10, height:10, borderRadius:'50%', background:'#4040608'}} />
+          <div style={{width:44, height:44, borderRadius:8, background:'#1a1a2e', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center'}}>
+            <div style={{width:10, height:10, borderRadius:'50%', background:vc.color}} />
           </div>
         )}
-        <div style={{fontSize:13, fontWeight:600, color:'#e8e8f0', lineHeight:1.3}}>{g.venue}</div>
+        <div style={{fontSize:14, fontWeight:700, color:'#ffffff'}}>{g.venue}</div>
       </div>
-      <div style={{fontSize:12, color:'var(--text-muted)', fontFamily:'var(--font-mono)', marginBottom:2}}>{formatDate(g.date)}</div>
-      <div style={{fontSize:12, color:'var(--text-muted)', fontFamily:'var(--font-mono)', marginBottom:4}}>{g.time}</div>
-      {!hideFees && g.fee && <div style={{fontSize:13, color:'#00ffc2', fontWeight:700, marginBottom:6}}>€{g.fee}</div>}
-      {g.notes && <div style={{fontSize:11, color:'#ffdd80', marginBottom:8, background:'#1a1400', border:'1px solid #ffbb0030', borderRadius:4, padding:'5px 8px'}}>📌 {g.notes}</div>}
+      <div style={{fontSize:13, color:'#d0d0e8', fontWeight:500, marginBottom:2}}>{formatDate(g.date)}</div>
+      <div style={{fontSize:13, color:'#d0d0e8', fontWeight:500, marginBottom:6}}>{g.time}</div>
+      {!hideFees && g.fee && <div style={{fontSize:14, color:'#00ffc2', fontWeight:700, marginBottom:8}}>€{g.fee}</div>}
+      {g.notes && (
+        <div style={{fontSize:11, color:'#ffdd80', marginBottom:10, background:'#1a1400', border:'1px solid #ffbb0030', borderRadius:4, padding:'5px 8px'}}>
+          📌 {g.notes}
+        </div>
+      )}
       <div style={{display:'flex', gap:4, flexWrap:'wrap'}}>
         {g.status === 'pending' && <>
           <button className="btn btn-primary btn-sm" onClick={() => onConfirm(g.id)} style={{fontSize:10,padding:'3px 10px'}}>Confirm</button>
@@ -89,8 +81,8 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
 
   return (
     <div style={{
-      background: 'var(--bg-surface)',
-      border: '1px solid var(--border)',
+      background: '#0d0d18',
+      border: '1px solid #1e1e30',
       borderRadius: 10,
       overflow: 'hidden',
       width: 260,
@@ -98,31 +90,30 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
       flexShrink: 0,
     }}>
       <div style={{
-        padding: '12px 14px',
-        borderBottom: '1px solid var(--border)',
+        padding: '12px 16px',
+        borderBottom: '1px solid #1e1e30',
         display: 'flex',
         alignItems: 'center',
         gap: 10,
-        background: 'var(--bg-raised)',
+        background: '#131320',
       }}>
         <div style={{
-          width: 34, height: 34, borderRadius: '50%',
-          background: dotColor + '20', color: dotColor,
-          border: `1px solid ${dotColor}40`,
+          width: 36, height: 36, borderRadius: '50%',
+          background: dotColor + '25', color: dotColor,
+          border: `1.5px solid ${dotColor}60`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-mono)',
-          flexShrink: 0,
+          fontSize: 12, fontWeight: 700, flexShrink: 0,
         }}>
           {initials}
         </div>
         <div style={{flex:1, minWidth:0}}>
-          <div style={{fontSize:13, fontWeight:600, color:'#e8e8f0', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{dj.name}</div>
-          <div style={{fontSize:11, color:'var(--text-muted)', marginTop:2}}>{upcoming.length} gig{upcoming.length !== 1 ? 's' : ''}</div>
+          <div style={{fontSize:14, fontWeight:700, color:'#ffffff', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{dj.name}</div>
+          <div style={{fontSize:11, color:'#8080a0', marginTop:2}}>{upcoming.length} gig{upcoming.length !== 1 ? 's' : ''}</div>
         </div>
       </div>
 
       {upcoming.length === 0 ? (
-        <div style={{padding:'24px 14px', textAlign:'center', color:'var(--text-muted)', fontSize:12}}>
+        <div style={{padding:'24px 16px', textAlign:'center', color:'#505070', fontSize:12}}>
           No gigs in this period
         </div>
       ) : (
@@ -153,14 +144,7 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
   const [filter, setFilter]       = useState('month');
   const [hiddenDJs, setHiddenDJs] = useState({});
 
-  const today     = new Date().toISOString().split('T')[0];
-  const now       = new Date();
-  const upcoming  = gigs.filter(g => g.status !== 'rejected' && g.date >= today);
-  const pending   = gigs.filter(g => g.status === 'pending');
-  const thisMonth = gigs.filter(g => {
-    const d = new Date(g.date);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  });
+  const pending = gigs.filter(g => g.status === 'pending');
 
   function toggleDJ(uid) {
     setHiddenDJs(h => ({ ...h, [uid]: !h[uid] }));
@@ -170,14 +154,20 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
 
   return (
     <div className="page-body">
-      <div className="stats-row">
-        <div className="stat-card"><div className="stat-label">Upcoming</div><div className="stat-val neon">{upcoming.length}</div></div>
-        <div className="stat-card"><div className="stat-label">Pending</div><div className="stat-val pending">{pending.length}</div></div>
-        <div className="stat-card"><div className="stat-label">This month</div><div className="stat-val">{thisMonth.length}</div></div>
-      </div>
 
-      {/* Controls row */}
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8, flexWrap:'wrap', gap:8}}>
+      {/* Pending count only */}
+      {pending.length > 0 && (
+        <div style={{
+          background:'#2a1800', border:'1px solid #ffbb0040', borderRadius:8,
+          padding:'10px 16px', marginBottom:16,
+          display:'flex', alignItems:'center', gap:10,
+        }}>
+          <span style={{fontSize:13, color:'#ffbb00', fontWeight:700}}>⏳ {pending.length} pending gig{pending.length !== 1 ? 's' : ''} need{pending.length === 1 ? 's' : ''} action</span>
+        </div>
+      )}
+
+      {/* Controls */}
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10, flexWrap:'wrap', gap:8}}>
         <div style={{display:'flex', gap:4}}>
           {FILTERS.map(f => (
             <button
@@ -185,8 +175,8 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
               onClick={() => setFilter(f.key)}
               style={{
                 background: filter === f.key ? '#00ffc220' : 'transparent',
-                border: `1px solid ${filter === f.key ? '#00ffc250' : 'var(--border)'}`,
-                color: filter === f.key ? '#00ffc2' : 'var(--text-muted)',
+                border: `1px solid ${filter === f.key ? '#00ffc250' : '#2a2a40'}`,
+                color: filter === f.key ? '#00ffc2' : '#8080a0',
                 borderRadius: 5, padding: '4px 12px', fontSize: 11, cursor: 'pointer',
               }}
             >
@@ -198,7 +188,7 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
       </div>
 
       {/* DJ toggle pills */}
-      <div style={{display:'flex', gap:6, flexWrap:'wrap', marginBottom:12}}>
+      <div style={{display:'flex', gap:6, flexWrap:'wrap', marginBottom:14}}>
         {users.map((dj, i) => {
           const hidden   = hiddenDJs[dj.uid];
           const dotColor = DOT_COLORS[i % DOT_COLORS.length];
@@ -209,28 +199,23 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 background: hidden ? 'transparent' : dotColor + '15',
-                border: `1px solid ${hidden ? 'var(--border)' : dotColor + '50'}`,
-                borderRadius: 20, padding: '4px 10px', cursor: 'pointer',
-                color: hidden ? 'var(--text-muted)' : dotColor,
-                fontSize: 11, fontWeight: 500,
+                border: `1px solid ${hidden ? '#2a2a40' : dotColor + '50'}`,
+                borderRadius: 20, padding: '4px 12px', cursor: 'pointer',
+                color: hidden ? '#505070' : dotColor,
+                fontSize: 11, fontWeight: 600,
                 opacity: hidden ? 0.5 : 1,
                 transition: 'all 0.15s',
               }}
             >
-              <div style={{width:6, height:6, borderRadius:'50%', background: hidden ? 'var(--text-muted)' : dotColor}} />
+              <div style={{width:6, height:6, borderRadius:'50%', background: hidden ? '#505070' : dotColor}} />
               {dj.name.split(' ')[0]}
             </button>
           );
         })}
       </div>
 
-      <div style={{
-        display: 'flex',
-        gap: 14,
-        overflowX: 'auto',
-        alignItems: 'flex-start',
-        paddingBottom: 16,
-      }}>
+      {/* DJ columns */}
+      <div style={{display:'flex', gap:14, overflowX:'auto', alignItems:'flex-start', paddingBottom:16}}>
         {visibleUsers.map((dj, i) => (
           <DJColumn
             key={dj.uid}
