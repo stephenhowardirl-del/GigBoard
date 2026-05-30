@@ -85,9 +85,8 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
       border: '1px solid #1e1e30',
       borderRadius: 10,
       overflow: 'hidden',
-      width: 260,
-      minWidth: 260,
-      flexShrink: 0,
+      flex: 1,
+      minWidth: 0,
     }}>
       <div style={{
         padding: '12px 16px',
@@ -155,18 +154,18 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
   return (
     <div className="page-body">
 
-      {/* Pending count only */}
       {pending.length > 0 && (
         <div style={{
           background:'#2a1800', border:'1px solid #ffbb0040', borderRadius:8,
           padding:'10px 16px', marginBottom:16,
           display:'flex', alignItems:'center', gap:10,
         }}>
-          <span style={{fontSize:13, color:'#ffbb00', fontWeight:700}}>⏳ {pending.length} pending gig{pending.length !== 1 ? 's' : ''} need{pending.length === 1 ? 's' : ''} action</span>
+          <span style={{fontSize:13, color:'#ffbb00', fontWeight:700}}>
+            ⏳ {pending.length} pending gig{pending.length !== 1 ? 's' : ''} need{pending.length === 1 ? 's' : ''} action
+          </span>
         </div>
       )}
 
-      {/* Controls */}
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10, flexWrap:'wrap', gap:8}}>
         <div style={{display:'flex', gap:4}}>
           {FILTERS.map(f => (
@@ -187,7 +186,6 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
         <button className="btn btn-primary btn-sm" onClick={() => onEdit(null)}>+ Assign gig</button>
       </div>
 
-      {/* DJ toggle pills */}
       <div style={{display:'flex', gap:6, flexWrap:'wrap', marginBottom:14}}>
         {users.map((dj, i) => {
           const hidden   = hiddenDJs[dj.uid];
@@ -214,8 +212,7 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
         })}
       </div>
 
-      {/* DJ columns */}
-      <div style={{display:'flex', gap:14, overflowX:'auto', alignItems:'flex-start', paddingBottom:16}}>
+      <div style={{display:'flex', gap:12, alignItems:'flex-start', width:'100%'}}>
         {visibleUsers.map((dj, i) => (
           <DJColumn
             key={dj.uid}
