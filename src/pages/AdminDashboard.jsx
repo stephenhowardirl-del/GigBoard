@@ -13,6 +13,7 @@ import RosterTab from '../components/admin/RosterTab';
 import AccessTab from '../components/admin/AccessTab';
 import MyGigsTab from '../components/admin/MyGigsTab';
 import FinancialsTab from '../components/FinancialsTab';
+import DJDashboard from './DJDashboard';
 
 export default function AdminDashboard({ hideFees }) {
   const { user, profile } = useAuth();
@@ -36,6 +37,7 @@ export default function AdminDashboard({ hideFees }) {
   const [newEmail, setNewEmail]     = useState('');
   const [inviteSaved, setInviteSaved] = useState(false);
   const [invoiceGig, setInvoiceGig] = useState(null);
+  const [previewDJ, setPreviewDJ]   = useState(null);
 
   async function load() {
     try {
@@ -43,23 +45,17 @@ export default function AdminDashboard({ hideFees }) {
         getAllGigs(), getAllUsers(), getAllUnavailability(), getInvitedEmails(), getVenues(),
       ]);
       setGigs(g);
-
-      // All users except full admin for roster/access management
       const djUsers = u.filter(x => x.role !== 'full_admin');
       setUsers(djUsers);
       setAllUsers(u);
-
       setUnavail(un);
       setInvites(inv);
       setVenues(v);
-
       if (profile?.uid) {
         const [mg, mun] = await Promise.all([
           getGigsForDJ(profile.uid),
           getUnavailableDates(profile.uid),
         ]);
-
-        // Also catch gigs assigned by name in case djUid doesn't match
         const myGigsByName = g.filter(gig =>
           gig.djName && profile.name &&
           gig.djName.toLowerCase() === profile.name.toLowerCase()
@@ -151,9 +147,7 @@ export default function AdminDashboard({ hideFees }) {
     load();
   }
 
-  const myPending = myGigs.filter(g => g.status === 'pending');
-
-  // Build the list for the gig board — DJs plus Steve Howard at the front
+  const myPending   = myGigs.filter(g => g.status === 'pending');
   const gigListUsers = profile ? [
     { uid: profile.uid, name: profile.name, role: 'full_admin' },
     ...users,
@@ -161,6 +155,34 @@ export default function AdminDashboard({ hideFees }) {
 
   if (loading) return <div className="loading">Loading…</div>;
   if (error)   return <div className="loading" style={{color:'#ff4070'}}>Error: {error} — try refreshing.</div>;
+
+  // DJ Preview mode
+  if (previewDJ) {
+    return (
+      <>
+        <div style={{
+          background: '#1a0a00',
+          border: '1px solid #ff990060',
+          padding: '10px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+        }}>
+          <div style={{fontSize:13, color:'#ff9900', fontWeight:600}}>
+            👁 Previewing as {previewDJ.name}
+          </div>
+          <button
+            onClick={() => setPreviewDJ(null)}
+            style={{background:'#ff990020', border:'1px solid #ff990060', color:'#ff9900', borderRadius:6, padding:'4px 14px', fontSize:12, cursor:'pointer', fontWeight:600}}
+          >
+            Exit preview
+          </button>
+        </div>
+        <DJDashboard previewProfile={previewDJ} />
+      </>
+    );
+  }
 
   return (
     <>
@@ -173,6 +195,22 @@ export default function AdminDashboard({ hideFees }) {
         </button>
         <button className={`subnav-btn${tab==='financials'?' active':''}`} onClick={() => setTab('financials')}>Financials</button>
         <button className={`subnav-btn${tab==='access'?' active':''}`}     onClick={() => setTab('access')}>Access</button>
+
+        {/* Preview as DJ selector */}
+        <div style={{marginLeft:'auto', display:'flex', alignItems:'center', gap:8, padding:'0 16px'}}>
+          <span style={{fontSize:11, color:'var(--text-muted)'}}>Preview as:</span>
+          <select
+            value=''
+            onChange={e => {
+              const dj = users.find(u => u.uid === e.target.value);
+              if (dj) setPreviewDJ(dj);
+            }}
+            style={{background:'var(--bg-raised)', border:'1px solid var(--border)', color:'var(--text-secondary)', borderRadius:5, padding:'3px 8px', fontSize:11, cursor:'pointer'}}
+          >
+            <option value=''>Select DJ…</option>
+            {users.map(u => <option key={u.uid} value={u.uid}>{u.name}</option>)}
+          </select>
+        </div>
       </div>
 
       {tab === 'list' && (
