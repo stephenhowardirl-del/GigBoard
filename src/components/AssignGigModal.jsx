@@ -20,14 +20,12 @@ function isoForDate(year, month, day) {
   return `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
 }
 
-// Returns all dates between start and end (inclusive) that fall on dayOfWeek (0=Mon, 6=Sun)
 function getRecurringDates(startIso, endIso, dayOfWeek) {
   const dates = [];
   const start = new Date(startIso + 'T12:00:00');
   const end   = new Date(endIso   + 'T12:00:00');
   const cur   = new Date(start);
-  // Advance to first matching day
-  const jsDow = (dayOfWeek + 1) % 7; // convert Mon=0 to JS Sun=0 system
+  const jsDow = (dayOfWeek + 1) % 7;
   while (cur.getDay() !== jsDow) cur.setDate(cur.getDate() + 1);
   while (cur <= end) {
     const y = cur.getFullYear();
@@ -84,11 +82,7 @@ function MultiCalendar({ selected, onChange, unavailDates = [] }) {
               key={d}
               onClick={() => toggleDate(iso)}
               style={{
-                textAlign: 'center',
-                padding: '5px 0',
-                borderRadius: 4,
-                fontSize: 11,
-                cursor: 'pointer',
+                textAlign:'center', padding:'5px 0', borderRadius:4, fontSize:11, cursor:'pointer',
                 fontWeight: isSelected ? 700 : 400,
                 background: isSelected ? '#00ffc2' : isToday ? '#0a1a14' : 'transparent',
                 color: isSelected ? '#000' : isUnavail ? '#ff6090' : isToday ? '#00ffc2' : '#c0c0d0',
@@ -146,11 +140,7 @@ function SingleCalendar({ selected, onChange, unavailDates = [] }) {
               key={d}
               onClick={() => onChange(iso)}
               style={{
-                textAlign: 'center',
-                padding: '5px 0',
-                borderRadius: 4,
-                fontSize: 11,
-                cursor: 'pointer',
+                textAlign:'center', padding:'5px 0', borderRadius:4, fontSize:11, cursor:'pointer',
                 fontWeight: isSelected ? 700 : 400,
                 background: isSelected ? '#00ffc2' : isToday ? '#0a1a14' : 'transparent',
                 color: isSelected ? '#000' : isUnavail ? '#ff6090' : isToday ? '#00ffc2' : '#c0c0d0',
@@ -174,7 +164,7 @@ function SingleCalendar({ selected, onChange, unavailDates = [] }) {
 export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, existingGig = null, venues = [] }) {
   const editing = !!existingGig;
 
-  const [mode, setMode]             = useState('single'); // 'single' | 'multi' | 'recurring'
+  const [mode, setMode]             = useState('single');
   const [users, setUsers]           = useState([]);
   const [unavail, setUnavail]       = useState([]);
   const [venue, setVenue]           = useState(existingGig?.venue || lockedVenue || '');
@@ -182,7 +172,7 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
   const [multiDates, setMultiDates] = useState([]);
   const [recurStart, setRecurStart] = useState('');
   const [recurEnd, setRecurEnd]     = useState('');
-  const [recurDay, setRecurDay]     = useState(3); // Thursday = index 3 (Mon=0)
+  const [recurDay, setRecurDay]     = useState(3);
   const [time, setTime]             = useState(existingGig?.time || '');
   const [djUid, setDjUid]           = useState(existingGig?.djUid || '');
   const [notes, setNotes]           = useState(existingGig?.notes || '');
@@ -254,7 +244,6 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
         notes, fee,
       });
     } else {
-      // Create multiple gigs
       for (const d of dates) {
         await createGig({
           venue: lockedVenue || venue,
@@ -264,21 +253,19 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
           assignedBy: 'Steve Howard',
         });
       }
+      // Trigger parent reload by calling onAssign with a dummy signal
+      await onAssign({ _bulkCreated: true });
     }
     onClose();
   }
 
   const btnStyle = (active) => ({
-    flex: 1,
-    padding: '7px 0',
-    borderRadius: 6,
+    flex: 1, padding: '7px 0', borderRadius: 6,
     border: `1px solid ${active ? '#00ffc250' : '#2a2a40'}`,
     background: active ? '#00ffc215' : 'transparent',
     color: active ? '#00ffc2' : '#8080a0',
-    fontSize: 12,
-    fontWeight: active ? 600 : 400,
-    cursor: 'pointer',
-    transition: 'all 0.15s',
+    fontSize: 12, fontWeight: active ? 600 : 400,
+    cursor: 'pointer', transition: 'all 0.15s',
   });
 
   const dates = getDatesToSubmit();
@@ -291,7 +278,6 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
           {editing ? 'Changes will reset the gig to pending — the DJ will need to reconfirm.' : 'DJ will need to accept before the gig is confirmed.'}
         </div>
 
-        {/* Mode toggle — only show when not editing */}
         {!editing && (
           <div style={{display:'flex', gap:6, marginBottom:16}}>
             <button style={btnStyle(mode === 'single')}    onClick={() => setMode('single')}>Single date</button>
@@ -300,7 +286,6 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
           </div>
         )}
 
-        {/* Venue */}
         {!lockedVenue && (
           <div className="field">
             <label>Venue</label>
@@ -314,7 +299,6 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
           <div className="field"><label>Venue</label><input value={lockedVenue} disabled /></div>
         )}
 
-        {/* Single date */}
         {mode === 'single' && (
           <div className="field">
             <label>Date</label>
@@ -322,7 +306,6 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
           </div>
         )}
 
-        {/* Multiple dates */}
         {mode === 'multi' && (
           <div className="field">
             <label>Select dates — tap to toggle</label>
@@ -339,7 +322,6 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
           </div>
         )}
 
-        {/* Recurring */}
         {mode === 'recurring' && (
           <>
             <div className="field">
@@ -375,7 +357,6 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
           </>
         )}
 
-        {/* Time */}
         <div className="field">
           <label>Time</label>
           <select value={time} onChange={e => setTime(e.target.value)} style={{width:'100%'}}>
@@ -384,7 +365,6 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
           </select>
         </div>
 
-        {/* DJ */}
         <div className="field">
           <label>Assign to DJ</label>
           <select value={djUid} onChange={handleDjChange}>
@@ -398,13 +378,11 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
           </div>
         )}
 
-        {/* Fee */}
         <div className="field">
           <label>Fee (€)</label>
           <input type="number" placeholder="e.g. 150" value={fee} onChange={e => setFee(e.target.value)} min="0" />
         </div>
 
-        {/* Notes */}
         <div className="field">
           <label>Notes (optional)</label>
           <input type="text" placeholder="e.g. Load in at 21:00" value={notes} onChange={e => setNotes(e.target.value)} />
