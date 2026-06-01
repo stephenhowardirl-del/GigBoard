@@ -79,6 +79,10 @@ export default function AdminDashboard({ hideFees }) {
   useEffect(() => { if (profile?.uid) load(); }, [profile]);
 
   async function handleAssign(gigData) {
+    if (gigData._bulkCreated) {
+      load();
+      return;
+    }
     await createGig({ ...gigData, assignedBy: 'Steve Howard' });
     load();
   }
@@ -147,7 +151,7 @@ export default function AdminDashboard({ hideFees }) {
     load();
   }
 
-  const myPending   = myGigs.filter(g => g.status === 'pending');
+  const myPending    = myGigs.filter(g => g.status === 'pending');
   const gigListUsers = profile ? [
     { uid: profile.uid, name: profile.name, role: 'full_admin' },
     ...users,
@@ -156,18 +160,13 @@ export default function AdminDashboard({ hideFees }) {
   if (loading) return <div className="loading">Loading…</div>;
   if (error)   return <div className="loading" style={{color:'#ff4070'}}>Error: {error} — try refreshing.</div>;
 
-  // DJ Preview mode
   if (previewDJ) {
     return (
       <>
         <div style={{
-          background: '#1a0a00',
-          border: '1px solid #ff990060',
-          padding: '10px 20px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
+          background: '#1a0a00', border: '1px solid #ff990060',
+          padding: '10px 20px', display: 'flex', alignItems: 'center',
+          justifyContent: 'space-between', gap: 12,
         }}>
           <div style={{fontSize:13, color:'#ff9900', fontWeight:600}}>
             👁 Previewing as {previewDJ.name}
@@ -196,7 +195,6 @@ export default function AdminDashboard({ hideFees }) {
         <button className={`subnav-btn${tab==='financials'?' active':''}`} onClick={() => setTab('financials')}>Financials</button>
         <button className={`subnav-btn${tab==='access'?' active':''}`}     onClick={() => setTab('access')}>Access</button>
 
-        {/* Preview as DJ selector */}
         <div style={{marginLeft:'auto', display:'flex', alignItems:'center', gap:8, padding:'0 16px'}}>
           <span style={{fontSize:11, color:'var(--text-muted)'}}>Preview as:</span>
           <select
