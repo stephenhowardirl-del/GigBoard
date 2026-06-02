@@ -96,7 +96,7 @@ function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete }) {
 
   return (
     <div style={{borderBottom:'1px solid #1a1a2e', padding:'12px 14px'}}>
-      <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:8}}>
+      <div style={{display:'flex', alignItems:'flex-start', gap:10, marginBottom:8}}>
         {logo ? (
           <img src={logo} alt={g.venue} style={{width:38,height:38,borderRadius:7,objectFit:'cover',flexShrink:0}} onError={e=>{e.target.style.display='none';}} />
         ) : (
@@ -105,8 +105,8 @@ function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete }) {
           </div>
         )}
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:13,fontWeight:700,color:'#ffffff',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{g.venue}</div>
-          <div style={{fontSize:11,color:'#d0d0e8',marginTop:2}}>{formatDate(g.date)} · {g.time}</div>
+          <div style={{fontSize:13,fontWeight:700,color:'#ffffff',lineHeight:1.3}}>{g.venue}</div>
+          <div style={{fontSize:11,color:'#d0d0e8',marginTop:3}}>{formatDate(g.date)} · {g.time}</div>
         </div>
         <GigMenu g={g} onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete} />
       </div>
@@ -171,7 +171,7 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
           {initials}
         </div>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:13,fontWeight:700,color:'#ffffff',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{dj.name}</div>
+          <div style={{fontSize:13,fontWeight:700,color:'#ffffff'}}>{dj.name}</div>
           <div style={{fontSize:11,color:'#8080a0',marginTop:1}}>{upcoming.length} gig{upcoming.length !== 1 ? 's' : ''}</div>
         </div>
       </div>
