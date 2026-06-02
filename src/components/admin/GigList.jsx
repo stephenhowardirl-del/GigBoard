@@ -13,6 +13,11 @@ function getDateRange(filter) {
     const end = new Date(today); end.setDate(end.getDate() + 7);
     return { from: today.toISOString().split('T')[0], to: end.toISOString().split('T')[0] };
   }
+  if (filter === 'nextweek') {
+    const start = new Date(today); start.setDate(start.getDate() + 7);
+    const end   = new Date(today); end.setDate(end.getDate() + 14);
+    return { from: start.toISOString().split('T')[0], to: end.toISOString().split('T')[0] };
+  }
   if (filter === 'month') {
     const end = new Date(today); end.setMonth(end.getMonth() + 1);
     return { from: today.toISOString().split('T')[0], to: end.toISOString().split('T')[0] };
@@ -195,9 +200,10 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
 
 const DOT_COLORS = ['#00d4aa','#a080ff','#40a0ff','#ff60c0','#ffbb00','#80d040'];
 const FILTERS = [
-  { key:'week',  label:'This week' },
-  { key:'month', label:'This month' },
-  { key:'all',   label:'All' },
+  { key:'week',     label:'This week' },
+  { key:'nextweek', label:'Next week' },
+  { key:'month',    label:'This month' },
+  { key:'all',      label:'All' },
 ];
 
 export default function GigList({ gigs, users = [], hideFees, onConfirm, onReject, onEdit, onDelete }) {
