@@ -41,12 +41,13 @@ function GigMenu({ g, onConfirm, onReject, onEdit, onDelete }) {
         style={{
           background: open ? '#2a2a40' : 'transparent',
           border: '1px solid #2a2a40',
-          color: '#d0d0e8',
+          color: '#8080a0',
           borderRadius: 6,
-          width: 30, height: 30,
+          width: 28, height: 28,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer', fontSize: 16, fontWeight: 700,
-          transition: 'background 0.15s',
+          cursor: 'pointer', fontSize: 14, fontWeight: 700,
+          transition: 'all 0.15s',
+          lineHeight: 1,
         }}
       >
         ⋯
@@ -54,46 +55,29 @@ function GigMenu({ g, onConfirm, onReject, onEdit, onDelete }) {
 
       {open && (
         <div style={{
-          position: 'absolute', top: 36, right: 0, zIndex: 100,
+          position: 'absolute', top: 32, right: 0, zIndex: 100,
           background: '#131320', border: '1px solid #2a2a40',
-          borderRadius: 8, minWidth: 150,
-          boxShadow: '0 8px 24px #00000080',
+          borderRadius: 8, minWidth: 140,
+          boxShadow: '0 8px 24px #00000090',
           overflow: 'hidden',
         }}>
-          {isPending && (
-            <>
-              <button
-                onClick={() => { onConfirm(g.id); setOpen(false); }}
-                style={{width:'100%', padding:'10px 14px', background:'transparent', border:'none', borderBottom:'1px solid #1e1e2e', color:'#00ffc2', fontSize:13, fontWeight:600, textAlign:'left', cursor:'pointer', display:'flex', alignItems:'center', gap:8}}
-              >
-                ✓ Confirm
-              </button>
-              <button
-                onClick={() => { onReject(g.id); setOpen(false); }}
-                style={{width:'100%', padding:'10px 14px', background:'transparent', border:'none', borderBottom:'1px solid #1e1e2e', color:'#ff9900', fontSize:13, fontWeight:500, textAlign:'left', cursor:'pointer', display:'flex', alignItems:'center', gap:8}}
-              >
-                ✕ Reject
-              </button>
-            </>
-          )}
+          {isPending && <>
+            <button onClick={() => { onConfirm(g.id); setOpen(false); }} style={{width:'100%',padding:'9px 14px',background:'transparent',border:'none',borderBottom:'1px solid #1e1e2e',color:'#00ffc2',fontSize:12,fontWeight:600,textAlign:'left',cursor:'pointer'}}>
+              ✓ Confirm
+            </button>
+            <button onClick={() => { onReject(g.id); setOpen(false); }} style={{width:'100%',padding:'9px 14px',background:'transparent',border:'none',borderBottom:'1px solid #1e1e2e',color:'#ff9900',fontSize:12,fontWeight:500,textAlign:'left',cursor:'pointer'}}>
+              ✕ Reject
+            </button>
+          </>}
           {!isPending && (
-            <button
-              onClick={() => { onConfirm(g.id); setOpen(false); }}
-              style={{width:'100%', padding:'10px 14px', background:'transparent', border:'none', borderBottom:'1px solid #1e1e2e', color:'#00ffc2', fontSize:13, fontWeight:500, textAlign:'left', cursor:'pointer', display:'flex', alignItems:'center', gap:8}}
-            >
+            <button onClick={() => { onConfirm(g.id); setOpen(false); }} style={{width:'100%',padding:'9px 14px',background:'transparent',border:'none',borderBottom:'1px solid #1e1e2e',color:'#00ffc2',fontSize:12,fontWeight:500,textAlign:'left',cursor:'pointer'}}>
               ✓ Re-confirm
             </button>
           )}
-          <button
-            onClick={() => { onEdit(g); setOpen(false); }}
-            style={{width:'100%', padding:'10px 14px', background:'transparent', border:'none', borderBottom:'1px solid #1e1e2e', color:'#e8e8f0', fontSize:13, fontWeight:500, textAlign:'left', cursor:'pointer', display:'flex', alignItems:'center', gap:8}}
-          >
+          <button onClick={() => { onEdit(g); setOpen(false); }} style={{width:'100%',padding:'9px 14px',background:'transparent',border:'none',borderBottom:'1px solid #1e1e2e',color:'#e8e8f0',fontSize:12,fontWeight:500,textAlign:'left',cursor:'pointer'}}>
             ✏️ Edit
           </button>
-          <button
-            onClick={() => { onDelete(g); setOpen(false); }}
-            style={{width:'100%', padding:'10px 14px', background:'transparent', border:'none', color:'#ff4070', fontSize:13, fontWeight:500, textAlign:'left', cursor:'pointer', display:'flex', alignItems:'center', gap:8}}
-          >
+          <button onClick={() => { onDelete(g); setOpen(false); }} style={{width:'100%',padding:'9px 14px',background:'transparent',border:'none',color:'#ff4070',fontSize:12,fontWeight:500,textAlign:'left',cursor:'pointer'}}>
             🗑 Delete
           </button>
         </div>
@@ -110,49 +94,61 @@ function StatusPill({ status }) {
   };
   const c = config[status] || config.pending;
   return (
-    <span style={{fontSize:11, fontWeight:600, color:c.color, background:c.bg, border:`1px solid ${c.border}`, borderRadius:4, padding:'2px 8px'}}>
+    <span style={{fontSize:10,fontWeight:600,color:c.color,background:c.bg,border:`1px solid ${c.border}`,borderRadius:4,padding:'2px 7px',whiteSpace:'nowrap'}}>
       {c.label}
     </span>
   );
 }
 
 function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete }) {
-  const vc   = getVenueColor(g.venue);
-  const logo = getVenueLogo(g.venue);
+  const vc      = getVenueColor(g.venue);
+  const logo    = getVenueLogo(g.venue);
+  const [showNotes, setShowNotes] = useState(false);
 
   return (
-    <div style={{borderBottom:'1px solid #1a1a2e', padding:'14px 16px'}}>
-      <div style={{display:'flex', alignItems:'flex-start', gap:12}}>
-        {/* Logo */}
-        <div style={{flexShrink:0}}>
-          {logo ? (
-            <img src={logo} alt={g.venue} style={{width:44, height:44, borderRadius:8, objectFit:'cover'}} onError={e=>{e.target.style.display='none';}} />
-          ) : (
-            <div style={{width:44, height:44, borderRadius:8, background:'#1a1a2e', display:'flex', alignItems:'center', justifyContent:'center'}}>
-              <div style={{width:10, height:10, borderRadius:'50%', background:vc.color}} />
-            </div>
-          )}
-        </div>
-
-        {/* Info */}
-        <div style={{flex:1, minWidth:0}}>
-          <div style={{fontSize:14, fontWeight:700, color:'#ffffff', marginBottom:3}}>{g.venue}</div>
-          <div style={{fontSize:12, color:'#d0d0e8', fontWeight:500, marginBottom:2}}>{formatDate(g.date)}</div>
-          <div style={{fontSize:12, color:'#d0d0e8', fontWeight:500, marginBottom:6}}>{g.time}</div>
-          <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
-            <StatusPill status={g.status} />
-            {!hideFees && g.fee && <span style={{fontSize:13, color:'#00ffc2', fontWeight:700}}>€{g.fee}</span>}
+    <div style={{borderBottom:'1px solid #1a1a2e', padding:'12px 14px'}}>
+      {/* Row 1: logo + venue + menu */}
+      <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:8}}>
+        {logo ? (
+          <img src={logo} alt={g.venue} style={{width:36,height:36,borderRadius:7,objectFit:'cover',flexShrink:0}} onError={e=>{e.target.style.display='none';}} />
+        ) : (
+          <div style={{width:36,height:36,borderRadius:7,background:'#1a1a2e',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <div style={{width:8,height:8,borderRadius:'50%',background:vc.color}} />
           </div>
-          {g.notes && (
-            <div style={{fontSize:11, color:'#ffdd80', marginTop:8, background:'#1a1400', border:'1px solid #ffbb0030', borderRadius:4, padding:'5px 8px'}}>
-              📌 {g.notes}
-            </div>
-          )}
+        )}
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#ffffff',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{g.venue}</div>
         </div>
-
-        {/* Menu */}
         <GigMenu g={g} onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete} />
       </div>
+
+      {/* Row 2: date + time */}
+      <div style={{fontSize:12,color:'#d0d0e8',fontWeight:500,marginBottom:6}}>
+        {formatDate(g.date)} · {g.time}
+      </div>
+
+      {/* Row 3: status + fee */}
+      <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+        <StatusPill status={g.status} />
+        {!hideFees && g.fee && (
+          <span style={{fontSize:13,color:'#00ffc2',fontWeight:700}}>€{g.fee}</span>
+        )}
+        {g.notes && (
+          <button
+            onClick={() => setShowNotes(n => !n)}
+            style={{background:'transparent',border:'none',color:'#ffbb00',fontSize:11,cursor:'pointer',padding:0,marginLeft:'auto'}}
+          >
+            📌 {showNotes ? 'Hide' : 'Note'}
+          </button>
+        )}
+      </div>
+
+      {/* Notes — collapsible */}
+      {g.notes && showNotes && (
+        <div style={{fontSize:11,color:'#ffdd80',marginTop:8,background:'#1a1400',border:'1px solid #ffbb0030',borderRadius:4,padding:'6px 8px'}}>
+          {g.notes}
+        </div>
+      )}
     </div>
   );
 }
@@ -177,31 +173,31 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
 
   return (
     <div style={{
-      background: '#0d0d18', border: '1px solid #1e1e30',
-      borderRadius: 10, overflow: 'hidden',
-      flex: 1, minWidth: 0,
+      background:'#0d0d18', border:'1px solid #1e1e30',
+      borderRadius:10, overflow:'hidden',
+      flex:1, minWidth:0,
     }}>
       <div style={{
-        padding: '12px 16px', borderBottom: '1px solid #1e1e30',
-        display: 'flex', alignItems: 'center', gap: 10, background: '#131320',
+        padding:'12px 14px', borderBottom:'1px solid #1e1e30',
+        display:'flex', alignItems:'center', gap:10, background:'#131320',
       }}>
         <div style={{
-          width: 36, height: 36, borderRadius: '50%',
-          background: dotColor + '25', color: dotColor,
-          border: `1.5px solid ${dotColor}60`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 12, fontWeight: 700, flexShrink: 0,
+          width:34, height:34, borderRadius:'50%',
+          background:dotColor+'25', color:dotColor,
+          border:`1.5px solid ${dotColor}60`,
+          display:'flex', alignItems:'center', justifyContent:'center',
+          fontSize:12, fontWeight:700, flexShrink:0,
         }}>
           {initials}
         </div>
-        <div style={{flex:1, minWidth:0}}>
-          <div style={{fontSize:14, fontWeight:700, color:'#ffffff', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{dj.name.split(' ')[0]}</div>
-          <div style={{fontSize:11, color:'#8080a0', marginTop:2}}>{upcoming.length} gig{upcoming.length !== 1 ? 's' : ''}</div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#ffffff',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{dj.name.split(' ')[0]}</div>
+          <div style={{fontSize:11,color:'#8080a0',marginTop:1}}>{upcoming.length} gig{upcoming.length !== 1 ? 's' : ''}</div>
         </div>
       </div>
 
       {upcoming.length === 0 ? (
-        <div style={{padding:'24px 16px', textAlign:'center', color:'#505070', fontSize:12}}>
+        <div style={{padding:'24px 14px',textAlign:'center',color:'#505070',fontSize:12}}>
           No gigs in this period
         </div>
       ) : (
@@ -219,14 +215,14 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
 
 const DOT_COLORS = ['#00d4aa','#a080ff','#40a0ff','#ff60c0','#ffbb00','#80d040'];
 const FILTERS = [
-  { key: 'week',  label: 'This week' },
-  { key: 'month', label: 'This month' },
-  { key: 'all',   label: 'All' },
+  { key:'week',  label:'This week' },
+  { key:'month', label:'This month' },
+  { key:'all',   label:'All' },
 ];
 
 export default function GigList({ gigs, users = [], hideFees, onConfirm, onReject, onEdit, onDelete }) {
-  const [filter, setFilter]         = useState('month');
-  const [hiddenDJs, setHiddenDJs]   = useState({});
+  const [filter, setFilter]       = useState('month');
+  const [hiddenDJs, setHiddenDJs] = useState({});
 
   const pending = gigs.filter(g => g.status === 'pending');
 
@@ -239,19 +235,15 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
   return (
     <div className="page-body">
       {pending.length > 0 && (
-        <div style={{
-          background:'#2a1800', border:'1px solid #ffbb0040', borderRadius:8,
-          padding:'10px 16px', marginBottom:16,
-          display:'flex', alignItems:'center', gap:10,
-        }}>
-          <span style={{fontSize:13, color:'#ffbb00', fontWeight:700}}>
+        <div style={{background:'#2a1800',border:'1px solid #ffbb0040',borderRadius:8,padding:'10px 16px',marginBottom:16,display:'flex',alignItems:'center'}}>
+          <span style={{fontSize:13,color:'#ffbb00',fontWeight:700}}>
             ⏳ {pending.length} pending gig{pending.length !== 1 ? 's' : ''} need{pending.length === 1 ? 's' : ''} action
           </span>
         </div>
       )}
 
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10, flexWrap:'wrap', gap:8}}>
-        <div style={{display:'flex', gap:4}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10,flexWrap:'wrap',gap:8}}>
+        <div style={{display:'flex',gap:4}}>
           {FILTERS.map(f => (
             <button
               key={f.key}
@@ -260,7 +252,7 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
                 background: filter === f.key ? '#00ffc220' : 'transparent',
                 border: `1px solid ${filter === f.key ? '#00ffc250' : '#2a2a40'}`,
                 color: filter === f.key ? '#00ffc2' : '#8080a0',
-                borderRadius: 5, padding: '4px 12px', fontSize: 11, cursor: 'pointer',
+                borderRadius:5, padding:'4px 12px', fontSize:11, cursor:'pointer',
               }}
             >
               {f.label}
@@ -270,7 +262,7 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
         <button className="btn btn-primary btn-sm" onClick={() => onEdit(null)}>+ Assign gig</button>
       </div>
 
-      <div style={{display:'flex', gap:6, flexWrap:'wrap', marginBottom:14}}>
+      <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14}}>
         {users.map((dj, i) => {
           const hidden   = hiddenDJs[dj.uid];
           const dotColor = DOT_COLORS[i % DOT_COLORS.length];
@@ -279,24 +271,24 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
               key={dj.uid}
               onClick={() => toggleDJ(dj.uid)}
               style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                background: hidden ? 'transparent' : dotColor + '15',
-                border: `1px solid ${hidden ? '#2a2a40' : dotColor + '50'}`,
-                borderRadius: 20, padding: '4px 12px', cursor: 'pointer',
+                display:'flex', alignItems:'center', gap:6,
+                background: hidden ? 'transparent' : dotColor+'15',
+                border: `1px solid ${hidden ? '#2a2a40' : dotColor+'50'}`,
+                borderRadius:20, padding:'4px 12px', cursor:'pointer',
                 color: hidden ? '#505070' : dotColor,
-                fontSize: 11, fontWeight: 600,
+                fontSize:11, fontWeight:600,
                 opacity: hidden ? 0.5 : 1,
-                transition: 'all 0.15s',
+                transition:'all 0.15s',
               }}
             >
-              <div style={{width:6, height:6, borderRadius:'50%', background: hidden ? '#505070' : dotColor}} />
+              <div style={{width:6,height:6,borderRadius:'50%',background:hidden?'#505070':dotColor}} />
               {dj.name.split(' ')[0]}
             </button>
           );
         })}
       </div>
 
-      <div style={{display:'flex', gap:12, alignItems:'flex-start', width:'100%'}}>
+      <div style={{display:'flex',gap:12,alignItems:'flex-start',width:'100%'}}>
         {visibleUsers.map((dj, i) => (
           <DJColumn
             key={dj.uid} dj={dj} gigs={gigs}
