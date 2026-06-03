@@ -22,6 +22,11 @@ function getDateRange(filter) {
     const end = new Date(today); end.setMonth(end.getMonth() + 1);
     return { from: today.toISOString().split('T')[0], to: end.toISOString().split('T')[0] };
   }
+  if (filter === 'nextmonth') {
+    const start = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    const end   = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+    return { from: start.toISOString().split('T')[0], to: end.toISOString().split('T')[0] };
+  }
   return null;
 }
 
@@ -120,10 +125,7 @@ function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete }) {
         <StatusPill status={g.status} />
         {!hideFees && g.fee && <span style={{fontSize:13,color:'#00ffc2',fontWeight:700}}>€{g.fee}</span>}
         {g.notes && (
-          <button
-            onClick={() => setShowNotes(n => !n)}
-            style={{background:'transparent',border:'none',color:'#ffbb00',fontSize:11,cursor:'pointer',padding:0,marginLeft:'auto'}}
-          >
+          <button onClick={() => setShowNotes(n => !n)} style={{background:'transparent',border:'none',color:'#ffbb00',fontSize:11,cursor:'pointer',padding:0,marginLeft:'auto'}}>
             📌 {showNotes ? 'Hide' : 'Note'}
           </button>
         )}
@@ -200,10 +202,11 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
 
 const DOT_COLORS = ['#00d4aa','#a080ff','#40a0ff','#ff60c0','#ffbb00','#80d040'];
 const FILTERS = [
-  { key:'week',     label:'This week' },
-  { key:'nextweek', label:'Next week' },
-  { key:'month',    label:'This month' },
-  { key:'all',      label:'All' },
+  { key:'week',      label:'This week' },
+  { key:'nextweek',  label:'Next week' },
+  { key:'month',     label:'This month' },
+  { key:'nextmonth', label:'Next month' },
+  { key:'all',       label:'All' },
 ];
 
 export default function GigList({ gigs, users = [], hideFees, onConfirm, onReject, onEdit, onDelete }) {
@@ -229,7 +232,7 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
       )}
 
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10,flexWrap:'wrap',gap:8}}>
-        <div style={{display:'flex',gap:4}}>
+        <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
           {FILTERS.map(f => (
             <button
               key={f.key}
