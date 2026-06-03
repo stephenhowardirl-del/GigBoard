@@ -7,7 +7,7 @@ import InvoiceModal from '../components/InvoiceModal';
 import FinancialsTab from '../components/FinancialsTab';
 
 const TIMES = Array.from({length: 48}, (_, i) => {
-  const h = Math.floor(i / 2).toString().padStart(2, '00');
+  const h = Math.floor(i / 2).toString().padStart(2, '0');
   const m = i % 2 === 0 ? '00' : '30';
   return `${h}:${m}`;
 });
