@@ -396,34 +396,42 @@ function SelfAssignModal({ venues, profile, gigs, onClose, onBooked }) {
   );
 }
 
-function GigRow({ g, profile, isPreview, hideFees, onEdit, onInvoice }) {
+function GigRow({ g, profile, isPreview, hideFees, onEdit, onInvoice, isPast }) {
   const d    = new Date(g.date + 'T12:00:00');
   const vc   = getVenueColor(g.venue);
   const logo = getVenueLogo(g.venue);
   const isSelfAssigned = g.assignedBy === profile.name;
+
   return (
-    <div className="timeline-item" style={{borderLeft:`3px solid ${vc.color}`, flexWrap:'wrap'}}>
+    <div className="timeline-item" style={{
+      borderLeft: isPast ? '3px solid #2a2a40' : `3px solid ${vc.color}`,
+      opacity: isPast ? 0.7 : 1,
+      flexWrap:'wrap',
+    }}>
       <div className="timeline-date">
-        <div className="timeline-day" style={{color:vc.color}}>{d.getDate()}</div>
-        <div className="timeline-month">{d.toLocaleDateString('en-IE',{month:'short'})}</div>
+        <div className="timeline-day" style={{color: isPast ? '#505070' : vc.color}}>{d.getDate()}</div>
+        <div className="timeline-month" style={{color:'#505070'}}>{d.toLocaleDateString('en-IE',{month:'short'})}</div>
       </div>
-      <div className="timeline-line" style={{background:vc.color+'40'}} />
+      <div className="timeline-line" style={{background: isPast ? '#2a2a4040' : vc.color+'40'}} />
       <div style={{flex:1, minWidth:0}}>
         <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:6}}>
-          {logo && <img src={logo} alt={g.venue} style={{width:44,height:44,borderRadius:8,objectFit:'cover',flexShrink:0}} onError={e=>{e.target.style.display='none';}} />}
+          {logo && <img src={logo} alt={g.venue} style={{width:40,height:40,borderRadius:8,objectFit:'cover',flexShrink:0,opacity: isPast ? 0.6 : 1}} onError={e=>{e.target.style.display='none';}} />}
           <div>
-            <div className="timeline-venue" style={{fontSize:15,fontWeight:700}}>{g.venue}</div>
-            <div style={{fontSize:13,color:'#c0c0d8',fontWeight:500,marginTop:2}}>{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
+            <div className="timeline-venue" style={{fontSize:14,fontWeight:700,color: isPast ? '#8080a0' : '#ffffff'}}>{g.venue}</div>
+            <div style={{fontSize:12,color:'#505070',fontWeight:500,marginTop:2}}>{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
           </div>
         </div>
-        {!hideFees && g.fee && <div style={{fontSize:14,color:'#00ffc2',fontWeight:700,marginTop:2}}>€{g.fee}</div>}
+        {!hideFees && g.fee && <div style={{fontSize:13,color: isPast ? '#506050' : '#00ffc2',fontWeight:700,marginTop:2}}>€{g.fee}</div>}
         {g.notes && <NotesBanner notes={g.notes} />}
       </div>
-      {!isPreview && (
+      {!isPreview && !isPast && (
         <div style={{display:'flex',flexDirection:'column',gap:6,alignSelf:'center'}}>
           {isSelfAssigned && <button onClick={() => onEdit(g)} style={{background:'transparent',border:'1px solid #2a2a40',color:'#9090b0',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>✏️ Edit</button>}
           {!hideFees && g.fee && <button onClick={() => onInvoice(g)} style={{background:'transparent',border:'1px solid #2a2a40',color:'#9090b0',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>🧾 Invoice</button>}
         </div>
+      )}
+      {!isPreview && isPast && g.fee && !hideFees && (
+        <button onClick={() => onInvoice(g)} style={{background:'transparent',border:'1px solid #2a2a40',color:'#505070',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap',alignSelf:'center'}}>🧾 Invoice</button>
       )}
     </div>
   );
@@ -478,7 +486,6 @@ export default function DJDashboard({ previewProfile, hideFees }) {
   const [invoiceGig, setInvoiceGig]     = useState(null);
   const [editingGig, setEditingGig]     = useState(null);
   const [toast, setToast]               = useState(null);
-  const [showPastGigs, setShowPastGigs] = useState(false);
 
   const selfAssignVenues = profile?.selfAssignVenues || [];
 
@@ -516,18 +523,21 @@ export default function DJDashboard({ previewProfile, hideFees }) {
 
   const monthEarnings    = gigs.filter(g => { if (g.status !== 'confirmed' || !g.fee) return false; const d = new Date(g.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).reduce((sum, g) => sum + Number(g.fee), 0);
   const upcomingEarnings = upcomingGigs.filter(g => g.fee).reduce((sum, g) => sum + Number(g.fee), 0);
+  const pastEarnings     = pastGigs.filter(g => g.fee).reduce((sum, g) => sum + Number(g.fee), 0);
 
   if (loading) return <div className="loading">Loading...</div>;
 
   return (
     <div>
       <div className="subnav">
-        <button className={'subnav-btn'+(tab==='schedule'?' active':'')} onClick={() => setTab('schedule')}>My schedule</button>
-        <button className={'subnav-btn'+(tab==='calendar'?' active':'')} onClick={() => setTab('calendar')}>Month view</button>
-        <button className={'subnav-btn'+(tab==='pending'?' active':'')} onClick={() => setTab('pending')}>
+        <button className={'subnav-btn'+(tab==='schedule'?    ' active':'')} onClick={() => setTab('schedule')}>My schedule</button>
+        <button className={'subnav-btn'+(tab==='calendar'?    ' active':'')} onClick={() => setTab('calendar')}>Month view</button>
+        <button className={'subnav-btn'+(tab==='pending'?     ' active':'')} onClick={() => setTab('pending')}>
           Pending{pending.length > 0 && <span className="notif-dot">{pending.length}</span>}
         </button>
-        <button className={'subnav-btn'+(tab==='financials'?' active':'')} onClick={() => setTab('financials')}>Financials</button>
+        <button className={'subnav-btn'+(tab==='history'?     ' active':'')} onClick={() => setTab('history')}>History</button>
+        <button className={'subnav-btn'+(tab==='availability'?' active':'')} onClick={() => setTab('availability')}>Availability</button>
+        <button className={'subnav-btn'+(tab==='financials'?  ' active':'')} onClick={() => setTab('financials')}>Financials</button>
         {!isPreview && selfAssignVenues.length > 0 && (
           <button className="subnav-btn" onClick={() => setShowBooking(true)} style={{color:'#00ffc2',borderBottom:'2px solid transparent'}}>+ Book a gig</button>
         )}
@@ -576,28 +586,48 @@ export default function DJDashboard({ previewProfile, hideFees }) {
             <>
               <div className="section-title">Upcoming gigs</div>
               <div className="panel">
-                {upcomingGigs.map(g => <GigRow key={g.id} g={g} profile={profile} isPreview={isPreview} hideFees={hideFees} onEdit={setEditingGig} onInvoice={setInvoiceGig} />)}
+                {upcomingGigs.map(g => <GigRow key={g.id} g={g} profile={profile} isPreview={isPreview} hideFees={hideFees} onEdit={setEditingGig} onInvoice={setInvoiceGig} isPast={false} />)}
               </div>
             </>
           )}
+        </div>
+      )}
 
-          {pastGigs.length > 0 && (
-            <div style={{marginTop:20}}>
-              <button onClick={() => setShowPastGigs(p => !p)} style={{background:'transparent',border:'1px solid #2a2a40',borderRadius:6,color:'#8080a0',fontSize:12,padding:'6px 14px',cursor:'pointer',marginBottom:10,display:'flex',alignItems:'center',gap:6}}>
-                {showPastGigs ? '▲' : '▼'} Past gigs ({pastGigs.length})
-              </button>
-              {showPastGigs && (
-                <div className="panel">
-                  {pastGigs.map(g => <GigRow key={g.id} g={g} profile={profile} isPreview={isPreview} hideFees={hideFees} onEdit={setEditingGig} onInvoice={setInvoiceGig} />)}
-                </div>
-              )}
-            </div>
+      {tab === 'history' && (
+        <div className="page-body">
+          {pastGigs.length === 0 ? (
+            <div className="empty-state">No past gigs yet.</div>
+          ) : (
+            <>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+                <div style={{fontSize:13,color:'#8080a0'}}>{pastGigs.length} completed gig{pastGigs.length !== 1 ? 's' : ''}</div>
+                {!hideFees && <div style={{fontSize:13,color:'#00ffc2',fontWeight:700}}>Total earned: €{pastEarnings}</div>}
+              </div>
+              <div className="panel">
+                {pastGigs.map(g => <GigRow key={g.id} g={g} profile={profile} isPreview={isPreview} hideFees={hideFees} onEdit={setEditingGig} onInvoice={setInvoiceGig} isPast={true} />)}
+              </div>
+            </>
           )}
         </div>
       )}
 
       {tab === 'calendar' && (
         <CalendarView gigs={gigs} unavailDates={unavail} onToggleUnavail={isPreview ? null : handleToggleUnavail} readOnly={isPreview} />
+      )}
+
+      {tab === 'availability' && (
+        <div className="page-body">
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:15,fontWeight:700,color:'#ffffff',marginBottom:6}}>My availability</div>
+            <div style={{fontSize:12,color:'#8080a0'}}>Tap a free day to mark yourself unavailable. Tap again to remove.</div>
+          </div>
+          <CalendarView
+            gigs={gigs}
+            unavailDates={unavail}
+            onToggleUnavail={isPreview ? null : handleToggleUnavail}
+            readOnly={isPreview}
+          />
+        </div>
       )}
 
       {tab === 'pending' && (
