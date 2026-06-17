@@ -9,9 +9,11 @@ function formatDate(iso) {
 
 function getDateRange(filter) {
   const today = new Date(); today.setHours(0,0,0,0);
+  const todayIso = today.toISOString().split('T')[0];
+
   if (filter === 'week') {
     const end = new Date(today); end.setDate(end.getDate() + 7);
-    return { from: today.toISOString().split('T')[0], to: end.toISOString().split('T')[0] };
+    return { from: todayIso, to: end.toISOString().split('T')[0] };
   }
   if (filter === 'nextweek') {
     const start = new Date(today); start.setDate(start.getDate() + 7);
@@ -19,8 +21,9 @@ function getDateRange(filter) {
     return { from: start.toISOString().split('T')[0], to: end.toISOString().split('T')[0] };
   }
   if (filter === 'month') {
-    const end = new Date(today); end.setMonth(end.getMonth() + 1);
-    return { from: today.toISOString().split('T')[0], to: end.toISOString().split('T')[0] };
+    const start = new Date(today.getFullYear(), today.getMonth(), 1);
+    const end   = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    return { from: start.toISOString().split('T')[0], to: end.toISOString().split('T')[0] };
   }
   if (filter === 'nextmonth') {
     const start = new Date(today.getFullYear(), today.getMonth() + 1, 1);
@@ -150,7 +153,7 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
       const matchName = g.djName && dj.name && g.djName.toLowerCase() === dj.name.toLowerCase();
       if (!(matchUid || matchName)) return false;
       if (g.status === 'rejected') return false;
-      if (g.date < today) return false;
+      if (filter !== 'all' && g.date < today) return false;
       if (range) return g.date >= range.from && g.date <= range.to;
       return true;
     })
