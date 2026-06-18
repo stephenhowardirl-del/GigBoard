@@ -1,19 +1,17 @@
 function escapeICS(str) {
   if (!str) return '';
-  return str.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+  return str
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\n/g, '\\n')
+    .replace(/[^\x00-\x7F]/g, ''); // strip all non-ASCII characters
 }
 
 function toICSDate(isoDate, time) {
   const [y, m, d] = isoDate.split('-');
   const [h, min]  = (time || '00:00').split(':');
-  return `${y}${m}${d}T${h}${min}00`;
-}
-
-function toICSDateEnd(isoDate, time) {
-  const [y, m, d] = isoDate.split('-');
-  const [h, min]  = (time || '00:00').split(':');
-  const endH      = (parseInt(h, 10) + 3) % 24;
-  return `${y}${m}${d}T${String(endH).padStart(2,'0')}${min}00`;
+  return `${y}${m}${d}T${String(h).padStart(2,'0')}${String(min).padStart(2,'0')}00`;
 }
 
 async function firestoreQuery(projectId, apiKey, collectionId, filters) {
@@ -77,7 +75,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Find DJ profile by token
     const profiles = await firestoreQuery(projectId, apiKey, 'djProfiles', [
       { field: 'calendarToken', value: token }
     ]);
@@ -89,23 +86,20 @@ export default async function handler(req, res) {
 
     const profile = profiles[0];
     const uid     = profile.uid;
-    const djName  = profile.tradingName || profile.name || 'DJ';
+    const djName  = (profile.tradingName || profile.name || 'DJ').replace(/[^\x00-\x7F]/g, '');
 
-    // Get ALL gigs for this DJ then filter in code
     const allGigs = await firestoreQuery(projectId, apiKey, 'gigs', [
       { field: 'djUid', value: uid }
     ]);
 
-    // Filter to confirmed only in code — avoids needing a composite index
     const gigs = allGigs.filter(g => g.status === 'confirmed');
-
-    const now = new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
+    const now  = new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
 
     let ics = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
       'PRODID:-//GigBoard//DJ Schedule//EN',
-      `X-WR-CALNAME:${escapeICS(djName)} — GigBoard`,
+      `X-WR-CALNAME:${djName} GigBoard`,
       'X-WR-CALDESC:Your confirmed gigs from GigBoard',
       'X-WR-TIMEZONE:Europe/Dublin',
       'CALSCALE:GREGORIAN',
@@ -116,17 +110,17 @@ export default async function handler(req, res) {
 
     gigs.forEach(gig => {
       if (!gig.date) return;
-      const desc = [
-        gig.fee   ? `Fee: €${gig.fee}`    : '',
-        gig.notes ? `Notes: ${gig.notes}` : '',
-      ].filter(Boolean).join('\\n');
+
+      const fee   = gig.fee ? `Fee: EUR${gig.fee}` : '';
+      const notes = gig.notes ? `Notes: ${gig.notes.replace(/[^\x00-\x7F]/g, '')}` : '';
+      const desc  = [fee, notes].filter(Boolean).join('\\n');
 
       ics += '\r\n' + [
         'BEGIN:VEVENT',
         `UID:gigboard-${gig.id}@gigboard`,
         `DTSTAMP:${now}`,
         `DTSTART;TZID=Europe/Dublin:${toICSDate(gig.date, gig.time)}`,
-        `DTEND;TZID=Europe/Dublin:${toICSDateEnd(gig.date, gig.time)}`,
+        'DURATION:PT4H',
         `SUMMARY:${escapeICS(gig.venue)}`,
         desc ? `DESCRIPTION:${desc}` : '',
         `LOCATION:${escapeICS(gig.venue)}`,
@@ -139,7 +133,7 @@ export default async function handler(req, res) {
 
     res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache, no-store');
-    res.setHeader('Content-Disposition', `attachment; filename="gigboard-${uid}.ics"`);
+    res.setHeader('Content-Disposition', `attachment; filename="gigboard.ics"`);
     res.status(200).send(ics);
 
   } catch (err) {
