@@ -1,20 +1,3 @@
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-
-if (!getApps().length) {
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY
-    ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
-    : undefined;
-
-  initializeApp({
-    credential: cert({
-      projectId:   process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey,
-    }),
-  });
-}
-
 function escapeICS(str) {
   if (!str) return '';
   return str.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
@@ -33,6 +16,50 @@ function toICSDateEnd(isoDate, time) {
   return `${y}${m}${d}T${String(endH).padStart(2,'0')}${min}00`;
 }
 
+async function firestoreQuery(projectId, apiKey, collectionId, filters) {
+  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery?key=${apiKey}`;
+
+  const structuredQuery = {
+    from: [{ collectionId }],
+    where: filters.length === 1 ? {
+      fieldFilter: {
+        field: { fieldPath: filters[0].field },
+        op: 'EQUAL',
+        value: { stringValue: filters[0].value },
+      }
+    } : {
+      compositeFilter: {
+        op: 'AND',
+        filters: filters.map(f => ({
+          fieldFilter: {
+            field: { fieldPath: f.field },
+            op: 'EQUAL',
+            value: { stringValue: f.value },
+          }
+        }))
+      }
+    }
+  };
+
+  const res  = await fetch(url, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ structuredQuery }),
+  });
+
+  const json = await res.json();
+  return json
+    .filter(r => r.document)
+    .map(r => {
+      const fields = r.document.fields || {};
+      const out    = { id: r.document.name.split('/').pop() };
+      for (const [k, v] of Object.entries(fields)) {
+        out[k] = v.stringValue ?? v.integerValue ?? v.booleanValue ?? v.doubleValue ?? null;
+      }
+      return out;
+    });
+}
+
 export default async function handler(req, res) {
   const { token } = req.query;
 
@@ -41,30 +68,36 @@ export default async function handler(req, res) {
     return;
   }
 
+  const projectId = process.env.REACT_APP_FIREBASE_PROJECT_ID;
+  const apiKey    = process.env.REACT_APP_FIREBASE_API_KEY;
+
+  if (!projectId || !apiKey) {
+    res.status(500).send('Missing Firebase config');
+    return;
+  }
+
   try {
-    const db = getFirestore();
+    // Find DJ profile by token
+    const profiles = await firestoreQuery(projectId, apiKey, 'djProfiles', [
+      { field: 'calendarToken', value: token }
+    ]);
 
-    const snapshot = await db.collection('djProfiles')
-      .where('calendarToken', '==', token)
-      .limit(1)
-      .get();
-
-    if (snapshot.empty) {
+    if (!profiles.length) {
       res.status(404).send('Calendar not found');
       return;
     }
 
-    const profile = snapshot.docs[0].data();
+    const profile = profiles[0];
     const uid     = profile.uid;
     const djName  = profile.tradingName || profile.name || 'DJ';
 
-    const gigsSnap = await db.collection('gigs')
-      .where('djUid', '==', uid)
-      .where('status', '==', 'confirmed')
-      .get();
+    // Get confirmed gigs for this DJ
+    const gigs = await firestoreQuery(projectId, apiKey, 'gigs', [
+      { field: 'djUid',  value: uid },
+      { field: 'status', value: 'confirmed' },
+    ]);
 
-    const gigs = gigsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const now  = new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
+    const now = new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
 
     let ics = [
       'BEGIN:VCALENDAR',
@@ -80,6 +113,7 @@ export default async function handler(req, res) {
     ].join('\r\n');
 
     gigs.forEach(gig => {
+      if (!gig.date) return;
       const desc = [
         gig.fee   ? `Fee: €${gig.fee}`    : '',
         gig.notes ? `Notes: ${gig.notes}` : '',
@@ -108,6 +142,6 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error('Calendar feed error:', err);
-    res.status(500).send('Server error');
+    res.status(500).send('Server error: ' + err.message);
   }
 }
