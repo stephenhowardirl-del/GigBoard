@@ -91,11 +91,13 @@ export default async function handler(req, res) {
     const uid     = profile.uid;
     const djName  = profile.tradingName || profile.name || 'DJ';
 
-    // Get confirmed gigs for this DJ
-    const gigs = await firestoreQuery(projectId, apiKey, 'gigs', [
-      { field: 'djUid',  value: uid },
-      { field: 'status', value: 'confirmed' },
+    // Get ALL gigs for this DJ then filter in code
+    const allGigs = await firestoreQuery(projectId, apiKey, 'gigs', [
+      { field: 'djUid', value: uid }
     ]);
+
+    // Filter to confirmed only in code — avoids needing a composite index
+    const gigs = allGigs.filter(g => g.status === 'confirmed');
 
     const now = new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
 
