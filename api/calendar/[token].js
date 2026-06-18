@@ -1,13 +1,16 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
-// Init Firebase Admin
 if (!getApps().length) {
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY
+    ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
+    : undefined;
+
   initializeApp({
     credential: cert({
-      projectId:    process.env.FIREBASE_PROJECT_ID,
-      clientEmail:  process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey:   process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      projectId:   process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey,
     }),
   });
 }
@@ -18,18 +21,15 @@ function escapeICS(str) {
 }
 
 function toICSDate(isoDate, time) {
-  // Returns YYYYMMDDTHHMMSS
   const [y, m, d] = isoDate.split('-');
   const [h, min]  = (time || '00:00').split(':');
   return `${y}${m}${d}T${h}${min}00`;
 }
 
 function toICSDateEnd(isoDate, time) {
-  // Assume gig is 3 hours
   const [y, m, d] = isoDate.split('-');
   const [h, min]  = (time || '00:00').split(':');
-  const startH    = parseInt(h, 10);
-  const endH      = (startH + 3) % 24;
+  const endH      = (parseInt(h, 10) + 3) % 24;
   return `${y}${m}${d}T${String(endH).padStart(2,'0')}${min}00`;
 }
 
@@ -44,9 +44,10 @@ export default async function handler(req, res) {
   try {
     const db = getFirestore();
 
-    // Find DJ profile with this calendar token
-    const profilesRef = db.collection('djProfiles');
-    const snapshot    = await profilesRef.where('calendarToken', '==', token).limit(1).get();
+    const snapshot = await db.collection('djProfiles')
+      .where('calendarToken', '==', token)
+      .limit(1)
+      .get();
 
     if (snapshot.empty) {
       res.status(404).send('Calendar not found');
@@ -57,18 +58,13 @@ export default async function handler(req, res) {
     const uid     = profile.uid;
     const djName  = profile.tradingName || profile.name || 'DJ';
 
-    // Get all confirmed gigs for this DJ
-    const gigsRef  = db.collection('gigs');
-    const gigsSnap = await gigsRef
+    const gigsSnap = await db.collection('gigs')
       .where('djUid', '==', uid)
       .where('status', '==', 'confirmed')
       .get();
 
     const gigs = gigsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-    // Build ICS
-    const now     = new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
-    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://gig-board.vercel.app';
+    const now  = new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
 
     let ics = [
       'BEGIN:VCALENDAR',
@@ -80,15 +76,12 @@ export default async function handler(req, res) {
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
       'REFRESH-INTERVAL;VALUE=DURATION:PT1H',
-      `X-PUBLISHED-TTL:PT1H`,
+      'X-PUBLISHED-TTL:PT1H',
     ].join('\r\n');
 
     gigs.forEach(gig => {
-      const dtStart = toICSDate(gig.date, gig.time);
-      const dtEnd   = toICSDateEnd(gig.date, gig.time);
-      const summary = escapeICS(`${gig.venue}`);
-      const desc    = [
-        gig.fee ? `Fee: €${gig.fee}` : '',
+      const desc = [
+        gig.fee   ? `Fee: €${gig.fee}`    : '',
         gig.notes ? `Notes: ${gig.notes}` : '',
       ].filter(Boolean).join('\\n');
 
@@ -96,10 +89,10 @@ export default async function handler(req, res) {
         'BEGIN:VEVENT',
         `UID:gigboard-${gig.id}@gigboard`,
         `DTSTAMP:${now}`,
-        `DTSTART;TZID=Europe/Dublin:${dtStart}`,
-        `DTEND;TZID=Europe/Dublin:${dtEnd}`,
-        `SUMMARY:${summary}`,
-        desc ? `DESCRIPTION:${escapeICS(desc)}` : '',
+        `DTSTART;TZID=Europe/Dublin:${toICSDate(gig.date, gig.time)}`,
+        `DTEND;TZID=Europe/Dublin:${toICSDateEnd(gig.date, gig.time)}`,
+        `SUMMARY:${escapeICS(gig.venue)}`,
+        desc ? `DESCRIPTION:${desc}` : '',
         `LOCATION:${escapeICS(gig.venue)}`,
         'STATUS:CONFIRMED',
         'END:VEVENT',
