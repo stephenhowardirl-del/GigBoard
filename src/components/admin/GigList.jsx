@@ -144,7 +144,6 @@ function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete }) {
 }
 
 function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, onEdit, onDelete }) {
-  const today = new Date().toISOString().split('T')[0];
   const range = getDateRange(filter);
 
   const upcoming = gigs
@@ -153,7 +152,6 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
       const matchName = g.djName && dj.name && g.djName.toLowerCase() === dj.name.toLowerCase();
       if (!(matchUid || matchName)) return false;
       if (g.status === 'rejected') return false;
-      if (filter !== 'all' && g.date < today) return false;
       if (range) return g.date >= range.from && g.date <= range.to;
       return true;
     })
