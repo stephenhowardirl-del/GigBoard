@@ -91,12 +91,13 @@ export async function updateGigStatus(gigId, status, calendarEventId = null) {
   await updateDoc(doc(db, 'gigs', gigId), data);
 }
 
-export async function updateGig(gigId, { venue, date, time, djUid, djName, djEmail, notes, fee }) {
+export async function updateGig(gigId, { venue, date, time, djUid, djName, djEmail, notes, fee, status }) {
+  // Editing preserves the gig's existing status — passed in by the caller.
   await updateDoc(doc(db, 'gigs', gigId), {
     venue, date, time, djUid, djName, djEmail: djEmail || '',
     notes: notes || '',
     fee: fee ? Number(fee) : null,
-    status: 'pending',
+    status: status || 'pending',
   });
 }
 
