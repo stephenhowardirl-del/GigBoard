@@ -7,28 +7,35 @@ function formatDate(iso) {
   return d.toLocaleDateString('en-IE', { weekday:'short', day:'numeric', month:'short' });
 }
 
+function toIso(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 function getDateRange(filter) {
   const today = new Date(); today.setHours(0,0,0,0);
-  const todayIso = today.toISOString().split('T')[0];
+
+  // Monday of the current calendar week
+  const dow       = (today.getDay() + 6) % 7; // Mon=0 … Sun=6
+  const thisMon   = new Date(today); thisMon.setDate(today.getDate() - dow);
+  const thisSun   = new Date(thisMon); thisSun.setDate(thisMon.getDate() + 6);
+  const nextMon   = new Date(thisMon); nextMon.setDate(thisMon.getDate() + 7);
+  const nextSun   = new Date(nextMon); nextSun.setDate(nextMon.getDate() + 6);
 
   if (filter === 'week') {
-    const end = new Date(today); end.setDate(end.getDate() + 7);
-    return { from: todayIso, to: end.toISOString().split('T')[0] };
+    return { from: toIso(thisMon), to: toIso(thisSun) };
   }
   if (filter === 'nextweek') {
-    const start = new Date(today); start.setDate(start.getDate() + 7);
-    const end   = new Date(today); end.setDate(end.getDate() + 14);
-    return { from: start.toISOString().split('T')[0], to: end.toISOString().split('T')[0] };
+    return { from: toIso(nextMon), to: toIso(nextSun) };
   }
   if (filter === 'month') {
     const start = new Date(today.getFullYear(), today.getMonth(), 1);
     const end   = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    return { from: start.toISOString().split('T')[0], to: end.toISOString().split('T')[0] };
+    return { from: toIso(start), to: toIso(end) };
   }
   if (filter === 'nextmonth') {
     const start = new Date(today.getFullYear(), today.getMonth() + 1, 1);
     const end   = new Date(today.getFullYear(), today.getMonth() + 2, 0);
-    return { from: start.toISOString().split('T')[0], to: end.toISOString().split('T')[0] };
+    return { from: toIso(start), to: toIso(end) };
   }
   return null;
 }
@@ -155,7 +162,7 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
       if (range) return g.date >= range.from && g.date <= range.to;
       return true;
     })
-    .sort((a, b) => a.date.localeCompare(b.date));
+    .sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''));
 
   const initials = dj.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
@@ -221,6 +228,7 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
   }
 
   const visibleUsers = users.filter(dj => !hiddenDJs[dj.uid]);
+  const range = getDateRange(filter);
 
   return (
     <div className="page-body">
@@ -233,7 +241,7 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
       )}
 
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10,flexWrap:'wrap',gap:8}}>
-        <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+        <div style={{display:'flex',gap:4,flexWrap:'wrap',alignItems:'center'}}>
           {FILTERS.map(f => (
             <button
               key={f.key}
@@ -248,6 +256,11 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
               {f.label}
             </button>
           ))}
+          {range && (
+            <span style={{fontSize:11,color:'#505070',marginLeft:6}}>
+              {formatDate(range.from)} – {formatDate(range.to)}
+            </span>
+          )}
         </div>
         <button className="btn btn-primary btn-sm" onClick={() => onEdit(null)}>+ Assign gig</button>
       </div>
