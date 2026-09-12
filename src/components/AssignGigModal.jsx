@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAllUsers, getAllUnavailability, createGig, createGigConfirmed } from '../lib/db';
+import { getAllUsers, getAllUnavailability, getAllGigs, createGig, createGigConfirmed } from '../lib/db';
 
 const TIMES = Array.from({length: 48}, (_, i) => {
   const h = Math.floor(i / 2).toString().padStart(2, '0');
@@ -18,6 +18,10 @@ function todayStr() {
 
 function isoForDate(year, month, day) {
   return `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+}
+
+function formatShort(iso) {
+  return new Date(iso + 'T12:00:00').toLocaleDateString('en-IE', { weekday:'short', day:'numeric', month:'short' });
 }
 
 function getRecurringDates(startIso, endIso, dayOfWeek) {
@@ -167,6 +171,7 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
   const [mode, setMode]             = useState('single');
   const [users, setUsers]           = useState([]);
   const [unavail, setUnavail]       = useState([]);
+  const [allGigs, setAllGigs]       = useState([]);
   const [venue, setVenue]           = useState(existingGig?.venue || lockedVenue || '');
   const [date, setDate]             = useState(existingGig?.date || '');
   const [multiDates, setMultiDates] = useState([]);
@@ -177,13 +182,13 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
   const [djUid, setDjUid]           = useState(existingGig?.djUid || '');
   const [notes, setNotes]           = useState(existingGig?.notes || '');
   const [fee, setFee]               = useState(existingGig?.fee || '');
-  const [warning, setWarning]       = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [preview, setPreview]       = useState([]);
 
   useEffect(() => {
     getAllUsers().then(setUsers);
     getAllUnavailability().then(setUnavail);
+    getAllGigs().then(setAllGigs);
   }, []);
 
   useEffect(() => {
@@ -202,19 +207,6 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
     return unavail.find(u => u.uid === selectedDjUid)?.dates || [];
   }
 
-  function checkUnavail(selectedDate, selectedDjUid) {
-    const djUnavail = unavail.find(u => u.uid === selectedDjUid);
-    if (djUnavail?.dates?.includes(selectedDate)) {
-      const dj = users.find(u => u.uid === selectedDjUid);
-      setWarning(`⚠️ ${dj?.name || 'This DJ'} has marked themselves unavailable on this date.`);
-    } else {
-      setWarning('');
-    }
-  }
-
-  function handleDateChange(iso) { setDate(iso); checkUnavail(iso, djUid); }
-  function handleDjChange(e)     { setDjUid(e.target.value); checkUnavail(date, e.target.value); }
-
   function getDatesToSubmit() {
     if (mode === 'single')    return [date];
     if (mode === 'multi')     return multiDates;
@@ -226,6 +218,25 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
     const dates = getDatesToSubmit();
     return dates.length > 0 && time;
   }
+
+  // ---- Conflict detection (derived, covers all modes) ----
+  const selectedDates = getDatesToSubmit().filter(Boolean);
+  const selectedDj    = users.find(u => u.uid === djUid);
+
+  // Dates the DJ has marked themselves unavailable
+  const djUnavailDates   = getDjUnavailDates(djUid);
+  const unavailConflicts = djUid ? selectedDates.filter(d => djUnavailDates.includes(d)) : [];
+
+  // Existing gigs the DJ already has on the selected dates (double-booking)
+  const gigConflicts = djUid
+    ? allGigs.filter(g =>
+        g.djUid === djUid &&
+        selectedDates.includes(g.date) &&
+        g.status !== 'rejected' &&
+        g.status !== 'unassigned' &&
+        g.id !== existingGig?.id
+      ).sort((a, b) => a.date.localeCompare(b.date))
+    : [];
 
   async function handleSubmit() {
     if (!isValid()) return;
@@ -295,7 +306,6 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
   });
 
   const dates = getDatesToSubmit();
-  const selectedDj      = users.find(u => u.uid === djUid);
   const assigningToSelf = selectedDj?.role === 'full_admin';
   const unassigned      = !djUid;
 
@@ -339,7 +349,7 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
         {mode === 'single' && (
           <div className="field">
             <label>Date</label>
-            <SingleCalendar selected={date} onChange={handleDateChange} unavailDates={getDjUnavailDates(djUid)} />
+            <SingleCalendar selected={date} onChange={setDate} unavailDates={getDjUnavailDates(djUid)} />
           </div>
         )}
 
@@ -404,15 +414,29 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
 
         <div className="field">
           <label>Assign to DJ</label>
-          <select value={djUid} onChange={handleDjChange}>
+          <select value={djUid} onChange={e => setDjUid(e.target.value)}>
             <option value=''>— Unassigned (fill later) —</option>
             {users.map(u => <option key={u.uid} value={u.uid}>{u.name}</option>)}
           </select>
         </div>
 
-        {warning && (
+        {/* Unavailability warning */}
+        {unavailConflicts.length > 0 && (
           <div style={{background:'#2a1a00',border:'1px solid #ffbb0030',borderRadius:6,padding:'8px 10px',fontSize:11,color:'#ffbb00',marginBottom:12}}>
-            {warning}
+            ⚠️ {selectedDj?.name || 'This DJ'} is marked unavailable on: {unavailConflicts.map(formatShort).join(', ')}
+          </div>
+        )}
+
+        {/* Double-booking warning */}
+        {gigConflicts.length > 0 && (
+          <div style={{background:'#1a000a',border:'1px solid #ff407040',borderRadius:6,padding:'10px 12px',fontSize:11,color:'#ff6090',marginBottom:12}}>
+            <div style={{fontWeight:700,marginBottom:6}}>⚠️ {selectedDj?.name || 'This DJ'} already has {gigConflicts.length === 1 ? 'a gig' : `${gigConflicts.length} gigs`} on {gigConflicts.length === 1 ? 'this date' : 'these dates'}:</div>
+            {gigConflicts.map(g => (
+              <div key={g.id} style={{marginTop:3}}>
+                · {g.venue} — {formatShort(g.date)} at {g.time} ({g.status})
+              </div>
+            ))}
+            <div style={{marginTop:8,color:'#b08090'}}>You can still save — this is just a heads-up.</div>
           </div>
         )}
 
