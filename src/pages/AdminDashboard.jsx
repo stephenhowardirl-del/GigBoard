@@ -131,6 +131,22 @@ export default function AdminDashboard({ hideFees }) {
     const gig = gigs.find(g => g.id === gigId);
     if (!gig || gig.status !== 'unassigned') return;
 
+    // Conflict checks before assigning.
+    const djUnavailDates = unavail.find(u => u.uid === dj.uid)?.dates || [];
+    const isUnavail      = djUnavailDates.includes(gig.date);
+    const existingSameDay = gigs.filter(g =>
+      g.djUid === dj.uid && g.date === gig.date &&
+      g.status !== 'rejected' && g.status !== 'unassigned' && g.id !== gigId
+    );
+
+    if (isUnavail || existingSameDay.length > 0) {
+      const lines = [];
+      if (isUnavail) lines.push(`${dj.name} is marked UNAVAILABLE on ${gig.date}.`);
+      existingSameDay.forEach(g => lines.push(`${dj.name} already has a gig: ${g.venue} at ${g.time} (${g.status}).`));
+      lines.push('', 'Assign anyway?');
+      if (!window.confirm(lines.join('\n'))) return;
+    }
+
     // Assigning to yourself auto-confirms; anyone else gets a pending offer.
     const newStatus = dj.uid === profile?.uid ? 'confirmed' : 'pending';
     const djEmail   = dj.email || (dj.uid === profile?.uid ? (profile?.email || '') : '');
