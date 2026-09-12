@@ -237,12 +237,18 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
     const dates = getDatesToSubmit();
 
     if (editing || dates.length === 1) {
-      await onAssign({
+      const payload = {
         venue: lockedVenue || venue,
         date: dates[0], time, djUid,
         djName: dj?.name, djEmail: dj?.email,
         notes, fee,
-      });
+      };
+      if (editing) {
+        // Editing never changes acceptance state — keep the gig's current status.
+        payload.id     = existingGig.id;
+        payload.status = existingGig.status;
+      }
+      await onAssign(payload);
     } else {
       for (const d of dates) {
         await createGig({
@@ -275,7 +281,7 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
       <div className="modal" style={{maxHeight:'90vh',overflowY:'auto'}}>
         <div className="modal-title">{editing ? 'Edit gig' : lockedVenue ? `Assign gig at ${lockedVenue}` : 'Assign a gig'}</div>
         <div className="modal-sub">
-          {editing ? 'Changes will reset the gig to pending — the DJ will need to reconfirm.' : 'DJ will need to accept before the gig is confirmed.'}
+          {editing ? 'Changes save without affecting the gig\u2019s accepted status.' : 'DJ will need to accept before the gig is confirmed.'}
         </div>
 
         {!editing && (
