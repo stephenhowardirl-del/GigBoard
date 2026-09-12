@@ -1,83 +1,119 @@
-export const VENUE_LOGOS = {
-  'Dwyers':                     '/logos/dwyers.jpg',
-  'Seventy Seven':              '/logos/seventyseven.jpg',
-  'Seventy Seven (1st Floor)':  '/logos/seventyseven.jpg',
-  'Seventy Seven (Stamp Room)': '/logos/stamproom.jpg',
-  'Clancys Cork':               '/logos/clancys.png',
-  'JJ Walsh':                   '/logos/jjs.png',
-  'Sky Bar':                    '/logos/skybar.jpg',
-  'The Wilton':                 '/logos/wilton.jpg',
-  'Wedding':                    '/logos/wedding.jpeg',
-  'Private Event':              '/logos/event.png',
-  'The Wash':                   '/logos/thewash.jpg',
-  'The Pav':                    '/logos/thepav.png',
-  'The Dean':                   '/logos/thedean.png',
-  'The Woodford':               null,
-  'Mardyke':                    '/logos/mardyke.jpeg',
-};
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from './firebase';
 
-export const VENUE_GROUPS = {
-  'Dwyers Group': {
-    color: '#a080ff',
-    bg: '#1a1040',
-    venues: ['Dwyers', 'Seventy Seven', 'Seventy Seven (1st Floor)', 'Seventy Seven (Stamp Room)'],
-  },
-  'Clancys Group': {
-    color: '#40a0ff',
-    bg: '#001020',
-    venues: ['Clancys Cork', 'JJ Walsh', 'Sky Bar', 'The Wilton'],
-  },
-  'Wedding & Events': {
-    color: '#ff60c0',
-    bg: '#1a0020',
-    venues: ['Wedding', 'Private Event'],
-  },
-};
-
-export const VENUE_COLORS = {
-  'Dwyers':                     { color: '#a080ff', bg: '#1a1040', group: 'Dwyers Group' },
-  'Seventy Seven':              { color: '#a080ff', bg: '#1a1040', group: 'Dwyers Group' },
-  'Seventy Seven (1st Floor)':  { color: '#a080ff', bg: '#1a1040', group: 'Dwyers Group' },
-  'Seventy Seven (Stamp Room)': { color: '#a080ff', bg: '#1a1040', group: 'Dwyers Group' },
-  'Clancys Cork':               { color: '#40a0ff', bg: '#001020', group: 'Clancys Group' },
-  'JJ Walsh':                   { color: '#40a0ff', bg: '#001020', group: 'Clancys Group' },
-  'Sky Bar':                    { color: '#40a0ff', bg: '#001020', group: 'Clancys Group' },
-  'The Wilton':                 { color: '#40a0ff', bg: '#001020', group: 'Clancys Group' },
-  'Wedding':                    { color: '#ff60c0', bg: '#1a0020', group: 'Wedding & Events' },
-  'Private Event':              { color: '#ff60c0', bg: '#1a0020', group: 'Wedding & Events' },
-  'The Wash':                   { color: '#00d4aa', bg: '#001a1a', group: null },
-  'The Pav':                    { color: '#ff9040', bg: '#1a0800', group: null },
-  'The Dean':                   { color: '#ffbb00', bg: '#1a1000', group: null },
-  'The Woodford':               { color: '#80d040', bg: '#0d1a00', group: null },
-  'Mardyke':                    { color: '#ff4070', bg: '#1a0010', group: null },
-};
-
-export function getVenueColor(venue) {
-  return VENUE_COLORS[venue] || { color: '#9090b0', bg: '#1a1a2e', group: null };
-}
-
-export function getVenueLogo(venue) {
-  return VENUE_LOGOS[venue] || null;
-}
-
-export function getVenueGroup(venue) {
-  return VENUE_COLORS[venue]?.group || null;
-}
+// ─── Default config (used to seed Firestore the first time, and as a fallback) ───
+export const DEFAULT_GROUPS = [
+  { name: 'Dwyers Group',     color: '#a080ff' },
+  { name: 'Clancys Group',    color: '#40a0ff' },
+  { name: 'Wedding & Events', color: '#ff60c0' },
+];
 
 export const DEFAULT_VENUES = [
-  'Clancys Cork', 'JJ Walsh', 'Sky Bar', 'The Wilton',
-  'Dwyers', 'Seventy Seven', 'Seventy Seven (1st Floor)', 'Seventy Seven (Stamp Room)',
-  'The Wash', 'The Pav', 'The Dean', 'The Woodford', 'Mardyke',
-  'Wedding', 'Private Event',
+  { name: 'Dwyers',                     group: 'Dwyers Group',     logo: '/logos/dwyers.jpg' },
+  { name: 'Seventy Seven',              group: 'Dwyers Group',     logo: '/logos/seventyseven.jpg' },
+  { name: 'Seventy Seven (1st Floor)',  group: 'Dwyers Group',     logo: '/logos/seventyseven.jpg' },
+  { name: 'Stamp Room',                 group: 'Dwyers Group',     logo: '/logos/stamproom.jpg' },
+  { name: 'Clancys Cork',               group: 'Clancys Group',    logo: '/logos/clancys.png' },
+  { name: 'JJ Walsh',                   group: 'Clancys Group',    logo: '/logos/jjs.png' },
+  { name: 'Sky Bar',                    group: 'Clancys Group',    logo: '/logos/skybar.jpg' },
+  { name: 'The Wilton',                 group: 'Clancys Group',    logo: '/logos/wilton.jpg' },
+  { name: 'The Wash',                   group: null,               logo: '/logos/thewash.jpg' },
+  { name: 'The Pav',                    group: null,               logo: '/logos/thepav.png' },
+  { name: 'The Dean',                   group: null,               logo: '/logos/thedean.png' },
+  { name: 'The Woodford',               group: null,               logo: null },
+  { name: 'Mardyke',                    group: null,               logo: '/logos/mardyke.jpeg' },
+  { name: 'Wedding',                    group: 'Wedding & Events', logo: '/logos/wedding.jpeg' },
+  { name: 'Private Event',              group: 'Wedding & Events', logo: '/logos/event.png' },
 ];
 
-export const VENUE_ADMIN_SCOPES = [
-  { label: 'Dwyers Group', venues: ['Dwyers', 'Seventy Seven', 'Seventy Seven (1st Floor)', 'Seventy Seven (Stamp Room)'] },
-  { label: 'Clancys Group', venues: ['Clancys Cork', 'JJ Walsh', 'Sky Bar', 'The Wilton'] },
-  { label: 'The Wash', venues: ['The Wash'] },
-  { label: 'The Pav', venues: ['The Pav'] },
-  { label: 'The Dean', venues: ['The Dean'] },
-  { label: 'The Woodford', venues: ['The Woodford'] },
-  { label: 'Mardyke', venues: ['Mardyke'] },
-  { label: 'Wedding & Events', venues: ['Wedding', 'Private Event'] },
+// Logo files that exist in /public/logos — offered as a picker in the Venues tab
+export const AVAILABLE_LOGOS = [
+  '/logos/clancys.png', '/logos/dwyers.jpg', '/logos/event.png', '/logos/jjs.png',
+  '/logos/mardyke.jpeg', '/logos/skybar.jpg', '/logos/stamproom.jpg', '/logos/thedean.png',
+  '/logos/thepav.png', '/logos/thewash.jpg', '/logos/wedding.jpeg', '/logos/wilton.jpg',
+  '/logos/seventyseven.jpg',
 ];
+
+export const GROUP_COLOR_PALETTE = ['#a080ff','#40a0ff','#ff60c0','#ffbb00','#00d4aa','#ff9900','#80d040','#ff4070'];
+const INDIVIDUAL_COLOR = '#00d4aa';
+
+// ─── In-memory cache ───
+let CONFIG = { groups: DEFAULT_GROUPS, venues: DEFAULT_VENUES };
+const listeners = new Set();
+
+export function getVenueConfig() { return CONFIG; }
+
+export function subscribeVenueConfig(fn) {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
+function applyConfig(cfg) {
+  CONFIG = cfg;
+  listeners.forEach(fn => fn(cfg));
+}
+
+// Load from Firestore. Seeds the doc from defaults (+ any names in settings/venues) on first run.
+export async function loadVenueConfig() {
+  try {
+    const ref  = doc(db, 'settings', 'venueConfig');
+    const snap = await getDoc(ref);
+    if (snap.exists() && Array.isArray(snap.data().venues)) {
+      applyConfig({ groups: snap.data().groups || [], venues: snap.data().venues });
+      return CONFIG;
+    }
+    // Seed: merge default venues with any extra names already in settings/venues
+    let extraNames = [];
+    try {
+      const vSnap = await getDoc(doc(db, 'settings', 'venues'));
+      const arr   = vSnap.exists() ? (vSnap.data().list || vSnap.data().venues || []) : [];
+      extraNames  = Array.isArray(arr) ? arr : [];
+    } catch (_) {}
+    const known  = new Set(DEFAULT_VENUES.map(v => v.name));
+    const extras = extraNames.filter(n => !known.has(n)).map(n => ({ name: n, group: null, logo: null }));
+    const seeded = { groups: DEFAULT_GROUPS, venues: [...DEFAULT_VENUES, ...extras] };
+    await setDoc(ref, seeded);
+    applyConfig(seeded);
+    return CONFIG;
+  } catch (e) {
+    console.error('loadVenueConfig failed, using defaults:', e);
+    return CONFIG;
+  }
+}
+
+export async function saveVenueConfig(cfg) {
+  const clean = {
+    groups: cfg.groups.map(g => ({ name: g.name, color: g.color })),
+    venues: cfg.venues.map(v => ({ name: v.name, group: v.group || null, logo: v.logo || null })),
+  };
+  await setDoc(doc(db, 'settings', 'venueConfig'), clean);
+  // Keep the legacy flat list in sync so anything still reading settings/venues works
+  try {
+    await setDoc(doc(db, 'settings', 'venues'), { list: clean.venues.map(v => v.name) }, { merge: true });
+  } catch (_) {}
+  applyConfig(clean);
+}
+
+// ─── Lookups used throughout the app ───
+export function getVenueNames() {
+  return CONFIG.venues.map(v => v.name);
+}
+
+export function getVenueColor(venueName) {
+  const v = CONFIG.venues.find(x => x.name === venueName);
+  const g = v?.group ? CONFIG.groups.find(gr => gr.name === v.group) : null;
+  const color = g?.color || INDIVIDUAL_COLOR;
+  return { color, bg: color + '18', group: g?.name || null };
+}
+
+export function getVenueLogo(venueName) {
+  return CONFIG.venues.find(x => x.name === venueName)?.logo || null;
+}
+
+// Scopes a venue admin can be limited to — one per group
+export const VENUE_ADMIN_SCOPES = new Proxy([], {
+  get(_, prop) {
+    const scopes = CONFIG.groups.map(g => ({ label: g.name, venues: CONFIG.venues.filter(v => v.group === g.name).map(v => v.name) }));
+    return typeof scopes[prop] === 'function' ? scopes[prop].bind(scopes) : scopes[prop];
+  },
+});
