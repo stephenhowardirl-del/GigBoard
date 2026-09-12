@@ -182,10 +182,7 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
   const [preview, setPreview]       = useState([]);
 
   useEffect(() => {
-    getAllUsers().then(u => {
-      setUsers(u);
-      if (!editing && u.length) setDjUid(u[0].uid);
-    });
+    getAllUsers().then(setUsers);
     getAllUnavailability().then(setUnavail);
   }, []);
 
@@ -227,14 +224,15 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
 
   function isValid() {
     const dates = getDatesToSubmit();
-    return dates.length > 0 && time && djUid;
+    return dates.length > 0 && time;
   }
 
   async function handleSubmit() {
     if (!isValid()) return;
     setSubmitting(true);
-    const dj    = users.find(u => u.uid === djUid);
-    const dates = getDatesToSubmit();
+    const dj         = users.find(u => u.uid === djUid);
+    const dates      = getDatesToSubmit();
+    const unassigned = !djUid;
     // Assigning to a full admin (yourself) skips acceptance — auto-confirmed.
     const isSelfAdmin = dj?.role === 'full_admin';
 
@@ -242,25 +240,44 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
       const payload = {
         venue: lockedVenue || venue,
         date: dates[0], time, djUid,
-        djName: dj?.name, djEmail: dj?.email,
+        djName: dj?.name || '', djEmail: dj?.email || '',
         notes, fee,
       };
       if (editing) {
         // Editing never changes acceptance state — keep the gig's current status.
+        // Exception handled in the parent: assigning a DJ to an unassigned gig makes it a pending offer.
         payload.id     = existingGig.id;
         payload.status = existingGig.status;
       }
       await onAssign(payload);
     } else {
-      const createFn = isSelfAdmin ? createGigConfirmed : createGig;
       for (const d of dates) {
-        await createFn({
-          venue: lockedVenue || venue,
-          date: d, time, djUid,
-          djName: dj?.name, djEmail: dj?.email,
-          notes, fee,
-          assignedBy: 'Steve Howard',
-        });
+        if (unassigned) {
+          await createGig({
+            venue: lockedVenue || venue,
+            date: d, time, djUid: '',
+            djName: '', djEmail: '',
+            notes, fee,
+            assignedBy: 'Steve Howard',
+            status: 'unassigned',
+          });
+        } else if (isSelfAdmin) {
+          await createGigConfirmed({
+            venue: lockedVenue || venue,
+            date: d, time, djUid,
+            djName: dj?.name, djEmail: dj?.email,
+            notes, fee,
+            assignedBy: 'Steve Howard',
+          });
+        } else {
+          await createGig({
+            venue: lockedVenue || venue,
+            date: d, time, djUid,
+            djName: dj?.name, djEmail: dj?.email,
+            notes, fee,
+            assignedBy: 'Steve Howard',
+          });
+        }
       }
       // Trigger parent reload by calling onAssign with a dummy signal
       await onAssign({ _bulkCreated: true });
@@ -278,8 +295,9 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
   });
 
   const dates = getDatesToSubmit();
-  const selectedDj = users.find(u => u.uid === djUid);
+  const selectedDj      = users.find(u => u.uid === djUid);
   const assigningToSelf = selectedDj?.role === 'full_admin';
+  const unassigned      = !djUid;
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -287,10 +305,14 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
         <div className="modal-title">{editing ? 'Edit gig' : lockedVenue ? `Assign gig at ${lockedVenue}` : 'Assign a gig'}</div>
         <div className="modal-sub">
           {editing
-            ? 'Changes save without affecting the gig\u2019s accepted status.'
-            : assigningToSelf
-              ? 'Assigning to yourself — gig will be confirmed automatically.'
-              : 'DJ will need to accept before the gig is confirmed.'}
+            ? (existingGig.status === 'unassigned'
+                ? 'Pick a DJ to send this gig as an offer, or save it unassigned.'
+                : 'Changes save without affecting the gig\u2019s accepted status.')
+            : unassigned
+              ? 'No DJ selected — gig will be saved as unassigned for you to fill later.'
+              : assigningToSelf
+                ? 'Assigning to yourself — gig will be confirmed automatically.'
+                : 'DJ will need to accept before the gig is confirmed.'}
         </div>
 
         {!editing && (
@@ -383,6 +405,7 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
         <div className="field">
           <label>Assign to DJ</label>
           <select value={djUid} onChange={handleDjChange}>
+            <option value=''>— Unassigned (fill later) —</option>
             {users.map(u => <option key={u.uid} value={u.uid}>{u.name}</option>)}
           </select>
         </div>
@@ -406,7 +429,17 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
         <div className="modal-actions">
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting || !isValid()}>
-            {submitting ? 'Saving…' : editing ? 'Save changes →' : dates.length > 1 ? `Create ${dates.length} gigs →` : assigningToSelf ? 'Add gig →' : 'Send to DJ →'}
+            {submitting
+              ? 'Saving…'
+              : editing
+                ? 'Save changes →'
+                : dates.length > 1
+                  ? `Create ${dates.length} gigs →`
+                  : unassigned
+                    ? 'Save unassigned →'
+                    : assigningToSelf
+                      ? 'Add gig →'
+                      : 'Send to DJ →'}
           </button>
         </div>
       </div>
