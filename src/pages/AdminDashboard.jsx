@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  getAllGigs, createGig, updateGig, deleteGig, getAllUsers,
+  getAllGigs, createGig, createGigConfirmed, updateGig, deleteGig, getAllUsers,
   updateUserRole, updateUserSelfAssignVenues, getAllUnavailability,
   updateGigStatus, getGigsForDJ, getUnavailableDates, setUnavailableDates,
   getInvitedEmails, saveInvitedEmails,
@@ -69,7 +69,12 @@ export default function AdminDashboard({ hideFees }) {
 
   async function handleAssign(gigData) {
     if (gigData._bulkCreated) { load(); return; }
-    await createGig({ ...gigData, assignedBy: 'Steve Howard' });
+    // Assigning a gig to yourself (the admin) skips acceptance — auto-confirmed.
+    if (gigData.djUid === profile?.uid) {
+      await createGigConfirmed({ ...gigData, assignedBy: 'Steve Howard' });
+    } else {
+      await createGig({ ...gigData, assignedBy: 'Steve Howard' });
+    }
     load();
   }
   async function handleEdit(gigData) {
