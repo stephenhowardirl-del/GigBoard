@@ -144,21 +144,31 @@ function StatusPill({ status }) {
   );
 }
 
-function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete }) {
+function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete, draggable = false }) {
   const vc   = getVenueColor(g.venue);
   const logo = getVenueLogo(g.venue);
   const [showNotes, setShowNotes] = useState(false);
   const [hover, setHover]         = useState(false);
+  const [dragging, setDragging]   = useState(false);
 
   return (
     <div
       onClick={() => onEdit(g)}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      title="Click to edit"
+      draggable={draggable}
+      onDragStart={e => {
+        e.dataTransfer.setData('text/gig-id', g.id);
+        e.dataTransfer.effectAllowed = 'move';
+        setDragging(true);
+      }}
+      onDragEnd={() => setDragging(false)}
+      title={draggable ? 'Drag onto a DJ to assign, or click to edit' : 'Click to edit'}
       style={{
-        borderBottom:'1px solid #1a1a2e', padding:'12px 14px', cursor:'pointer',
+        borderBottom:'1px solid #1a1a2e', padding:'12px 14px',
+        cursor: draggable ? 'grab' : 'pointer',
         background: hover ? '#12121e' : 'transparent', transition:'background 0.12s', position:'relative',
+        opacity: dragging ? 0.4 : 1,
       }}
     >
       <div style={{display:'flex', alignItems:'flex-start', gap:10, marginBottom:8}}>
@@ -188,7 +198,7 @@ function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete }) {
           </button>
         )}
         {hover && !g.notes && (
-          <span style={{marginLeft:'auto',fontSize:10,color:'#505070'}}>Click to edit</span>
+          <span style={{marginLeft:'auto',fontSize:10,color:'#505070'}}>{draggable ? 'Drag to a DJ' : 'Click to edit'}</span>
         )}
       </div>
 
@@ -225,19 +235,20 @@ function UnassignedColumn({ gigs, filter, hideFees, onConfirm, onReject, onEdit,
         </div>
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontSize:13,fontWeight:700,color:'#ff9900'}}>Unassigned</div>
-          <div style={{fontSize:11,color:'#b08040',marginTop:1}}>{matched.length} gig{matched.length !== 1 ? 's' : ''} to fill</div>
+          <div style={{fontSize:11,color:'#b08040',marginTop:1}}>{matched.length} gig{matched.length !== 1 ? 's' : ''} to fill — drag onto a DJ</div>
         </div>
       </div>
 
       {matched.map(g => (
-        <GigCard key={g.id} g={g} hideFees={hideFees} onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete} />
+        <GigCard key={g.id} g={g} hideFees={hideFees} draggable onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete} />
       ))}
     </div>
   );
 }
 
-function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, onEdit, onDelete }) {
+function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, onEdit, onDelete, onDropAssign }) {
   const range = getDateRange(filter);
+  const [dragOver, setDragOver] = useState(false);
 
   const matched = gigs
     .filter(g => {
@@ -263,14 +274,39 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
   const initials = dj.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <div style={{background:'#0d0d18', border:'1px solid #1e1e30', borderRadius:10, overflow:'hidden', flex:'1 1 0', minWidth:0}}>
-      <div style={{padding:'12px 14px', borderBottom:'1px solid #1e1e30', display:'flex', alignItems:'center', gap:10, background:'#131320'}}>
+    <div
+      onDragOver={e => {
+        if (e.dataTransfer.types.includes('text/gig-id')) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          setDragOver(true);
+        }
+      }}
+      onDragLeave={e => {
+        if (!e.currentTarget.contains(e.relatedTarget)) setDragOver(false);
+      }}
+      onDrop={e => {
+        e.preventDefault();
+        setDragOver(false);
+        const gigId = e.dataTransfer.getData('text/gig-id');
+        if (gigId) onDropAssign(gigId, dj);
+      }}
+      style={{
+        background: dragOver ? '#0d1a14' : '#0d0d18',
+        border: dragOver ? `2px dashed ${dotColor}` : '1px solid #1e1e30',
+        borderRadius:10, overflow:'hidden', flex:'1 1 0', minWidth:0,
+        transition:'background 0.12s, border 0.12s',
+      }}
+    >
+      <div style={{padding:'12px 14px', borderBottom:'1px solid #1e1e30', display:'flex', alignItems:'center', gap:10, background: dragOver ? dotColor+'15' : '#131320'}}>
         <div style={{width:34,height:34,borderRadius:'50%',background:dotColor+'25',color:dotColor,border:`1.5px solid ${dotColor}60`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,flexShrink:0}}>
           {initials}
         </div>
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontSize:13,fontWeight:700,color:'#ffffff'}}>{dj.name}</div>
-          <div style={{fontSize:11,color:'#8080a0',marginTop:1}}>{matched.length} gig{matched.length !== 1 ? 's' : ''}</div>
+          <div style={{fontSize:11,color:'#8080a0',marginTop:1}}>
+            {dragOver ? 'Drop to assign' : `${matched.length} gig${matched.length !== 1 ? 's' : ''}`}
+          </div>
         </div>
       </div>
 
@@ -296,7 +332,7 @@ const FILTERS = [
   { key:'all',        label:'All' },
 ];
 
-export default function GigList({ gigs, users = [], hideFees, onConfirm, onReject, onEdit, onDelete }) {
+export default function GigList({ gigs, users = [], hideFees, onConfirm, onReject, onEdit, onDelete, onDropAssign }) {
   const [filter, setFilter]       = useState('week');
   const [hiddenDJs, setHiddenDJs] = useState({});
 
@@ -329,4 +365,71 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
       {unassigned.length > 0 && (
         <div style={{background:'#1a0d00',border:'1px solid #ff990040',borderRadius:8,padding:'10px 16px',marginBottom:16,display:'flex',alignItems:'center'}}>
           <span style={{fontSize:13,color:'#ff9900',fontWeight:700}}>
-            👤 {unassigned.length} unassigned gig{unassigned.length !== 1 ? 's' : ''}
+            👤 {unassigned.length} unassigned gig{unassigned.length !== 1 ? 's' : ''} need{unassigned.length === 1 ? 's' : ''} a DJ
+          </span>
+        </div>
+      )}
+
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10,flexWrap:'wrap',gap:8}}>
+        <div style={{display:'flex',gap:4,flexWrap:'wrap',alignItems:'center'}}>
+          {FILTERS.map(f => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              style={{
+                background: filter === f.key ? '#00ffc220' : 'transparent',
+                border: `1px solid ${filter === f.key ? '#00ffc250' : '#2a2a40'}`,
+                color: filter === f.key ? '#00ffc2' : '#8080a0',
+                borderRadius:5, padding:'4px 10px', fontSize:11, cursor:'pointer', whiteSpace:'nowrap',
+              }}
+            >
+              {f.label}
+            </button>
+          ))}
+          {rangeLabel && <span style={{fontSize:11,color:'#505070',marginLeft:6}}>{rangeLabel}</span>}
+        </div>
+        <button className="btn btn-primary btn-sm" onClick={() => onEdit(null)}>+ Assign gig</button>
+      </div>
+
+      <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14}}>
+        {users.map((dj, i) => {
+          const hidden   = hiddenDJs[dj.uid];
+          const dotColor = DOT_COLORS[i % DOT_COLORS.length];
+          return (
+            <button
+              key={dj.uid}
+              onClick={() => toggleDJ(dj.uid)}
+              style={{
+                display:'flex', alignItems:'center', gap:6,
+                background: hidden ? 'transparent' : dotColor+'15',
+                border: `1px solid ${hidden ? '#2a2a40' : dotColor+'50'}`,
+                borderRadius:20, padding:'4px 12px', cursor:'pointer',
+                color: hidden ? '#505070' : dotColor,
+                fontSize:11, fontWeight:600, opacity: hidden ? 0.5 : 1, transition:'all 0.15s',
+              }}
+            >
+              <div style={{width:6,height:6,borderRadius:'50%',background:hidden?'#505070':dotColor}} />
+              {dj.name.split(' ')[0]}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{display:'flex', gap:10, alignItems:'flex-start', width:'100%'}}>
+        <UnassignedColumn
+          gigs={gigs} filter={filter} hideFees={hideFees}
+          onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete}
+        />
+        {visibleUsers.map(dj => (
+          <DJColumn
+            key={dj.uid} dj={dj} gigs={gigs}
+            dotColor={DOT_COLORS[users.indexOf(dj) % DOT_COLORS.length]}
+            hideFees={hideFees} filter={filter}
+            onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete}
+            onDropAssign={onDropAssign}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
