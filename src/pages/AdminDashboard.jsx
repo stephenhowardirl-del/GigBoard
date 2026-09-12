@@ -11,7 +11,6 @@ import CalendarView from '../components/CalendarView';
 import AssignGigModal from '../components/AssignGigModal';
 import GigList from '../components/admin/GigList';
 import RosterTab from '../components/admin/RosterTab';
-import AccessTab from '../components/admin/AccessTab';
 import MyGigsTab from '../components/admin/MyGigsTab';
 import VenueManager from '../components/admin/VenueManager';
 import FinancialsTab from '../components/FinancialsTab';
@@ -31,8 +30,6 @@ export default function AdminDashboard({ hideFees }) {
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
   const [invites, setInvites]       = useState([]);
-  const [newEmail, setNewEmail]     = useState('');
-  const [inviteSaved, setInviteSaved] = useState(false);
   const [invoiceGig, setInvoiceGig] = useState(null);
   const [previewDJ, setPreviewDJ]   = useState(null);
 
@@ -107,12 +104,6 @@ export default function AdminDashboard({ hideFees }) {
     setInvites(updated);
     await saveInvitedEmails(updated);
   }
-  async function handleAddInvite() {
-    await addInviteEmail(newEmail);
-    setNewEmail('');
-    setInviteSaved(true);
-    setTimeout(() => setInviteSaved(false), 2000);
-  }
   async function handleRemoveInvite(email) {
     const updated = invites.filter(e => e.toLowerCase() !== (email || '').toLowerCase());
     setInvites(updated);
@@ -152,7 +143,6 @@ export default function AdminDashboard({ hideFees }) {
           My gigs{myPending.length > 0 && <span className="notif-dot">{myPending.length}</span>}
         </button>
         <button className={`subnav-btn${tab==='financials'?' active':''}`} onClick={() => setTab('financials')}>Financials</button>
-        <button className={`subnav-btn${tab==='access'?' active':''}`}     onClick={() => setTab('access')}>Access</button>
 
         <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:8,padding:'0 16px'}}>
           <span style={{fontSize:11,color:'var(--text-muted)'}}>Preview as:</span>
@@ -199,29 +189,6 @@ export default function AdminDashboard({ hideFees }) {
       )}
 
       {tab === 'financials' && <FinancialsTab gigs={myGigs} profile={profile} userUid={user.uid} hideFees={hideFees} />}
-
-      {tab === 'access' && (
-        <AccessTab
-          venues={venues}
-          newVenue=''
-          setNewVenue={() => {}}
-          venueSaved={false}
-          onAddVenue={() => setTab('venues')}
-          onRemoveVenue={() => setTab('venues')}
-          editingVenue={null}
-          editingVenueName=''
-          setEditingVenueName={() => {}}
-          onStartEditVenue={() => setTab('venues')}
-          onRenameVenue={() => setTab('venues')}
-          onCancelEditVenue={() => {}}
-          invites={invites}
-          newEmail={newEmail}
-          setNewEmail={setNewEmail}
-          inviteSaved={inviteSaved}
-          onAddInvite={handleAddInvite}
-          onRemoveInvite={handleRemoveInvite}
-        />
-      )}
 
       {showModal && (
         <AssignGigModal
