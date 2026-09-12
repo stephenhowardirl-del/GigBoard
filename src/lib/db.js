@@ -1,6 +1,6 @@
 import {
   collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs,
-  query, where, orderBy, serverTimestamp, setDoc
+  query, where, orderBy, serverTimestamp, setDoc, onSnapshot
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -67,6 +67,17 @@ export async function createGigConfirmed({ venue, date, time, djUid, djName, djE
 export async function getAllGigs() {
   const snap = await getDocs(query(collection(db, 'gigs'), orderBy('date', 'asc')));
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+// Real-time: calls callback with the full gig list on every change
+// (including your own writes, instantly, via Firestore latency compensation).
+// Returns an unsubscribe function.
+export function subscribeGigs(callback, onError) {
+  return onSnapshot(
+    query(collection(db, 'gigs'), orderBy('date', 'asc')),
+    snap => callback(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+    err => { console.error(err); if (onError) onError(err); }
+  );
 }
 
 export async function getGigsForDJ(djUid) {
