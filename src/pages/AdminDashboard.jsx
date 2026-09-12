@@ -65,8 +65,6 @@ export default function AdminDashboard({ hideFees }) {
   useEffect(() => { if (profile?.uid) load(); }, [profile]);
 
   // ---- Optimistic helpers ----
-  // Update local state immediately, write to Firestore in the background,
-  // and only refetch everything if the write fails.
 
   function applyStatusLocally(gigId, status) {
     setGigs(gs => gs.map(g => g.id === gigId ? { ...g, status } : g));
@@ -85,8 +83,11 @@ export default function AdminDashboard({ hideFees }) {
 
   async function handleAssign(gigData) {
     if (gigData._bulkCreated) { load(); return; }
-    // Assigning a gig to yourself (the admin) skips acceptance — auto-confirmed.
-    if (gigData.djUid === profile?.uid) {
+    if (!gigData.djUid) {
+      // No DJ picked — save as unassigned for filling later.
+      await createGig({ ...gigData, assignedBy: 'Steve Howard', status: 'unassigned' });
+    } else if (gigData.djUid === profile?.uid) {
+      // Assigning a gig to yourself (the admin) skips acceptance — auto-confirmed.
       await createGigConfirmed({ ...gigData, assignedBy: 'Steve Howard' });
     } else {
       await createGig({ ...gigData, assignedBy: 'Steve Howard' });
@@ -95,19 +96,30 @@ export default function AdminDashboard({ hideFees }) {
   }
 
   async function handleEdit(gigData) {
-    // Editing never changes acceptance state — always keep the gig's current status.
     const { id, status, ...fields } = gigData;
-    const gigId     = editingGig.id;
-    const gigStatus = editingGig.status;
+    const gigId = editingGig.id;
+
+    // Status rules:
+    // - Editing never changes acceptance state (keep current status)...
+    // - ...except assigning a DJ to an unassigned gig: becomes a pending offer
+    //   (or auto-confirmed if assigned to yourself).
+    // - Removing the DJ from a gig makes it unassigned again.
+    let newStatus = editingGig.status;
+    if (editingGig.status === 'unassigned' && fields.djUid) {
+      newStatus = fields.djUid === profile?.uid ? 'confirmed' : 'pending';
+    }
+    if (!fields.djUid) {
+      newStatus = 'unassigned';
+    }
 
     // Optimistic: merge the edited fields into local state immediately.
-    const optimistic = { ...fields, status: gigStatus, fee: fields.fee ? Number(fields.fee) : null };
+    const optimistic = { ...fields, status: newStatus, fee: fields.fee ? Number(fields.fee) : null };
     setGigs(gs => gs.map(g => g.id === gigId ? { ...g, ...optimistic } : g));
     setMyGigs(gs => gs.map(g => g.id === gigId ? { ...g, ...optimistic } : g));
     setEditingGig(null);
 
     try {
-      await updateGig(gigId, { ...fields, status: gigStatus });
+      await updateGig(gigId, { ...fields, status: newStatus });
     } catch (e) {
       console.error(e);
       load();
@@ -116,7 +128,6 @@ export default function AdminDashboard({ hideFees }) {
 
   async function handleDelete(gig) {
     if (!window.confirm(`Delete this gig?\n\n${gig.venue} — ${gig.date}\n\nThis cannot be undone.`)) return;
-    // Optimistic: remove from local state immediately.
     setGigs(gs => gs.filter(g => g.id !== gig.id));
     setMyGigs(gs => gs.filter(g => g.id !== gig.id));
     try {
@@ -168,7 +179,6 @@ export default function AdminDashboard({ hideFees }) {
   }
 
   async function saveUserRole(uid, role, scope) {
-    // Optimistic: apply the role change locally first.
     setUsers(us => us.map(u => u.uid === uid ? { ...u, role, venueScope: role === 'venue_admin' ? scope : null } : u));
     try {
       await updateUserRole(uid, role, role === 'venue_admin' ? scope : null);
