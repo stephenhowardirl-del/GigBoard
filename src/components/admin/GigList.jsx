@@ -29,17 +29,14 @@ function getDateRange(filter) {
     return { from: toIso(new Date(today.getFullYear(), today.getMonth() + 1, 1)), to: toIso(new Date(today.getFullYear(), today.getMonth() + 2, 0)) };
   }
   if (filter === 'restofyear') {
-    // Day after next month ends → 31 Dec of current year
     const start = new Date(today.getFullYear(), today.getMonth() + 2, 1);
     return { from: toIso(start), to: `${today.getFullYear()}-12-31` };
   }
   if (filter === 'completed') {
-    // This year only, up to yesterday
     const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
     return { from: `${today.getFullYear()}-01-01`, to: toIso(yesterday) };
   }
   if (filter === 'all') {
-    // Future only: today onwards, no upper bound
     return { from: toIso(today), to: null };
   }
   return null;
@@ -211,37 +208,47 @@ function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete, draggable
   );
 }
 
-function UnassignedColumn({ gigs, filter, hideFees, onConfirm, onReject, onEdit, onDelete }) {
-  const range = getDateRange(filter);
-
+function UnassignedColumn({ gigs, hideFees, onConfirm, onReject, onEdit, onDelete }) {
+  // Permanent fixture: shows ALL unassigned gigs regardless of the date filter.
   const matched = gigs
-    .filter(g => {
-      if (g.status !== 'unassigned') return false;
-      if (range) {
-        if (range.from && g.date < range.from) return false;
-        if (range.to && g.date > range.to) return false;
-      }
-      return true;
-    })
+    .filter(g => g.status === 'unassigned')
     .sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''));
 
-  if (matched.length === 0) return null;
+  const empty = matched.length === 0;
 
   return (
-    <div style={{background:'#140d02', border:'1px solid #ff990040', borderRadius:10, overflow:'hidden', flex:'1 1 0', minWidth:0}}>
-      <div style={{padding:'12px 14px', borderBottom:'1px solid #ff990030', display:'flex', alignItems:'center', gap:10, background:'#1a1000'}}>
-        <div style={{width:34,height:34,borderRadius:'50%',background:'#ff990025',color:'#ff9900',border:'1.5px solid #ff990060',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:700,flexShrink:0}}>
-          !
+    <div style={{
+      background: empty ? '#0d0d18' : '#140d02',
+      border: empty ? '1px solid #1e1e30' : '1px solid #ff990040',
+      borderRadius:10, overflow:'hidden', flex:'1 1 0', minWidth:0,
+    }}>
+      <div style={{padding:'12px 14px', borderBottom: empty ? '1px solid #1e1e30' : '1px solid #ff990030', display:'flex', alignItems:'center', gap:10, background: empty ? '#131320' : '#1a1000'}}>
+        <div style={{
+          width:34,height:34,borderRadius:'50%',
+          background: empty ? '#00ffc215' : '#ff990025',
+          color: empty ? '#00ffc2' : '#ff9900',
+          border: `1.5px solid ${empty ? '#00ffc240' : '#ff990060'}`,
+          display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:700,flexShrink:0,
+        }}>
+          {empty ? '✓' : '!'}
         </div>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:13,fontWeight:700,color:'#ff9900'}}>Unassigned</div>
-          <div style={{fontSize:11,color:'#b08040',marginTop:1}}>{matched.length} gig{matched.length !== 1 ? 's' : ''} to fill — drag onto a DJ</div>
+          <div style={{fontSize:13,fontWeight:700,color: empty ? '#8080a0' : '#ff9900'}}>Unassigned</div>
+          <div style={{fontSize:11,color: empty ? '#505070' : '#b08040',marginTop:1}}>
+            {empty ? 'All gigs assigned' : `${matched.length} gig${matched.length !== 1 ? 's' : ''} to fill — drag onto a DJ`}
+          </div>
         </div>
       </div>
 
-      {matched.map(g => (
-        <GigCard key={g.id} g={g} hideFees={hideFees} draggable onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete} />
-      ))}
+      {empty ? (
+        <div style={{padding:'20px 14px',textAlign:'center',color:'#505070',fontSize:12}}>
+          Nothing to fill ✓
+        </div>
+      ) : (
+        matched.map(g => (
+          <GigCard key={g.id} g={g} hideFees={hideFees} draggable onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete} />
+        ))
+      )}
     </div>
   );
 }
@@ -264,7 +271,6 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
       return true;
     })
     .sort((a, b) => {
-      // Completed: most recent first. Everything else: soonest first.
       if (filter === 'completed') {
         return b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || '');
       }
@@ -289,7 +295,7 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
         e.preventDefault();
         setDragOver(false);
         const gigId = e.dataTransfer.getData('text/gig-id');
-        if (gigId) onDropAssign(gigId, dj);
+        if (gigId && onDropAssign) onDropAssign(gigId, dj);
       }}
       style={{
         background: dragOver ? '#0d1a14' : '#0d0d18',
@@ -417,7 +423,7 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
 
       <div style={{display:'flex', gap:10, alignItems:'flex-start', width:'100%'}}>
         <UnassignedColumn
-          gigs={gigs} filter={filter} hideFees={hideFees}
+          gigs={gigs} hideFees={hideFees}
           onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete}
         />
         {visibleUsers.map(dj => (
