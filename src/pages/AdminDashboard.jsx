@@ -3,8 +3,9 @@ import {
   getAllGigs, createGig, updateGig, deleteGig, getAllUsers,
   updateUserRole, updateUserSelfAssignVenues, getAllUnavailability,
   updateGigStatus, getGigsForDJ, getUnavailableDates, setUnavailableDates,
-  getInvitedEmails, saveInvitedEmails, getVenues, saveVenues,
+  getInvitedEmails, saveInvitedEmails,
 } from '../lib/db';
+import { getVenueNames, subscribeVenueConfig } from '../lib/venueGroups';
 import { useAuth } from '../hooks/useAuth';
 import CalendarView from '../components/CalendarView';
 import AssignGigModal from '../components/AssignGigModal';
@@ -12,6 +13,7 @@ import GigList from '../components/admin/GigList';
 import RosterTab from '../components/admin/RosterTab';
 import AccessTab from '../components/admin/AccessTab';
 import MyGigsTab from '../components/admin/MyGigsTab';
+import VenueManager from '../components/admin/VenueManager';
 import FinancialsTab from '../components/FinancialsTab';
 import DJDashboard from './DJDashboard';
 
@@ -22,13 +24,8 @@ export default function AdminDashboard({ hideFees }) {
   const [myGigs, setMyGigs]         = useState([]);
   const [myUnavail, setMyUnavail]   = useState([]);
   const [users, setUsers]           = useState([]);
-  const [allUsers, setAllUsers]     = useState([]);
   const [unavail, setUnavail]       = useState([]);
-  const [venues, setVenues]         = useState([]);
-  const [newVenue, setNewVenue]     = useState('');
-  const [venueSaved, setVenueSaved] = useState(false);
-  const [editingVenue, setEditingVenue]         = useState(null);
-  const [editingVenueName, setEditingVenueName] = useState('');
+  const [venues, setVenues]         = useState(getVenueNames());
   const [showModal, setShowModal]   = useState(false);
   const [editingGig, setEditingGig] = useState(null);
   const [loading, setLoading]       = useState(true);
@@ -39,31 +36,23 @@ export default function AdminDashboard({ hideFees }) {
   const [invoiceGig, setInvoiceGig] = useState(null);
   const [previewDJ, setPreviewDJ]   = useState(null);
 
+  // Keep venue list in sync with the Venues tab
+  useEffect(() => subscribeVenueConfig(() => setVenues(getVenueNames())), []);
+
   async function load() {
     try {
-      const [g, u, un, inv, v] = await Promise.all([
-        getAllGigs(), getAllUsers(), getAllUnavailability(), getInvitedEmails(), getVenues(),
+      const [g, u, un, inv] = await Promise.all([
+        getAllGigs(), getAllUsers(), getAllUnavailability(), getInvitedEmails(),
       ]);
       setGigs(g);
-      const djUsers = u.filter(x => x.role !== 'full_admin');
-      setUsers(djUsers);
-      setAllUsers(u);
+      setUsers(u.filter(x => x.role !== 'full_admin'));
       setUnavail(un);
       setInvites(inv);
-      setVenues(v);
       if (profile?.uid) {
-        const [mg, mun] = await Promise.all([
-          getGigsForDJ(profile.uid),
-          getUnavailableDates(profile.uid),
-        ]);
-        const myGigsByName = g.filter(gig =>
-          gig.djName && profile.name &&
-          gig.djName.toLowerCase() === profile.name.toLowerCase()
-        );
+        const [mg, mun] = await Promise.all([getGigsForDJ(profile.uid), getUnavailableDates(profile.uid)]);
+        const myGigsByName = g.filter(gig => gig.djName && profile.name && gig.djName.toLowerCase() === profile.name.toLowerCase());
         const merged = [...mg];
-        myGigsByName.forEach(gig => {
-          if (!merged.find(m => m.id === gig.id)) merged.push(gig);
-        });
+        myGigsByName.forEach(gig => { if (!merged.find(m => m.id === gig.id)) merged.push(gig); });
         merged.sort((a, b) => a.date.localeCompare(b.date));
         setMyGigs(merged);
         setMyUnavail(mun);
@@ -105,7 +94,7 @@ export default function AdminDashboard({ hideFees }) {
   }
 
   async function addInviteEmail(email) {
-    const clean = email.trim().toLowerCase();
+    const clean = (email || '').trim().toLowerCase();
     if (!clean || invites.map(e => e.toLowerCase()).includes(clean)) return;
     const updated = [...invites, clean];
     setInvites(updated);
@@ -122,41 +111,13 @@ export default function AdminDashboard({ hideFees }) {
     setInvites(updated);
     await saveInvitedEmails(updated);
   }
-  async function handleAddVenue() {
-    const v = newVenue.trim();
-    if (!v || venues.includes(v)) return;
-    const updated = [...venues, v];
-    setVenues(updated);
-    setNewVenue('');
-    await saveVenues(updated);
-    setVenueSaved(true);
-    setTimeout(() => setVenueSaved(false), 2000);
-  }
-  async function handleRemoveVenue(venue) {
-    if (!window.confirm(`Remove "${venue}" from the venue list?`)) return;
-    const updated = venues.filter(v => v !== venue);
-    setVenues(updated);
-    await saveVenues(updated);
-  }
-  async function handleRenameVenue() {
-    const newName = editingVenueName.trim();
-    if (!newName || newName === editingVenue) { setEditingVenue(null); return; }
-    const updated = venues.map(v => v === editingVenue ? newName : v);
-    setVenues(updated);
-    await saveVenues(updated);
-    setEditingVenue(null);
-    setEditingVenueName('');
-  }
   async function saveUserRole(uid, role, scope) {
     await updateUserRole(uid, role, role === 'venue_admin' ? scope : null);
     load();
   }
 
   const myPending    = myGigs.filter(g => g.status === 'pending');
-  const gigListUsers = profile ? [
-    { uid: profile.uid, name: profile.name, role: 'full_admin' },
-    ...users,
-  ] : users;
+  const gigListUsers = profile ? [{ uid: profile.uid, name: profile.name, role: 'full_admin' }, ...users] : users;
 
   if (loading) return <div className="loading">Loading…</div>;
   if (error)   return <div className="loading" style={{color:'#ff4070'}}>Error: {error} — try refreshing.</div>;
@@ -166,9 +127,7 @@ export default function AdminDashboard({ hideFees }) {
       <>
         <div style={{background:'#1a0a00',border:'1px solid #ff990060',padding:'10px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
           <div style={{fontSize:13,color:'#ff9900',fontWeight:600}}>👁 Previewing as {previewDJ.name}</div>
-          <button onClick={() => setPreviewDJ(null)} style={{background:'#ff990020',border:'1px solid #ff990060',color:'#ff9900',borderRadius:6,padding:'4px 14px',fontSize:12,cursor:'pointer',fontWeight:600}}>
-            Exit preview
-          </button>
+          <button onClick={() => setPreviewDJ(null)} style={{background:'#ff990020',border:'1px solid #ff990060',color:'#ff9900',borderRadius:6,padding:'4px 14px',fontSize:12,cursor:'pointer',fontWeight:600}}>Exit preview</button>
         </div>
         <DJDashboard previewProfile={previewDJ} hideFees={hideFees} />
       </>
@@ -181,6 +140,7 @@ export default function AdminDashboard({ hideFees }) {
         <button className={`subnav-btn${tab==='list'?' active':''}`}       onClick={() => setTab('list')}>Gig list</button>
         <button className={`subnav-btn${tab==='calendar'?' active':''}`}   onClick={() => setTab('calendar')}>Month view</button>
         <button className={`subnav-btn${tab==='roster'?' active':''}`}     onClick={() => setTab('roster')}>DJ roster</button>
+        <button className={`subnav-btn${tab==='venues'?' active':''}`}     onClick={() => setTab('venues')}>Venues</button>
         <button className={`subnav-btn${tab==='mygigs'?' active':''}`}     onClick={() => setTab('mygigs')}>
           My gigs{myPending.length > 0 && <span className="notif-dot">{myPending.length}</span>}
         </button>
@@ -202,25 +162,18 @@ export default function AdminDashboard({ hideFees }) {
 
       {tab === 'list' && (
         <GigList
-          gigs={gigs}
-          users={gigListUsers}
-          hideFees={hideFees}
-          onConfirm={handleConfirm}
-          onReject={handleRejectGig}
+          gigs={gigs} users={gigListUsers} hideFees={hideFees}
+          onConfirm={handleConfirm} onReject={handleRejectGig}
           onEdit={g => { setEditingGig(g); setShowModal(true); }}
           onDelete={handleDelete}
         />
       )}
 
-      {tab === 'calendar' && (
-        <CalendarView gigs={gigs} allUnavail={unavail} readOnly showDJPicker />
-      )}
+      {tab === 'calendar' && <CalendarView gigs={gigs} allUnavail={unavail} readOnly showDJPicker />}
 
       {tab === 'roster' && (
         <RosterTab
-          users={users}
-          venues={venues}
-          invites={invites}
+          users={users} venues={venues} invites={invites}
           onSaveRole={saveUserRole}
           onSaveSelfAssign={updateUserSelfAssignVenues}
           onAddInvite={addInviteEmail}
@@ -228,39 +181,32 @@ export default function AdminDashboard({ hideFees }) {
         />
       )}
 
+      {tab === 'venues' && <VenueManager />}
+
       {tab === 'mygigs' && (
         <MyGigsTab
-          myGigs={myGigs}
-          myUnavail={myUnavail}
-          userUid={user.uid}
-          allGigs={gigs}
-          hideFees={hideFees}
-          onAccept={handleAcceptMyGig}
-          onReject={handleRejectMyGig}
-          onToggleUnavail={handleToggleUnavail}
-          invoiceGig={invoiceGig}
-          setInvoiceGig={setInvoiceGig}
+          myGigs={myGigs} myUnavail={myUnavail} userUid={user.uid} allGigs={gigs} hideFees={hideFees}
+          onAccept={handleAcceptMyGig} onReject={handleRejectMyGig} onToggleUnavail={handleToggleUnavail}
+          invoiceGig={invoiceGig} setInvoiceGig={setInvoiceGig}
         />
       )}
 
-      {tab === 'financials' && (
-        <FinancialsTab gigs={myGigs} profile={profile} userUid={user.uid} hideFees={hideFees} />
-      )}
+      {tab === 'financials' && <FinancialsTab gigs={myGigs} profile={profile} userUid={user.uid} hideFees={hideFees} />}
 
       {tab === 'access' && (
         <AccessTab
           venues={venues}
-          newVenue={newVenue}
-          setNewVenue={setNewVenue}
-          venueSaved={venueSaved}
-          onAddVenue={handleAddVenue}
-          onRemoveVenue={handleRemoveVenue}
-          editingVenue={editingVenue}
-          editingVenueName={editingVenueName}
-          setEditingVenueName={setEditingVenueName}
-          onStartEditVenue={v => { setEditingVenue(v); setEditingVenueName(v); }}
-          onRenameVenue={handleRenameVenue}
-          onCancelEditVenue={() => setEditingVenue(null)}
+          newVenue=''
+          setNewVenue={() => {}}
+          venueSaved={false}
+          onAddVenue={() => setTab('venues')}
+          onRemoveVenue={() => setTab('venues')}
+          editingVenue={null}
+          editingVenueName=''
+          setEditingVenueName={() => {}}
+          onStartEditVenue={() => setTab('venues')}
+          onRenameVenue={() => setTab('venues')}
+          onCancelEditVenue={() => {}}
           invites={invites}
           newEmail={newEmail}
           setNewEmail={setNewEmail}
