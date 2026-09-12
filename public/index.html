@@ -17,6 +17,20 @@
     <meta name="apple-mobile-web-app-title" content="GigBoard" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
+    <!-- Safe-area padding so the app doesn't sit under the iPhone status bar / home indicator -->
+    <style>
+      html {
+        background: #0a0a12;
+      }
+      body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+        background: #0a0a12;
+      }
+    </style>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
