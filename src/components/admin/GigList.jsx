@@ -28,6 +28,20 @@ function getDateRange(filter) {
   if (filter === 'nextmonth') {
     return { from: toIso(new Date(today.getFullYear(), today.getMonth() + 1, 1)), to: toIso(new Date(today.getFullYear(), today.getMonth() + 2, 0)) };
   }
+  if (filter === 'restofyear') {
+    // Day after next month ends → 31 Dec of current year
+    const start = new Date(today.getFullYear(), today.getMonth() + 2, 1);
+    return { from: toIso(start), to: `${today.getFullYear()}-12-31` };
+  }
+  if (filter === 'completed') {
+    // This year only, up to yesterday
+    const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+    return { from: `${today.getFullYear()}-01-01`, to: toIso(yesterday) };
+  }
+  if (filter === 'all') {
+    // Future only: today onwards, no upper bound
+    return { from: toIso(today), to: null };
+  }
   return null;
 }
 
@@ -186,16 +200,25 @@ function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete }) {
 function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, onEdit, onDelete }) {
   const range = getDateRange(filter);
 
-  const upcoming = gigs
+  const matched = gigs
     .filter(g => {
       const matchUid  = g.djUid === dj.uid;
       const matchName = g.djName && dj.name && g.djName.toLowerCase() === dj.name.toLowerCase();
       if (!(matchUid || matchName)) return false;
       if (g.status === 'rejected') return false;
-      if (range) return g.date >= range.from && g.date <= range.to;
+      if (range) {
+        if (range.from && g.date < range.from) return false;
+        if (range.to && g.date > range.to) return false;
+      }
       return true;
     })
-    .sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''));
+    .sort((a, b) => {
+      // Completed: most recent first. Everything else: soonest first.
+      if (filter === 'completed') {
+        return b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || '');
+      }
+      return a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || '');
+    });
 
   const initials = dj.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
@@ -207,14 +230,14 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
         </div>
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontSize:13,fontWeight:700,color:'#ffffff'}}>{dj.name}</div>
-          <div style={{fontSize:11,color:'#8080a0',marginTop:1}}>{upcoming.length} gig{upcoming.length !== 1 ? 's' : ''}</div>
+          <div style={{fontSize:11,color:'#8080a0',marginTop:1}}>{matched.length} gig{matched.length !== 1 ? 's' : ''}</div>
         </div>
       </div>
 
-      {upcoming.length === 0 ? (
+      {matched.length === 0 ? (
         <div style={{padding:'20px 14px',textAlign:'center',color:'#505070',fontSize:12}}>No gigs in this period</div>
       ) : (
-        upcoming.map(g => (
+        matched.map(g => (
           <GigCard key={g.id} g={g} hideFees={hideFees} onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete} />
         ))
       )}
@@ -224,15 +247,17 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
 
 const DOT_COLORS = ['#00d4aa','#a080ff','#40a0ff','#ff60c0','#ffbb00','#80d040'];
 const FILTERS = [
-  { key:'week',      label:'This week' },
-  { key:'nextweek',  label:'Next week' },
-  { key:'month',     label:'This month' },
-  { key:'nextmonth', label:'Next month' },
-  { key:'all',       label:'All' },
+  { key:'week',       label:'This week' },
+  { key:'nextweek',   label:'Next week' },
+  { key:'month',      label:'This month' },
+  { key:'nextmonth',  label:'Next month' },
+  { key:'restofyear', label:'Rest of year' },
+  { key:'completed',  label:'Completed' },
+  { key:'all',        label:'All' },
 ];
 
 export default function GigList({ gigs, users = [], hideFees, onConfirm, onReject, onEdit, onDelete }) {
-  const [filter, setFilter]       = useState('month');
+  const [filter, setFilter]       = useState('week');
   const [hiddenDJs, setHiddenDJs] = useState({});
 
   const pending = gigs.filter(g => g.status === 'pending');
@@ -243,6 +268,12 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
 
   const visibleUsers = users.filter(dj => !hiddenDJs[dj.uid]);
   const range        = getDateRange(filter);
+
+  const rangeLabel = range
+    ? range.to
+      ? `${formatDate(range.from)} – ${formatDate(range.to)}`
+      : `${formatDate(range.from)} onwards`
+    : null;
 
   return (
     <div className="page-body">
@@ -264,13 +295,13 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
                 background: filter === f.key ? '#00ffc220' : 'transparent',
                 border: `1px solid ${filter === f.key ? '#00ffc250' : '#2a2a40'}`,
                 color: filter === f.key ? '#00ffc2' : '#8080a0',
-                borderRadius:5, padding:'4px 12px', fontSize:11, cursor:'pointer',
+                borderRadius:5, padding:'4px 10px', fontSize:11, cursor:'pointer', whiteSpace:'nowrap',
               }}
             >
               {f.label}
             </button>
           ))}
-          {range && <span style={{fontSize:11,color:'#505070',marginLeft:6}}>{formatDate(range.from)} – {formatDate(range.to)}</span>}
+          {rangeLabel && <span style={{fontSize:11,color:'#505070',marginLeft:6}}>{rangeLabel}</span>}
         </div>
         <button className="btn btn-primary btn-sm" onClick={() => onEdit(null)}>+ Assign gig</button>
       </div>
