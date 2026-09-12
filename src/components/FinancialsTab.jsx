@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { doc, getDoc, collection, getDocs, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { jsPDF } from 'jspdf';
+import { getVenueColor, getVenueLogo } from '../lib/venueGroups';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -16,6 +17,11 @@ function formatDateShort(iso) {
   if (!iso) return '';
   const d = new Date(iso + 'T12:00:00');
   return d.toLocaleDateString('en-IE', { day:'numeric', month:'short', year:'numeric' });
+}
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
 const STATUS_CONFIG = {
@@ -56,7 +62,7 @@ function InvoiceTracker({ userUid }) {
     try {
       const ref  = collection(db, 'djProfiles', userUid, 'invoices');
       const snap = await getDocs(ref);
-      const today = new Date().toISOString().split('T')[0];
+      const today = todayStr();
       const list  = snap.docs.map(d => {
         const data = d.data();
         // Auto-mark overdue
@@ -81,7 +87,6 @@ function InvoiceTracker({ userUid }) {
     setUpdating(null);
   }
 
-  const today   = new Date().toISOString().split('T')[0];
   const filtered = invoices.filter(inv => {
     if (filter === 'all') return true;
     if (filter === 'outstanding') return inv.status !== 'paid';
@@ -91,9 +96,6 @@ function InvoiceTracker({ userUid }) {
   const totalInvoiced   = invoices.reduce((s, i) => s + (i.total || 0), 0);
   const totalPaid       = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + (i.total || 0), 0);
   const totalOutstanding = invoices.filter(i => i.status !== 'paid').reduce((s, i) => s + (i.total || 0), 0);
-
-  const NEXT_STATUS = { draft:'sent', sent:'paid', overdue:'paid', paid:'draft' };
-  const NEXT_LABEL  = { draft:'Mark sent', sent:'Mark paid', overdue:'Mark paid', paid:'Reset' };
 
   if (loading) return <div style={{textAlign:'center',padding:20,color:'#8080a0',fontSize:13}}>Loading invoices...</div>;
 
@@ -247,6 +249,75 @@ function InvoiceTracker({ userUid }) {
   );
 }
 
+function VenueBreakdown({ gigs, year, hideFees }) {
+  const today = todayStr();
+
+  // All confirmed gigs with fees in the selected year, grouped by venue.
+  const inYear = gigs.filter(g => {
+    if (g.status !== 'confirmed' || !g.fee) return false;
+    return g.date >= `${year}-01-01` && g.date <= `${year}-12-31`;
+  });
+
+  const byVenue = {};
+  inYear.forEach(g => {
+    if (!byVenue[g.venue]) byVenue[g.venue] = { venue: g.venue, count: 0, booked: 0, earned: 0 };
+    const fee = Number(g.fee);
+    byVenue[g.venue].count  += 1;
+    byVenue[g.venue].booked += fee;              // all confirmed, incl. future
+    if (g.date < today) byVenue[g.venue].earned += fee;  // already played
+  });
+
+  const rows      = Object.values(byVenue).sort((a, b) => b.booked - a.booked);
+  const maxBooked = Math.max(...rows.map(r => r.booked), 1);
+
+  if (rows.length === 0) {
+    return (
+      <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,padding:24,textAlign:'center',color:'#505070',fontSize:13,marginBottom:24}}>
+        No confirmed gigs with fees in {year}.
+      </div>
+    );
+  }
+
+  return (
+    <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden',marginBottom:24}}>
+      {/* Header row */}
+      <div style={{display:'flex',alignItems:'center',gap:12,padding:'10px 16px',borderBottom:'1px solid #1e1e30',background:'#131320'}}>
+        <div style={{flex:1,fontSize:10,color:'#505070',textTransform:'uppercase',letterSpacing:'0.08em',fontWeight:700}}>Venue</div>
+        <div style={{width:50,textAlign:'right',fontSize:10,color:'#505070',textTransform:'uppercase',letterSpacing:'0.08em',fontWeight:700}}>Gigs</div>
+        <div style={{width:90,textAlign:'right',fontSize:10,color:'#505070',textTransform:'uppercase',letterSpacing:'0.08em',fontWeight:700}}>Earned</div>
+        <div style={{width:90,textAlign:'right',fontSize:10,color:'#505070',textTransform:'uppercase',letterSpacing:'0.08em',fontWeight:700}}>Booked</div>
+      </div>
+
+      {rows.map((r, i) => {
+        const vc   = getVenueColor(r.venue);
+        const logo = getVenueLogo(r.venue);
+        const barW = (r.booked / maxBooked) * 100;
+        return (
+          <div key={r.venue} style={{position:'relative',borderBottom: i < rows.length-1 ? '1px solid #1a1a2e' : 'none'}}>
+            {/* Subtle proportional bar behind the row */}
+            {!hideFees && (
+              <div style={{position:'absolute',top:0,left:0,bottom:0,width:`${barW}%`,background:'#00ffc206',pointerEvents:'none'}} />
+            )}
+            <div style={{display:'flex',alignItems:'center',gap:12,padding:'11px 16px',position:'relative'}}>
+              {logo ? (
+                <img src={logo} alt={r.venue} style={{width:32,height:32,borderRadius:6,objectFit:'cover',flexShrink:0}} onError={e=>{e.target.style.display='none';}} />
+              ) : (
+                <div style={{width:32,height:32,borderRadius:6,background:'#1a1a2e',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <div style={{width:7,height:7,borderRadius:'50%',background:vc.color}} />
+                </div>
+              )}
+              <div style={{flex:1,minWidth:0,fontSize:13,fontWeight:700,color:'#ffffff',lineHeight:1.3}}>{r.venue}</div>
+              <div style={{width:50,textAlign:'right',fontSize:12,color:'#8080a0'}}>{r.count}</div>
+              <div style={{width:90,textAlign:'right',fontSize:13,fontWeight:700,color:'#00ffc2'}}>{hideFees ? '—' : `€${r.earned}`}</div>
+              <div style={{width:90,textAlign:'right',fontSize:13,fontWeight:700,color:'#a080ff'}}>{hideFees ? '—' : `€${r.booked}`}</div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function FinancialsTab({ gigs, profile, userUid, hideFees }) {
   const now          = new Date();
   const currentYear  = now.getFullYear();
@@ -269,7 +340,7 @@ export default function FinancialsTab({ gigs, profile, userUid, hideFees }) {
   }, [userUid]);
 
   const confirmedWithFee = gigs.filter(g => g.status === 'confirmed' && g.fee);
-  const today            = new Date().toISOString().split('T')[0];
+  const today            = todayStr();
 
   const prevMonthDate  = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const prevMonth      = prevMonthDate.getMonth();
@@ -446,6 +517,16 @@ export default function FinancialsTab({ gigs, profile, userUid, hideFees }) {
               </div>
             )}
           </div>
+
+          <div className="section-title" style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <span>By venue — {year}</span>
+            {!hideFees && (
+              <span style={{fontSize:11,color:'#505070'}}>
+                <span style={{color:'#00ffc2',fontWeight:700}}>Earned</span> = played · <span style={{color:'#a080ff',fontWeight:700}}>Booked</span> = incl. upcoming
+              </span>
+            )}
+          </div>
+          <VenueBreakdown gigs={gigs} year={year} hideFees={hideFees} />
         </>
       )}
 
