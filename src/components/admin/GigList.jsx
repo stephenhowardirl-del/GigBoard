@@ -353,7 +353,7 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
     : null;
 
   return (
-    <div className="page-body">
+    <div className="page-body" style={{maxWidth:'100%', paddingLeft:28, paddingRight:28}}>
       {pending.length > 0 && (
         <div style={{background:'#2a1800',border:'1px solid #ffbb0040',borderRadius:8,padding:'10px 16px',marginBottom:16,display:'flex',alignItems:'center'}}>
           <span style={{fontSize:13,color:'#ffbb00',fontWeight:700}}>
