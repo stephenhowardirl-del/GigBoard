@@ -75,7 +75,8 @@ function GigMenu({ g, onConfirm, onReject, onEdit, onDelete }) {
     setOpen(true);
   }
 
-  const isPending = g.status === 'pending';
+  const isPending    = g.status === 'pending';
+  const isUnassigned = g.status === 'unassigned';
   const item = (color, weight) => ({
     width:'100%', padding:'10px 14px', background:'transparent', border:'none',
     borderBottom:'1px solid #1e1e2e', color, fontSize:12, fontWeight:weight, textAlign:'left', cursor:'pointer',
@@ -109,15 +110,17 @@ function GigMenu({ g, onConfirm, onReject, onEdit, onDelete }) {
             boxShadow:'0 8px 24px #00000090', overflow:'hidden',
           }}
         >
-          <button onClick={() => { onEdit(g); setOpen(false); }} style={item('#e8e8f0', 600)}>✏️ Edit gig</button>
-          {isPending ? (
+          <button onClick={() => { onEdit(g); setOpen(false); }} style={item('#e8e8f0', 600)}>
+            {isUnassigned ? '👤 Assign DJ' : '✏️ Edit gig'}
+          </button>
+          {!isUnassigned && (isPending ? (
             <>
               <button onClick={() => { onConfirm(g.id); setOpen(false); }} style={item('#00ffc2', 600)}>✓ Confirm</button>
               <button onClick={() => { onReject(g.id); setOpen(false); }}  style={item('#ff9900', 500)}>✕ Reject</button>
             </>
           ) : (
             <button onClick={() => { onConfirm(g.id); setOpen(false); }} style={item('#00ffc2', 500)}>✓ Re-confirm</button>
-          )}
+          ))}
           <button onClick={() => { onDelete(g); setOpen(false); }} style={{...item('#ff4070', 500), borderBottom:'none'}}>🗑 Delete</button>
         </div>,
         document.body
@@ -128,9 +131,10 @@ function GigMenu({ g, onConfirm, onReject, onEdit, onDelete }) {
 
 function StatusPill({ status }) {
   const config = {
-    confirmed: { color:'#00ffc2', bg:'#00ffc215', border:'#00ffc230', label:'Confirmed' },
-    pending:   { color:'#ffbb00', bg:'#ffbb0015', border:'#ffbb0030', label:'Pending' },
-    rejected:  { color:'#ff4070', bg:'#ff407015', border:'#ff407030', label:'Rejected' },
+    confirmed:  { color:'#00ffc2', bg:'#00ffc215', border:'#00ffc230', label:'Confirmed' },
+    pending:    { color:'#ffbb00', bg:'#ffbb0015', border:'#ffbb0030', label:'Pending' },
+    rejected:   { color:'#ff4070', bg:'#ff407015', border:'#ff407030', label:'Rejected' },
+    unassigned: { color:'#ff9900', bg:'#ff990015', border:'#ff990030', label:'Unassigned' },
   };
   const c = config[status] || config.pending;
   return (
@@ -197,6 +201,41 @@ function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete }) {
   );
 }
 
+function UnassignedColumn({ gigs, filter, hideFees, onConfirm, onReject, onEdit, onDelete }) {
+  const range = getDateRange(filter);
+
+  const matched = gigs
+    .filter(g => {
+      if (g.status !== 'unassigned') return false;
+      if (range) {
+        if (range.from && g.date < range.from) return false;
+        if (range.to && g.date > range.to) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''));
+
+  if (matched.length === 0) return null;
+
+  return (
+    <div style={{background:'#140d02', border:'1px solid #ff990040', borderRadius:10, overflow:'hidden', flex:'1 1 0', minWidth:0}}>
+      <div style={{padding:'12px 14px', borderBottom:'1px solid #ff990030', display:'flex', alignItems:'center', gap:10, background:'#1a1000'}}>
+        <div style={{width:34,height:34,borderRadius:'50%',background:'#ff990025',color:'#ff9900',border:'1.5px solid #ff990060',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:700,flexShrink:0}}>
+          !
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#ff9900'}}>Unassigned</div>
+          <div style={{fontSize:11,color:'#b08040',marginTop:1}}>{matched.length} gig{matched.length !== 1 ? 's' : ''} to fill</div>
+        </div>
+      </div>
+
+      {matched.map(g => (
+        <GigCard key={g.id} g={g} hideFees={hideFees} onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete} />
+      ))}
+    </div>
+  );
+}
+
 function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, onEdit, onDelete }) {
   const range = getDateRange(filter);
 
@@ -206,6 +245,7 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
       const matchName = g.djName && dj.name && g.djName.toLowerCase() === dj.name.toLowerCase();
       if (!(matchUid || matchName)) return false;
       if (g.status === 'rejected') return false;
+      if (g.status === 'unassigned') return false;
       if (range) {
         if (range.from && g.date < range.from) return false;
         if (range.to && g.date > range.to) return false;
@@ -260,7 +300,8 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
   const [filter, setFilter]       = useState('week');
   const [hiddenDJs, setHiddenDJs] = useState({});
 
-  const pending = gigs.filter(g => g.status === 'pending');
+  const pending    = gigs.filter(g => g.status === 'pending');
+  const unassigned = gigs.filter(g => g.status === 'unassigned');
 
   function toggleDJ(uid) {
     setHiddenDJs(h => ({ ...h, [uid]: !h[uid] }));
@@ -285,61 +326,7 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
         </div>
       )}
 
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10,flexWrap:'wrap',gap:8}}>
-        <div style={{display:'flex',gap:4,flexWrap:'wrap',alignItems:'center'}}>
-          {FILTERS.map(f => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              style={{
-                background: filter === f.key ? '#00ffc220' : 'transparent',
-                border: `1px solid ${filter === f.key ? '#00ffc250' : '#2a2a40'}`,
-                color: filter === f.key ? '#00ffc2' : '#8080a0',
-                borderRadius:5, padding:'4px 10px', fontSize:11, cursor:'pointer', whiteSpace:'nowrap',
-              }}
-            >
-              {f.label}
-            </button>
-          ))}
-          {rangeLabel && <span style={{fontSize:11,color:'#505070',marginLeft:6}}>{rangeLabel}</span>}
-        </div>
-        <button className="btn btn-primary btn-sm" onClick={() => onEdit(null)}>+ Assign gig</button>
-      </div>
-
-      <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14}}>
-        {users.map((dj, i) => {
-          const hidden   = hiddenDJs[dj.uid];
-          const dotColor = DOT_COLORS[i % DOT_COLORS.length];
-          return (
-            <button
-              key={dj.uid}
-              onClick={() => toggleDJ(dj.uid)}
-              style={{
-                display:'flex', alignItems:'center', gap:6,
-                background: hidden ? 'transparent' : dotColor+'15',
-                border: `1px solid ${hidden ? '#2a2a40' : dotColor+'50'}`,
-                borderRadius:20, padding:'4px 12px', cursor:'pointer',
-                color: hidden ? '#505070' : dotColor,
-                fontSize:11, fontWeight:600, opacity: hidden ? 0.5 : 1, transition:'all 0.15s',
-              }}
-            >
-              <div style={{width:6,height:6,borderRadius:'50%',background:hidden?'#505070':dotColor}} />
-              {dj.name.split(' ')[0]}
-            </button>
-          );
-        })}
-      </div>
-
-      <div style={{display:'flex', gap:10, alignItems:'flex-start', width:'100%'}}>
-        {visibleUsers.map(dj => (
-          <DJColumn
-            key={dj.uid} dj={dj} gigs={gigs}
-            dotColor={DOT_COLORS[users.indexOf(dj) % DOT_COLORS.length]}
-            hideFees={hideFees} filter={filter}
-            onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
+      {unassigned.length > 0 && (
+        <div style={{background:'#1a0d00',border:'1px solid #ff990040',borderRadius:8,padding:'10px 16px',marginBottom:16,display:'flex',alignItems:'center'}}>
+          <span style={{fontSize:13,color:'#ff9900',fontWeight:700}}>
+            👤 {unassigned.length} unassigned gig{unassigned.length !== 1 ? 's' : ''}
