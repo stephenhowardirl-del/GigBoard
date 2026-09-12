@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from './hooks/useAuth';
 import LoginPage from './pages/LoginPage';
 import AccessDenied from './pages/AccessDenied';
@@ -7,6 +7,7 @@ import VenueAdminDashboard from './pages/VenueAdminDashboard';
 import DJDashboard from './pages/DJDashboard';
 import DJProfile from './pages/DJProfile';
 import ErrorBoundary from './components/ErrorBoundary';
+import { loadVenueConfig } from './lib/venueGroups';
 import './index.css';
 
 const ROLE_LABELS = {
@@ -53,14 +54,19 @@ function GigBoardLogo() {
 
 export default function App() {
   const { user, profile, loading, accessDenied, logout } = useAuth();
-  const [showMenu, setShowMenu]       = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
-  const [hideFees, setHideFees]       = useState(false);
+  const [showMenu, setShowMenu]         = useState(false);
+  const [showProfile, setShowProfile]   = useState(false);
+  const [hideFees, setHideFees]         = useState(false);
+  const [venuesReady, setVenuesReady]   = useState(false);
+
+  useEffect(() => {
+    if (user) loadVenueConfig().finally(() => setVenuesReady(true));
+  }, [user]);
 
   if (loading)      return <div className="loading">Loading GigBoard…</div>;
   if (!user)        return <LoginPage />;
   if (accessDenied) return <AccessDenied />;
-  if (!profile)     return <div className="loading">Loading…</div>;
+  if (!profile || !venuesReady) return <div className="loading">Loading…</div>;
 
   return (
     <div style={{minHeight:'100vh'}} onClick={() => setShowMenu(false)}>
@@ -107,17 +113,8 @@ export default function App() {
                 style={{width:'100%',padding:'10px 14px',background:'transparent',border:'none',borderBottom:'1px solid #1e1e2e',color:'#e8e8f0',fontSize:13,fontWeight:500,textAlign:'left',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between'}}
               >
                 <span style={{display:'flex',alignItems:'center',gap:8}}>💰 Hide fees</span>
-                <span style={{
-                  width:32, height:18, borderRadius:9,
-                  background: hideFees ? '#00ffc2' : '#2a2a40',
-                  position:'relative', transition:'background 0.2s', flexShrink:0,
-                }}>
-                  <span style={{
-                    position:'absolute', top:2,
-                    left: hideFees ? 16 : 2,
-                    width:14, height:14, borderRadius:'50%',
-                    background:'#fff', transition:'left 0.2s',
-                  }} />
+                <span style={{width:32,height:18,borderRadius:9,background: hideFees ? '#00ffc2' : '#2a2a40',position:'relative',transition:'background 0.2s',flexShrink:0}}>
+                  <span style={{position:'absolute',top:2,left: hideFees ? 16 : 2,width:14,height:14,borderRadius:'50%',background:'#fff',transition:'left 0.2s'}} />
                 </span>
               </button>
 
