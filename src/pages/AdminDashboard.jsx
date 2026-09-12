@@ -73,7 +73,9 @@ export default function AdminDashboard({ hideFees }) {
     load();
   }
   async function handleEdit(gigData) {
-    await updateGig(editingGig.id, gigData);
+    // Editing never changes acceptance state — always keep the gig's current status.
+    const { id, status, ...fields } = gigData;
+    await updateGig(editingGig.id, { ...fields, status: editingGig.status });
     setEditingGig(null);
     load();
   }
