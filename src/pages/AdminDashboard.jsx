@@ -126,6 +126,46 @@ export default function AdminDashboard({ hideFees }) {
     }
   }
 
+  // Drag-and-drop: assign an unassigned gig to a DJ by dropping it on their column.
+  async function handleDropAssign(gigId, dj) {
+    const gig = gigs.find(g => g.id === gigId);
+    if (!gig || gig.status !== 'unassigned') return;
+
+    // Assigning to yourself auto-confirms; anyone else gets a pending offer.
+    const newStatus = dj.uid === profile?.uid ? 'confirmed' : 'pending';
+    const djEmail   = dj.email || (dj.uid === profile?.uid ? (profile?.email || '') : '');
+
+    const updated = {
+      djUid: dj.uid,
+      djName: dj.name || '',
+      djEmail,
+      status: newStatus,
+    };
+
+    // Optimistic: move the card immediately.
+    setGigs(gs => gs.map(g => g.id === gigId ? { ...g, ...updated } : g));
+    if (dj.uid === profile?.uid) {
+      setMyGigs(gs => {
+        const next = gs.filter(g => g.id !== gigId);
+        next.push({ ...gig, ...updated });
+        next.sort((a, b) => a.date.localeCompare(b.date));
+        return next;
+      });
+    }
+
+    try {
+      await updateGig(gigId, {
+        venue: gig.venue, date: gig.date, time: gig.time,
+        djUid: dj.uid, djName: dj.name || '', djEmail,
+        notes: gig.notes, fee: gig.fee,
+        status: newStatus,
+      });
+    } catch (e) {
+      console.error(e);
+      load();
+    }
+  }
+
   async function handleDelete(gig) {
     if (!window.confirm(`Delete this gig?\n\n${gig.venue} — ${gig.date}\n\nThis cannot be undone.`)) return;
     setGigs(gs => gs.filter(g => g.id !== gig.id));
@@ -189,7 +229,7 @@ export default function AdminDashboard({ hideFees }) {
   }
 
   const myPending    = myGigs.filter(g => g.status === 'pending');
-  const gigListUsers = profile ? [{ uid: profile.uid, name: profile.name, role: 'full_admin' }, ...users] : users;
+  const gigListUsers = profile ? [{ uid: profile.uid, name: profile.name, email: profile.email, role: 'full_admin' }, ...users] : users;
 
   if (loading) return <div className="loading">Loading…</div>;
   if (error)   return <div className="loading" style={{color:'#ff4070'}}>Error: {error} — try refreshing.</div>;
@@ -237,6 +277,7 @@ export default function AdminDashboard({ hideFees }) {
           onConfirm={handleConfirm} onReject={handleRejectGig}
           onEdit={g => { setEditingGig(g); setShowModal(true); }}
           onDelete={handleDelete}
+          onDropAssign={handleDropAssign}
         />
       )}
 
