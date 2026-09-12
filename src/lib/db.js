@@ -37,12 +37,15 @@ export async function updateUserSelfAssignVenues(uid, selfAssignVenues) {
   await updateDoc(doc(db, 'users', uid), { selfAssignVenues });
 }
 
-export async function createGig({ venue, date, time, djUid, djName, djEmail, notes, fee, assignedBy }) {
+export async function createGig({ venue, date, time, djUid, djName, djEmail, notes, fee, assignedBy, status }) {
   return await addDoc(collection(db, 'gigs'), {
-    venue, date, time, djUid, djName, djEmail: djEmail || '',
+    venue, date, time,
+    djUid: djUid || '',
+    djName: djName || '',
+    djEmail: djEmail || '',
     notes: notes || '',
     fee: fee ? Number(fee) : null,
-    status: 'pending',
+    status: status || 'pending',
     assignedBy,
     calendarEventId: null,
     createdAt: serverTimestamp(),
@@ -94,7 +97,10 @@ export async function updateGigStatus(gigId, status, calendarEventId = null) {
 export async function updateGig(gigId, { venue, date, time, djUid, djName, djEmail, notes, fee, status }) {
   // Editing preserves the gig's existing status — passed in by the caller.
   await updateDoc(doc(db, 'gigs', gigId), {
-    venue, date, time, djUid, djName, djEmail: djEmail || '',
+    venue, date, time,
+    djUid: djUid || '',
+    djName: djName || '',
+    djEmail: djEmail || '',
     notes: notes || '',
     fee: fee ? Number(fee) : null,
     status: status || 'pending',
