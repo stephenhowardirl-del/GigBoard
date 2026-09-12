@@ -79,10 +79,7 @@ export default function AdminDashboard({ hideFees }) {
   useEffect(() => { if (profile?.uid) load(); }, [profile]);
 
   async function handleAssign(gigData) {
-    if (gigData._bulkCreated) {
-      load();
-      return;
-    }
+    if (gigData._bulkCreated) { load(); return; }
     await createGig({ ...gigData, assignedBy: 'Steve Howard' });
     load();
   }
@@ -106,18 +103,22 @@ export default function AdminDashboard({ hideFees }) {
     setMyUnavail(next);
     await setUnavailableDates(profile.uid, next);
   }
-  async function handleAddInvite() {
-    const email = newEmail.trim().toLowerCase();
-    if (!email || invites.includes(email)) return;
-    const updated = [...invites, email];
+
+  async function addInviteEmail(email) {
+    const clean = email.trim().toLowerCase();
+    if (!clean || invites.map(e => e.toLowerCase()).includes(clean)) return;
+    const updated = [...invites, clean];
     setInvites(updated);
-    setNewEmail('');
     await saveInvitedEmails(updated);
+  }
+  async function handleAddInvite() {
+    await addInviteEmail(newEmail);
+    setNewEmail('');
     setInviteSaved(true);
     setTimeout(() => setInviteSaved(false), 2000);
   }
   async function handleRemoveInvite(email) {
-    const updated = invites.filter(e => e !== email);
+    const updated = invites.filter(e => e.toLowerCase() !== (email || '').toLowerCase());
     setInvites(updated);
     await saveInvitedEmails(updated);
   }
@@ -163,22 +164,13 @@ export default function AdminDashboard({ hideFees }) {
   if (previewDJ) {
     return (
       <>
-        <div style={{
-          background: '#1a0a00', border: '1px solid #ff990060',
-          padding: '10px 20px', display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', gap: 12,
-        }}>
-          <div style={{fontSize:13, color:'#ff9900', fontWeight:600}}>
-            👁 Previewing as {previewDJ.name}
-          </div>
-          <button
-            onClick={() => setPreviewDJ(null)}
-            style={{background:'#ff990020', border:'1px solid #ff990060', color:'#ff9900', borderRadius:6, padding:'4px 14px', fontSize:12, cursor:'pointer', fontWeight:600}}
-          >
+        <div style={{background:'#1a0a00',border:'1px solid #ff990060',padding:'10px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+          <div style={{fontSize:13,color:'#ff9900',fontWeight:600}}>👁 Previewing as {previewDJ.name}</div>
+          <button onClick={() => setPreviewDJ(null)} style={{background:'#ff990020',border:'1px solid #ff990060',color:'#ff9900',borderRadius:6,padding:'4px 14px',fontSize:12,cursor:'pointer',fontWeight:600}}>
             Exit preview
           </button>
         </div>
-        <DJDashboard previewProfile={previewDJ} />
+        <DJDashboard previewProfile={previewDJ} hideFees={hideFees} />
       </>
     );
   }
@@ -195,15 +187,12 @@ export default function AdminDashboard({ hideFees }) {
         <button className={`subnav-btn${tab==='financials'?' active':''}`} onClick={() => setTab('financials')}>Financials</button>
         <button className={`subnav-btn${tab==='access'?' active':''}`}     onClick={() => setTab('access')}>Access</button>
 
-        <div style={{marginLeft:'auto', display:'flex', alignItems:'center', gap:8, padding:'0 16px'}}>
-          <span style={{fontSize:11, color:'var(--text-muted)'}}>Preview as:</span>
+        <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:8,padding:'0 16px'}}>
+          <span style={{fontSize:11,color:'var(--text-muted)'}}>Preview as:</span>
           <select
             value=''
-            onChange={e => {
-              const dj = users.find(u => u.uid === e.target.value);
-              if (dj) setPreviewDJ(dj);
-            }}
-            style={{background:'var(--bg-raised)', border:'1px solid var(--border)', color:'var(--text-secondary)', borderRadius:5, padding:'3px 8px', fontSize:11, cursor:'pointer'}}
+            onChange={e => { const dj = users.find(u => u.uid === e.target.value); if (dj) setPreviewDJ(dj); }}
+            style={{background:'var(--bg-raised)',border:'1px solid var(--border)',color:'var(--text-secondary)',borderRadius:5,padding:'3px 8px',fontSize:11,cursor:'pointer'}}
           >
             <option value=''>Select DJ…</option>
             {users.map(u => <option key={u.uid} value={u.uid}>{u.name}</option>)}
@@ -231,8 +220,11 @@ export default function AdminDashboard({ hideFees }) {
         <RosterTab
           users={users}
           venues={venues}
+          invites={invites}
           onSaveRole={saveUserRole}
           onSaveSelfAssign={updateUserSelfAssignVenues}
+          onAddInvite={addInviteEmail}
+          onRemoveInvite={handleRemoveInvite}
         />
       )}
 
@@ -252,11 +244,7 @@ export default function AdminDashboard({ hideFees }) {
       )}
 
       {tab === 'financials' && (
-        <FinancialsTab
-          gigs={myGigs}
-          profile={profile}
-          userUid={user.uid}
-        />
+        <FinancialsTab gigs={myGigs} profile={profile} userUid={user.uid} hideFees={hideFees} />
       )}
 
       {tab === 'access' && (
