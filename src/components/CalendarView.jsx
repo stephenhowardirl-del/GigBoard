@@ -4,14 +4,28 @@ import { getVenueColor, getVenueLogo } from '../lib/venueGroups';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS   = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const DAYS_SHORT = ['M','T','W','T','F','S','S'];
 
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' ? window.innerWidth <= 640 : false
+  );
+  useEffect(() => {
+    function onResize() { setIsMobile(window.innerWidth <= 640); }
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  return isMobile;
+}
+
 export default function CalendarView({ gigs = [], unavailDates = [], allUnavail = [], onToggleUnavail, readOnly = false, venueFilter = null, showDJPicker = false }) {
   const now = new Date();
+  const isMobile = useIsMobile();
   const [year, setYear]             = useState(now.getFullYear());
   const [month, setMonth]           = useState(now.getMonth());
   const [selectedDJ, setSelectedDJ] = useState('all');
@@ -110,12 +124,14 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
     }
   }
 
+  const dayLabels = isMobile ? DAYS_SHORT : DAYS;
+
   return (
     <div className="cal-wrap" style={{position:'relative'}} onClick={() => setPopup(null)}>
 
       {/* Header row */}
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: showDJPicker ? 12 : 20}}>
-        <div style={{fontSize:20, fontWeight:700, color:'#ffffff'}}>{MONTHS[month]} {year}</div>
+        <div style={{fontSize: isMobile ? 17 : 20, fontWeight:700, color:'#ffffff'}}>{MONTHS[month]} {year}</div>
         <div style={{display:'flex', gap:8, alignItems:'center'}}>
           <button onClick={prevMonth} style={{background:'#131320',border:'1px solid #2a2a40',color:'#e8e8f0',borderRadius:6,width:32,height:32,cursor:'pointer',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center'}}>‹</button>
           <button onClick={nextMonth} style={{background:'#131320',border:'1px solid #2a2a40',color:'#e8e8f0',borderRadius:6,width:32,height:32,cursor:'pointer',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center'}}>›</button>
@@ -155,7 +171,7 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
               </button>
             ))}
           </div>
-          {isDJView && (
+          {isDJView && !isMobile && (
             <div style={{marginLeft:'auto', fontSize:12, color:'#8080a0'}}>
               <span style={{color:'#ff6090', fontWeight:600}}>■</span> Unavailable &nbsp;
               <span style={{color:'#00ffc2', fontWeight:600}}>■</span> Confirmed
@@ -166,10 +182,10 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
 
       {/* DJ view info banner */}
       {isDJView && (
-        <div style={{background:'#0d0d18', border:'1px solid #2a2a40', borderRadius:8, padding:'10px 14px', marginBottom:14, display:'flex', alignItems:'center', gap:10}}>
-          <div style={{width:8, height:8, borderRadius:'50%', background:'#a080ff'}} />
+        <div style={{background:'#0d0d18', border:'1px solid #2a2a40', borderRadius:8, padding:'10px 14px', marginBottom:14, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
+          <div style={{width:8, height:8, borderRadius:'50%', background:'#a080ff', flexShrink:0}} />
           <span style={{fontSize:13, color:'#e8e8f0', fontWeight:600}}>{selectedDJName}</span>
-          <span style={{fontSize:12, color:'#8080a0', marginLeft:4}}>— red days = marked unavailable</span>
+          <span style={{fontSize:12, color:'#8080a0'}}>— red days = marked unavailable</span>
         </div>
       )}
 
@@ -179,16 +195,16 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
         <div style={{textAlign:'center',padding:'40px',color:'#505070',fontSize:13}}>Loading…</div>
       ) : (
         <>
-          <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:3, marginBottom:3}}>
-            {DAYS.map(d => (
-              <div key={d} style={{fontSize:11, color:'#505070', textAlign:'center', padding:'6px 0', textTransform:'uppercase', letterSpacing:'0.06em', fontWeight:600}}>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap: isMobile ? 2 : 3, marginBottom: isMobile ? 2 : 3}}>
+            {dayLabels.map((d, i) => (
+              <div key={i} style={{fontSize: isMobile ? 10 : 11, color:'#505070', textAlign:'center', padding:'6px 0', textTransform:'uppercase', letterSpacing:'0.06em', fontWeight:600}}>
                 {d}
               </div>
             ))}
           </div>
 
-          <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:3}} onClick={e => e.stopPropagation()}>
-            {Array.from({length: firstDow}, (_, i) => <div key={`e${i}`} style={{minHeight:90}} />)}
+          <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap: isMobile ? 2 : 3}} onClick={e => e.stopPropagation()}>
+            {Array.from({length: firstDow}, (_, i) => <div key={`e${i}`} style={{minHeight: isMobile ? 52 : 90}} />)}
             {Array.from({length: daysInMonth}, (_, i) => {
               const d       = i + 1;
               const dayGigs = gigsOnDay(d);
@@ -196,6 +212,55 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
               const iso     = isoForDay(d);
               const isPast  = iso < todayStr();
 
+              /* ---------- MOBILE CELL: compact, dots instead of cards ---------- */
+              if (isMobile) {
+                return (
+                  <div
+                    key={d}
+                    onClick={() => handleClick(d)}
+                    style={{
+                      background: style.background,
+                      border: style.border,
+                      borderRadius: 6,
+                      minHeight: 52,
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'flex-start',
+                      paddingTop: 6,
+                      gap: 4,
+                      opacity: isPast && !dayGigs.length && !style.unavail ? 0.4 : 1,
+                    }}
+                  >
+                    <div style={{
+                      fontSize: 12, fontWeight: 700, lineHeight: 1,
+                      color: style.isToday ? '#00ffc2' : style.unavail ? '#ff6090' : isPast ? '#404060' : '#d0d0e8',
+                    }}>
+                      {d}
+                    </div>
+                    {dayGigs.length > 0 && (
+                      <div style={{display:'flex', gap:3, flexWrap:'wrap', justifyContent:'center', maxWidth:'90%'}}>
+                        {dayGigs.slice(0, 4).map((g, idx) => (
+                          <div key={idx} style={{
+                            width: 6, height: 6, borderRadius: '50%',
+                            background: g.status === 'confirmed' ? '#00ffc2' : '#ffbb00',
+                          }} />
+                        ))}
+                        {dayGigs.length > 4 && (
+                          <div style={{fontSize:8, color:'#8080a0', lineHeight:'6px'}}>+</div>
+                        )}
+                      </div>
+                    )}
+                    {style.unavail && dayGigs.length === 0 && (
+                      <div style={{width:6, height:6, borderRadius:'50%', background:'#ff6090'}} />
+                    )}
+                  </div>
+                );
+              }
+
+              /* ---------- DESKTOP CELL: unchanged ---------- */
               return (
                 <div
                   key={d}
@@ -277,14 +342,18 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
           style={{
             position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)',
             zIndex:200, background:'#0d0d18', border:'1px solid #2a2a40',
-            borderRadius:12, padding:20, minWidth:280, maxWidth:380,
+            borderRadius:12, padding:20,
+            width: isMobile ? 'calc(100vw - 32px)' : undefined,
+            minWidth: isMobile ? undefined : 280,
+            maxWidth: isMobile ? 380 : 380,
+            maxHeight:'75vh', overflowY:'auto',
             boxShadow:'0 16px 48px #00000090',
           }}
           onClick={e => e.stopPropagation()}
         >
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
             <div style={{fontSize:14,fontWeight:700,color:'#ffffff'}}>{popup.day} {MONTHS[month]}</div>
-            <button onClick={() => setPopup(null)} style={{background:'transparent',border:'none',color:'#505070',fontSize:18,cursor:'pointer',lineHeight:1}}>✕</button>
+            <button onClick={() => setPopup(null)} style={{background:'transparent',border:'none',color:'#505070',fontSize:18,cursor:'pointer',lineHeight:1,padding:'4px 8px'}}>✕</button>
           </div>
 
           {/* DJ unavailable banner */}
@@ -316,7 +385,7 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
                   </div>
                 )}
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:14,fontWeight:700,color:'#ffffff',marginBottom:2}}>{g.venue}</div>
+                  <div style={{fontSize:14,fontWeight:700,color:'#ffffff',marginBottom:2,lineHeight:1.3}}>{g.venue}</div>
                   {showDJPicker && !isDJView && <div style={{fontSize:12,color:'#8080a0',marginBottom:2}}>{g.djName}</div>}
                   <div style={{fontSize:12,color:'#d0d0e8',fontWeight:500}}>{g.time}</div>
                   {g.fee && <div style={{fontSize:13,color:'#00ffc2',fontWeight:700,marginTop:3}}>€{g.fee}</div>}
@@ -353,16 +422,16 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
       {/* Legend */}
       <div style={{display:'flex',gap:16,marginTop:16,flexWrap:'wrap'}}>
         <div style={{display:'flex',alignItems:'center',gap:6,fontSize:11,color:'#505070'}}>
-          <div style={{width:10,height:10,borderRadius:2,background:'#021a10',border:'1px solid #00ffc225'}} />
+          <div style={{width:10,height:10,borderRadius:'50%',background:'#00ffc2'}} />
           Confirmed
         </div>
         <div style={{display:'flex',alignItems:'center',gap:6,fontSize:11,color:'#505070'}}>
-          <div style={{width:10,height:10,borderRadius:2,background:'#1a1000',border:'1px solid #ffbb0025'}} />
+          <div style={{width:10,height:10,borderRadius:'50%',background:'#ffbb00'}} />
           Pending
         </div>
         {isDJView && (
           <div style={{display:'flex',alignItems:'center',gap:6,fontSize:11,color:'#505070'}}>
-            <div style={{width:10,height:10,borderRadius:2,background:'#1a000a',border:'1px solid #ff407040'}} />
+            <div style={{width:10,height:10,borderRadius:'50%',background:'#ff6090'}} />
             Unavailable
           </div>
         )}
