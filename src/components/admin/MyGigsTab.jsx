@@ -14,6 +14,45 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+function toIso(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function getDateRange(filter) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const dow     = (today.getDay() + 6) % 7;
+  const thisMon = new Date(today); thisMon.setDate(today.getDate() - dow);
+  const thisSun = new Date(thisMon); thisSun.setDate(thisMon.getDate() + 6);
+  const nextMon = new Date(thisMon); nextMon.setDate(thisMon.getDate() + 7);
+  const nextSun = new Date(nextMon); nextSun.setDate(nextMon.getDate() + 6);
+
+  if (filter === 'week')     return { from: toIso(thisMon), to: toIso(thisSun) };
+  if (filter === 'nextweek') return { from: toIso(nextMon), to: toIso(nextSun) };
+  if (filter === 'month') {
+    return { from: toIso(new Date(today.getFullYear(), today.getMonth(), 1)), to: toIso(new Date(today.getFullYear(), today.getMonth() + 1, 0)) };
+  }
+  if (filter === 'nextmonth') {
+    return { from: toIso(new Date(today.getFullYear(), today.getMonth() + 1, 1)), to: toIso(new Date(today.getFullYear(), today.getMonth() + 2, 0)) };
+  }
+  if (filter === 'restofyear') {
+    const start = new Date(today.getFullYear(), today.getMonth() + 2, 1);
+    return { from: toIso(start), to: `${today.getFullYear()}-12-31` };
+  }
+  if (filter === 'all') {
+    return { from: toIso(today), to: null };
+  }
+  return null;
+}
+
+const FILTERS = [
+  { key:'week',       label:'This week' },
+  { key:'nextweek',   label:'Next week' },
+  { key:'month',      label:'This month' },
+  { key:'nextmonth',  label:'Next month' },
+  { key:'restofyear', label:'Rest of year' },
+  { key:'all',        label:'All' },
+];
+
 function isNightTime(time) {
   if (!time) return false;
   const hour = parseInt(time.split(':')[0], 10);
@@ -105,6 +144,7 @@ function GigRow({ g, hideFees, onInvoice, isPast }) {
 
 export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, hideFees, onAccept, onReject, onToggleUnavail, invoiceGig, setInvoiceGig }) {
   const [subtab, setSubtab] = useState('upcoming');
+  const [filter, setFilter] = useState('week');
   const now   = new Date();
   const today = todayStr();
 
@@ -114,6 +154,21 @@ export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, hideFee
   const upcomingGigs = myConfirmed.filter(g => g.date > today);
   const pastGigs     = myConfirmed.filter(g => g.date < today).reverse();
   const nextGig      = upcomingGigs[0];
+
+  // Filtered list for the Upcoming sub-tab
+  const range = getDateRange(filter);
+  const filteredUpcoming = upcomingGigs.filter(g => {
+    if (!range) return true;
+    if (range.from && g.date < range.from) return false;
+    if (range.to && g.date > range.to) return false;
+    return true;
+  });
+
+  const rangeLabel = range
+    ? range.to
+      ? `${formatDate(range.from)} – ${formatDate(range.to)}`
+      : `${formatDate(range.from)} onwards`
+    : null;
 
   const myMonthEarnings    = myGigs.filter(g => {
     if (g.status !== 'confirmed' || !g.fee) return false;
@@ -132,6 +187,14 @@ export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, hideFee
     color: active ? '#00ffc2' : '#8080a0',
     fontSize: 12, fontWeight: active ? 600 : 400,
     cursor: 'pointer', transition: 'all 0.15s',
+  });
+
+  const filterBtnStyle = (active) => ({
+    background: active ? '#00ffc220' : 'transparent',
+    border: `1px solid ${active ? '#00ffc250' : '#2a2a40'}`,
+    color: active ? '#00ffc2' : '#8080a0',
+    borderRadius: 5, padding: '4px 10px', fontSize: 11,
+    cursor: 'pointer', whiteSpace: 'nowrap',
   });
 
   return (
@@ -215,13 +278,29 @@ export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, hideFee
             </>
           )}
 
-          {upcomingGigs.length > 0 && (
+          {/* Date filter pills — same as the admin gig list */}
+          <div style={{display:'flex',gap:4,flexWrap:'wrap',alignItems:'center',marginBottom:12}}>
+            {FILTERS.map(f => (
+              <button key={f.key} onClick={() => setFilter(f.key)} style={filterBtnStyle(filter === f.key)}>
+                {f.label}
+              </button>
+            ))}
+            {rangeLabel && <span style={{fontSize:11,color:'#505070',marginLeft:6}}>{rangeLabel}</span>}
+          </div>
+
+          {filteredUpcoming.length > 0 ? (
             <>
-              <div className="section-title">Upcoming gigs</div>
+              <div className="section-title">Upcoming gigs ({filteredUpcoming.length})</div>
               <div className="panel">
-                {upcomingGigs.map(g => <GigRow key={g.id} g={g} hideFees={hideFees} onInvoice={setInvoiceGig} isPast={false} />)}
+                {filteredUpcoming.map(g => <GigRow key={g.id} g={g} hideFees={hideFees} onInvoice={setInvoiceGig} isPast={false} />)}
               </div>
             </>
+          ) : (
+            upcomingGigs.length > 0 && (
+              <div style={{background:'#0d0d18',border:'1px solid #1e1e30',borderRadius:10,padding:20,textAlign:'center',color:'#505070',fontSize:13}}>
+                No gigs in this period — try another filter.
+              </div>
+            )
           )}
         </>
       )}
