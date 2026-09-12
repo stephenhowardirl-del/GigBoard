@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
-  getAllGigs, createGig, createGigConfirmed, updateGig, deleteGig, getAllUsers,
+  createGig, createGigConfirmed, updateGig, deleteGig, getAllUsers,
   updateUserRole, updateUserSelfAssignVenues, getAllUnavailability,
-  updateGigStatus, getGigsForDJ, getUnavailableDates, setUnavailableDates,
-  getInvitedEmails, saveInvitedEmails,
+  updateGigStatus, getUnavailableDates, setUnavailableDates,
+  getInvitedEmails, saveInvitedEmails, subscribeGigs,
 } from '../lib/db';
 import { getVenueNames, subscribeVenueConfig } from '../lib/venueGroups';
 import { useAuth } from '../hooks/useAuth';
@@ -20,7 +20,6 @@ export default function AdminDashboard({ hideFees }) {
   const { user, profile } = useAuth();
   const [tab, setTab]               = useState('list');
   const [gigs, setGigs]             = useState([]);
-  const [myGigs, setMyGigs]         = useState([]);
   const [myUnavail, setMyUnavail]   = useState([]);
   const [users, setUsers]           = useState([]);
   const [unavail, setUnavail]       = useState([]);
@@ -36,63 +35,60 @@ export default function AdminDashboard({ hideFees }) {
   // Keep venue list in sync with the Venues tab
   useEffect(() => subscribeVenueConfig(() => setVenues(getVenueNames())), []);
 
-  async function load() {
-    try {
-      const [g, u, un, inv] = await Promise.all([
-        getAllGigs(), getAllUsers(), getAllUnavailability(), getInvitedEmails(),
-      ]);
-      setGigs(g);
-      setUsers(u.filter(x => x.role !== 'full_admin'));
-      setUnavail(un);
-      setInvites(inv);
-      if (profile?.uid) {
-        const [mg, mun] = await Promise.all([getGigsForDJ(profile.uid), getUnavailableDates(profile.uid)]);
-        const myGigsByName = g.filter(gig => gig.djName && profile.name && gig.djName.toLowerCase() === profile.name.toLowerCase());
-        const merged = [...mg];
-        myGigsByName.forEach(gig => { if (!merged.find(m => m.id === gig.id)) merged.push(gig); });
-        merged.sort((a, b) => a.date.localeCompare(b.date));
-        setMyGigs(merged);
+  // Real-time gigs: the subscription keeps `gigs` current at all times —
+  // including your own writes (instantly) and other users' changes (live).
+  useEffect(() => {
+    if (!profile?.uid) return;
+    const unsubscribe = subscribeGigs(
+      g => { setGigs(g); setLoading(false); },
+      e => { setError(e.message); setLoading(false); }
+    );
+    return unsubscribe;
+  }, [profile?.uid]);
+
+  // One-off loads for the slower-changing data.
+  useEffect(() => {
+    if (!profile?.uid) return;
+    (async () => {
+      try {
+        const [u, un, inv, mun] = await Promise.all([
+          getAllUsers(), getAllUnavailability(), getInvitedEmails(), getUnavailableDates(profile.uid),
+        ]);
+        setUsers(u.filter(x => x.role !== 'full_admin'));
+        setUnavail(un);
+        setInvites(inv);
         setMyUnavail(mun);
+      } catch (e) {
+        console.error(e);
+        setError(e.message);
+        setLoading(false);
       }
-      setLoading(false);
-    } catch (e) {
-      console.error(e);
-      setError(e.message);
-      setLoading(false);
-    }
-  }
+    })();
+  }, [profile?.uid]);
 
-  useEffect(() => { if (profile?.uid) load(); }, [profile]);
-
-  // ---- Optimistic helpers ----
-
-  function applyStatusLocally(gigId, status) {
-    setGigs(gs => gs.map(g => g.id === gigId ? { ...g, status } : g));
-    setMyGigs(gs => gs.map(g => g.id === gigId ? { ...g, status } : g));
-  }
-
-  async function setStatusOptimistic(gigId, status) {
-    applyStatusLocally(gigId, status);
-    try {
-      await updateGigStatus(gigId, status);
-    } catch (e) {
-      console.error(e);
-      load(); // revert to server truth
-    }
-  }
+  // My gigs derived live from the real-time gig list.
+  const myGigs = profile
+    ? gigs
+        .filter(g =>
+          g.djUid === profile.uid ||
+          (g.djName && profile.name && g.djName.toLowerCase() === profile.name.toLowerCase())
+        )
+        .sort((a, b) => a.date.localeCompare(b.date))
+    : [];
 
   async function handleAssign(gigData) {
-    if (gigData._bulkCreated) { load(); return; }
-    if (!gigData.djUid) {
-      // No DJ picked — save as unassigned for filling later.
-      await createGig({ ...gigData, assignedBy: 'Steve Howard', status: 'unassigned' });
-    } else if (gigData.djUid === profile?.uid) {
-      // Assigning a gig to yourself (the admin) skips acceptance — auto-confirmed.
-      await createGigConfirmed({ ...gigData, assignedBy: 'Steve Howard' });
-    } else {
-      await createGig({ ...gigData, assignedBy: 'Steve Howard' });
-    }
-    load();
+    if (gigData._bulkCreated) return; // subscription picks the new gigs up automatically
+    try {
+      if (!gigData.djUid) {
+        // No DJ picked — save as unassigned for filling later.
+        await createGig({ ...gigData, assignedBy: 'Steve Howard', status: 'unassigned' });
+      } else if (gigData.djUid === profile?.uid) {
+        // Assigning a gig to yourself (the admin) skips acceptance — auto-confirmed.
+        await createGigConfirmed({ ...gigData, assignedBy: 'Steve Howard' });
+      } else {
+        await createGig({ ...gigData, assignedBy: 'Steve Howard' });
+      }
+    } catch (e) { console.error(e); }
   }
 
   async function handleEdit(gigData) {
@@ -112,18 +108,10 @@ export default function AdminDashboard({ hideFees }) {
       newStatus = 'unassigned';
     }
 
-    // Optimistic: merge the edited fields into local state immediately.
-    const optimistic = { ...fields, status: newStatus, fee: fields.fee ? Number(fields.fee) : null };
-    setGigs(gs => gs.map(g => g.id === gigId ? { ...g, ...optimistic } : g));
-    setMyGigs(gs => gs.map(g => g.id === gigId ? { ...g, ...optimistic } : g));
     setEditingGig(null);
-
     try {
       await updateGig(gigId, { ...fields, status: newStatus });
-    } catch (e) {
-      console.error(e);
-      load();
-    }
+    } catch (e) { console.error(e); }
   }
 
   // Drag-and-drop: assign an unassigned gig to a DJ by dropping it on their column.
@@ -151,24 +139,6 @@ export default function AdminDashboard({ hideFees }) {
     const newStatus = dj.uid === profile?.uid ? 'confirmed' : 'pending';
     const djEmail   = dj.email || (dj.uid === profile?.uid ? (profile?.email || '') : '');
 
-    const updated = {
-      djUid: dj.uid,
-      djName: dj.name || '',
-      djEmail,
-      status: newStatus,
-    };
-
-    // Optimistic: move the card immediately.
-    setGigs(gs => gs.map(g => g.id === gigId ? { ...g, ...updated } : g));
-    if (dj.uid === profile?.uid) {
-      setMyGigs(gs => {
-        const next = gs.filter(g => g.id !== gigId);
-        next.push({ ...gig, ...updated });
-        next.sort((a, b) => a.date.localeCompare(b.date));
-        return next;
-      });
-    }
-
     try {
       await updateGig(gigId, {
         venue: gig.venue, date: gig.date, time: gig.time,
@@ -176,38 +146,27 @@ export default function AdminDashboard({ hideFees }) {
         notes: gig.notes, fee: gig.fee,
         status: newStatus,
       });
-    } catch (e) {
-      console.error(e);
-      load();
-    }
+    } catch (e) { console.error(e); }
   }
 
   async function handleDelete(gig) {
     if (!window.confirm(`Delete this gig?\n\n${gig.venue} — ${gig.date}\n\nThis cannot be undone.`)) return;
-    setGigs(gs => gs.filter(g => g.id !== gig.id));
-    setMyGigs(gs => gs.filter(g => g.id !== gig.id));
     try {
       await deleteGig(gig.id);
-    } catch (e) {
-      console.error(e);
-      load();
-    }
+    } catch (e) { console.error(e); }
   }
 
-  async function handleConfirm(gigId)   { await setStatusOptimistic(gigId, 'confirmed'); }
-  async function handleRejectGig(gigId) { await setStatusOptimistic(gigId, 'rejected'); }
-  async function handleAcceptMyGig(gig) { await setStatusOptimistic(gig.id, 'confirmed'); }
-  async function handleRejectMyGig(gig) { await setStatusOptimistic(gig.id, 'rejected'); }
+  async function handleConfirm(gigId)   { try { await updateGigStatus(gigId, 'confirmed'); } catch (e) { console.error(e); } }
+  async function handleRejectGig(gigId) { try { await updateGigStatus(gigId, 'rejected');  } catch (e) { console.error(e); } }
+  async function handleAcceptMyGig(gig) { try { await updateGigStatus(gig.id, 'confirmed'); } catch (e) { console.error(e); } }
+  async function handleRejectMyGig(gig) { try { await updateGigStatus(gig.id, 'rejected');  } catch (e) { console.error(e); } }
 
   async function handleToggleUnavail(isoDate) {
     const next = myUnavail.includes(isoDate) ? myUnavail.filter(d => d !== isoDate) : [...myUnavail, isoDate];
     setMyUnavail(next);
     try {
       await setUnavailableDates(profile.uid, next);
-    } catch (e) {
-      console.error(e);
-      load();
-    }
+    } catch (e) { console.error(e); }
   }
 
   async function addInviteEmail(email) {
@@ -217,10 +176,7 @@ export default function AdminDashboard({ hideFees }) {
     setInvites(updated);
     try {
       await saveInvitedEmails(updated);
-    } catch (e) {
-      console.error(e);
-      load();
-    }
+    } catch (e) { console.error(e); }
   }
 
   async function handleRemoveInvite(email) {
@@ -228,20 +184,14 @@ export default function AdminDashboard({ hideFees }) {
     setInvites(updated);
     try {
       await saveInvitedEmails(updated);
-    } catch (e) {
-      console.error(e);
-      load();
-    }
+    } catch (e) { console.error(e); }
   }
 
   async function saveUserRole(uid, role, scope) {
     setUsers(us => us.map(u => u.uid === uid ? { ...u, role, venueScope: role === 'venue_admin' ? scope : null } : u));
     try {
       await updateUserRole(uid, role, role === 'venue_admin' ? scope : null);
-    } catch (e) {
-      console.error(e);
-      load();
-    }
+    } catch (e) { console.error(e); }
   }
 
   const myPending    = myGigs.filter(g => g.status === 'pending');
