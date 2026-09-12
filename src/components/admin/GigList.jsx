@@ -162,23 +162,23 @@ function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete, draggable
       onDragEnd={() => setDragging(false)}
       title={draggable ? 'Drag onto a DJ to assign, or click to edit' : 'Click to edit'}
       style={{
-        borderBottom:'1px solid #1a1a2e', padding:'14px 16px',
+        borderBottom:'1px solid #1a1a2e', padding:'12px 14px',
         cursor: draggable ? 'grab' : 'pointer',
         background: hover ? '#12121e' : 'transparent', transition:'background 0.12s', position:'relative',
         opacity: dragging ? 0.4 : 1,
       }}
     >
-      <div style={{display:'flex', alignItems:'flex-start', gap:12, marginBottom:8}}>
+      <div style={{display:'flex', alignItems:'flex-start', gap:10, marginBottom:8}}>
         {logo ? (
-          <img src={logo} alt={g.venue} style={{width:40,height:40,borderRadius:7,objectFit:'cover',flexShrink:0}} onError={e=>{e.target.style.display='none';}} />
+          <img src={logo} alt={g.venue} style={{width:38,height:38,borderRadius:7,objectFit:'cover',flexShrink:0}} onError={e=>{e.target.style.display='none';}} />
         ) : (
-          <div style={{width:40,height:40,borderRadius:7,background:'#1a1a2e',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{width:38,height:38,borderRadius:7,background:'#1a1a2e',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
             <div style={{width:8,height:8,borderRadius:'50%',background:vc.color}} />
           </div>
         )}
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:14,fontWeight:700,color:'#ffffff',lineHeight:1.3}}>{g.venue}</div>
-          <div style={{fontSize:12,color:'#d0d0e8',marginTop:3,whiteSpace:'nowrap'}}>{formatDate(g.date)} · {g.time}</div>
+          <div style={{fontSize:13,fontWeight:700,color:'#ffffff',lineHeight:1.3}}>{g.venue}</div>
+          <div style={{fontSize:11,color:'#d0d0e8',marginTop:3}}>{formatDate(g.date)} · {g.time}</div>
         </div>
         <GigMenu g={g} onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete} />
       </div>
@@ -220,9 +220,9 @@ function UnassignedColumn({ gigs, hideFees, onConfirm, onReject, onEdit, onDelet
     <div style={{
       background: empty ? '#0d0d18' : '#140d02',
       border: empty ? '1px solid #1e1e30' : '1px solid #ff990040',
-      borderRadius:10, overflow:'hidden', flex:'1 1 280px', minWidth:260,
+      borderRadius:10, overflow:'hidden', flex:'1 1 0', minWidth:0,
     }}>
-      <div style={{padding:'14px 16px', borderBottom: empty ? '1px solid #1e1e30' : '1px solid #ff990030', display:'flex', alignItems:'center', gap:10, background: empty ? '#131320' : '#1a1000'}}>
+      <div style={{padding:'12px 14px', borderBottom: empty ? '1px solid #1e1e30' : '1px solid #ff990030', display:'flex', alignItems:'center', gap:10, background: empty ? '#131320' : '#1a1000'}}>
         <div style={{
           width:34,height:34,borderRadius:'50%',
           background: empty ? '#00ffc215' : '#ff990025',
@@ -232,11 +232,11 @@ function UnassignedColumn({ gigs, hideFees, onConfirm, onReject, onEdit, onDelet
         }}>
           {empty ? '✓' : '!'}
         </div>
-        <div style={{fontSize:14,fontWeight:700,color: empty ? '#8080a0' : '#ff9900'}}>Unassigned</div>
+        <div style={{fontSize:13,fontWeight:700,color: empty ? '#8080a0' : '#ff9900'}}>Unassigned</div>
       </div>
 
       {empty ? (
-        <div style={{padding:'22px 16px',textAlign:'center',color:'#505070',fontSize:12}}>
+        <div style={{padding:'20px 14px',textAlign:'center',color:'#505070',fontSize:12}}>
           All gigs assigned ✓
         </div>
       ) : (
@@ -295,16 +295,16 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
       style={{
         background: dragOver ? '#0d1a14' : '#0d0d18',
         border: dragOver ? `2px dashed ${dotColor}` : '1px solid #1e1e30',
-        borderRadius:10, overflow:'hidden', flex:'1 1 280px', minWidth:260,
+        borderRadius:10, overflow:'hidden', flex:'1 1 0', minWidth:0,
         transition:'background 0.12s, border 0.12s',
       }}
     >
-      <div style={{padding:'14px 16px', borderBottom:'1px solid #1e1e30', display:'flex', alignItems:'center', gap:10, background: dragOver ? dotColor+'15' : '#131320'}}>
+      <div style={{padding:'12px 14px', borderBottom:'1px solid #1e1e30', display:'flex', alignItems:'center', gap:10, background: dragOver ? dotColor+'15' : '#131320'}}>
         <div style={{width:34,height:34,borderRadius:'50%',background:dotColor+'25',color:dotColor,border:`1.5px solid ${dotColor}60`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,flexShrink:0}}>
           {initials}
         </div>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:14,fontWeight:700,color:'#ffffff',whiteSpace:'nowrap'}}>{dj.name}</div>
+          <div style={{fontSize:13,fontWeight:700,color:'#ffffff'}}>{dj.name}</div>
           <div style={{fontSize:11,color:'#8080a0',marginTop:1}}>
             {dragOver ? 'Drop to assign' : `${matched.length} gig${matched.length !== 1 ? 's' : ''}`}
           </div>
@@ -312,7 +312,7 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
       </div>
 
       {matched.length === 0 ? (
-        <div style={{padding:'22px 16px',textAlign:'center',color:'#505070',fontSize:12}}>No gigs in this period</div>
+        <div style={{padding:'20px 14px',textAlign:'center',color:'#505070',fontSize:12}}>No gigs in this period</div>
       ) : (
         matched.map(g => (
           <GigCard key={g.id} g={g} hideFees={hideFees} onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete} />
@@ -407,7 +407,7 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
         })}
       </div>
 
-      <div style={{display:'flex', gap:12, alignItems:'flex-start', width:'100%', flexWrap:'wrap'}}>
+      <div style={{display:'flex', gap:10, alignItems:'flex-start', width:'100%'}}>
         <UnassignedColumn
           gigs={gigs} hideFees={hideFees}
           onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete}
