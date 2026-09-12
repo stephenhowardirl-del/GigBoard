@@ -7,6 +7,13 @@ import {
 const inputStyle = { background:'#0a0a0f', border:'1px solid #2a2a40', borderRadius:6, color:'#e8e8f0', fontSize:13, padding:'8px 10px' };
 const label      = { fontSize:10, color:'#8080a0', textTransform:'uppercase', letterSpacing:'0.07em', fontWeight:700, display:'block', marginBottom:5 };
 
+function normaliseLogo(val) {
+  const v = (val || '').trim();
+  if (!v) return null;
+  if (v.startsWith('/') || v.startsWith('http')) return v;
+  return '/logos/' + v;
+}
+
 export default function VenueManager({ onChanged }) {
   const [cfg, setCfg]           = useState(getVenueConfig());
   const [saving, setSaving]     = useState(false);
@@ -16,6 +23,7 @@ export default function VenueManager({ onChanged }) {
   const [newGroup, setNewGroup] = useState('');
   const [editing, setEditing]   = useState(null);
   const [editName, setEditName] = useState('');
+  const [logoDraft, setLogoDraft] = useState({});
 
   useEffect(() => subscribeVenueConfig(setCfg), []);
 
@@ -55,6 +63,13 @@ export default function VenueManager({ onChanged }) {
     persist({ ...cfg, venues: cfg.venues.filter(v => v.name !== name) });
   }
 
+  function commitLogo(name) {
+    const draft = logoDraft[name];
+    if (draft === undefined) return;
+    updateVenue(name, { logo: normaliseLogo(draft) });
+    setLogoDraft(d => { const n = { ...d }; delete n[name]; return n; });
+  }
+
   function addGroup() {
     const name = newGroup.trim();
     if (!name) return;
@@ -77,15 +92,17 @@ export default function VenueManager({ onChanged }) {
     });
   }
 
-  const grouped   = cfg.groups.map(g => ({ ...g, venues: cfg.venues.filter(v => v.group === g.name) }));
-  const ungrouped = cfg.venues.filter(v => !v.group || !cfg.groups.some(g => g.name === v.group));
+  const grouped    = cfg.groups.map(g => ({ ...g, venues: cfg.venues.filter(v => v.group === g.name) }));
+  const ungrouped  = cfg.venues.filter(v => !v.group || !cfg.groups.some(g => g.name === v.group));
+  const knownLogos = Array.from(new Set([...AVAILABLE_LOGOS, ...cfg.venues.map(v => v.logo).filter(Boolean)]));
 
   function VenueRow({ v, color }) {
     const isEditing = editing === v.name;
+    const logoValue = logoDraft[v.name] !== undefined ? logoDraft[v.name] : (v.logo || '').replace('/logos/', '');
     return (
       <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderBottom:'1px solid #1a1a2e',flexWrap:'wrap'}}>
         {v.logo ? (
-          <img src={v.logo} alt="" style={{width:34,height:34,borderRadius:7,objectFit:'cover',flexShrink:0}} onError={e=>{e.target.style.visibility='hidden';}} />
+          <img key={v.logo} src={v.logo} alt="" style={{width:34,height:34,borderRadius:7,objectFit:'cover',flexShrink:0,background:'#1a1a2e'}} onError={e=>{e.target.style.opacity='0.2';}} />
         ) : (
           <div style={{width:34,height:34,borderRadius:7,background:'#1a1a2e',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
             <div style={{width:8,height:8,borderRadius:'50%',background:color}} />
@@ -114,10 +131,15 @@ export default function VenueManager({ onChanged }) {
           {cfg.groups.map(g => <option key={g.name} value={g.name}>{g.name}</option>)}
         </select>
 
-        <select value={v.logo || ''} onChange={e => updateVenue(v.name, { logo: e.target.value || null })} style={{...inputStyle, fontSize:12, padding:'6px 8px'}}>
-          <option value=''>No logo</option>
-          {AVAILABLE_LOGOS.map(l => <option key={l} value={l}>{l.replace('/logos/','')}</option>)}
-        </select>
+        <input
+          list="gigboard-logos"
+          value={logoValue}
+          onChange={e => setLogoDraft(d => ({ ...d, [v.name]: e.target.value }))}
+          onBlur={() => commitLogo(v.name)}
+          onKeyDown={e => e.key === 'Enter' && e.target.blur()}
+          placeholder="logo filename"
+          style={{...inputStyle, fontSize:12, padding:'6px 8px', width:150}}
+        />
 
         <button onClick={() => removeVenue(v.name)} style={{background:'transparent',border:'1px solid #2a2a40',color:'#ff4070',borderRadius:5,padding:'5px 10px',fontSize:11,cursor:'pointer'}}>Remove</button>
       </div>
@@ -126,6 +148,10 @@ export default function VenueManager({ onChanged }) {
 
   return (
     <div className="page-body">
+
+      <datalist id="gigboard-logos">
+        {knownLogos.map(l => <option key={l} value={l.replace('/logos/','')} />)}
+      </datalist>
 
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
         <div>
@@ -194,8 +220,8 @@ export default function VenueManager({ onChanged }) {
         </div>
       </div>
 
-      <div style={{fontSize:11,color:'#505070',marginTop:16}}>
-        Logos: to add a new logo image, drop the file into <code>public/logos/</code> on GitHub and tell me the filename — I'll add it to the picker.
+      <div style={{fontSize:11,color:'#505070',marginTop:16,lineHeight:1.6}}>
+        <strong style={{color:'#8080a0'}}>Logos:</strong> upload the image to <code>public/logos/</code> on GitHub, then type its filename in the logo box above (e.g. <code>clubmovida.png</code>). Filenames are case-sensitive — match exactly what's on GitHub.
       </div>
     </div>
   );
