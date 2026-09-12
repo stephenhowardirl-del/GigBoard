@@ -64,6 +64,25 @@ export default function AdminDashboard({ hideFees }) {
 
   useEffect(() => { if (profile?.uid) load(); }, [profile]);
 
+  // ---- Optimistic helpers ----
+  // Update local state immediately, write to Firestore in the background,
+  // and only refetch everything if the write fails.
+
+  function applyStatusLocally(gigId, status) {
+    setGigs(gs => gs.map(g => g.id === gigId ? { ...g, status } : g));
+    setMyGigs(gs => gs.map(g => g.id === gigId ? { ...g, status } : g));
+  }
+
+  async function setStatusOptimistic(gigId, status) {
+    applyStatusLocally(gigId, status);
+    try {
+      await updateGigStatus(gigId, status);
+    } catch (e) {
+      console.error(e);
+      load(); // revert to server truth
+    }
+  }
+
   async function handleAssign(gigData) {
     if (gigData._bulkCreated) { load(); return; }
     // Assigning a gig to yourself (the admin) skips acceptance — auto-confirmed.
@@ -74,27 +93,54 @@ export default function AdminDashboard({ hideFees }) {
     }
     load();
   }
+
   async function handleEdit(gigData) {
     // Editing never changes acceptance state — always keep the gig's current status.
     const { id, status, ...fields } = gigData;
-    await updateGig(editingGig.id, { ...fields, status: editingGig.status });
+    const gigId     = editingGig.id;
+    const gigStatus = editingGig.status;
+
+    // Optimistic: merge the edited fields into local state immediately.
+    const optimistic = { ...fields, status: gigStatus, fee: fields.fee ? Number(fields.fee) : null };
+    setGigs(gs => gs.map(g => g.id === gigId ? { ...g, ...optimistic } : g));
+    setMyGigs(gs => gs.map(g => g.id === gigId ? { ...g, ...optimistic } : g));
     setEditingGig(null);
-    load();
+
+    try {
+      await updateGig(gigId, { ...fields, status: gigStatus });
+    } catch (e) {
+      console.error(e);
+      load();
+    }
   }
+
   async function handleDelete(gig) {
     if (!window.confirm(`Delete this gig?\n\n${gig.venue} — ${gig.date}\n\nThis cannot be undone.`)) return;
-    await deleteGig(gig.id);
-    load();
+    // Optimistic: remove from local state immediately.
+    setGigs(gs => gs.filter(g => g.id !== gig.id));
+    setMyGigs(gs => gs.filter(g => g.id !== gig.id));
+    try {
+      await deleteGig(gig.id);
+    } catch (e) {
+      console.error(e);
+      load();
+    }
   }
-  async function handleConfirm(gigId)   { await updateGigStatus(gigId, 'confirmed'); load(); }
-  async function handleRejectGig(gigId) { await updateGigStatus(gigId, 'rejected');  load(); }
-  async function handleAcceptMyGig(gig) { await updateGigStatus(gig.id, 'confirmed'); load(); }
-  async function handleRejectMyGig(gig) { await updateGigStatus(gig.id, 'rejected');  load(); }
+
+  async function handleConfirm(gigId)   { await setStatusOptimistic(gigId, 'confirmed'); }
+  async function handleRejectGig(gigId) { await setStatusOptimistic(gigId, 'rejected'); }
+  async function handleAcceptMyGig(gig) { await setStatusOptimistic(gig.id, 'confirmed'); }
+  async function handleRejectMyGig(gig) { await setStatusOptimistic(gig.id, 'rejected'); }
 
   async function handleToggleUnavail(isoDate) {
     const next = myUnavail.includes(isoDate) ? myUnavail.filter(d => d !== isoDate) : [...myUnavail, isoDate];
     setMyUnavail(next);
-    await setUnavailableDates(profile.uid, next);
+    try {
+      await setUnavailableDates(profile.uid, next);
+    } catch (e) {
+      console.error(e);
+      load();
+    }
   }
 
   async function addInviteEmail(email) {
@@ -102,16 +148,34 @@ export default function AdminDashboard({ hideFees }) {
     if (!clean || invites.map(e => e.toLowerCase()).includes(clean)) return;
     const updated = [...invites, clean];
     setInvites(updated);
-    await saveInvitedEmails(updated);
+    try {
+      await saveInvitedEmails(updated);
+    } catch (e) {
+      console.error(e);
+      load();
+    }
   }
+
   async function handleRemoveInvite(email) {
     const updated = invites.filter(e => e.toLowerCase() !== (email || '').toLowerCase());
     setInvites(updated);
-    await saveInvitedEmails(updated);
+    try {
+      await saveInvitedEmails(updated);
+    } catch (e) {
+      console.error(e);
+      load();
+    }
   }
+
   async function saveUserRole(uid, role, scope) {
-    await updateUserRole(uid, role, role === 'venue_admin' ? scope : null);
-    load();
+    // Optimistic: apply the role change locally first.
+    setUsers(us => us.map(u => u.uid === uid ? { ...u, role, venueScope: role === 'venue_admin' ? scope : null } : u));
+    try {
+      await updateUserRole(uid, role, role === 'venue_admin' ? scope : null);
+    } catch (e) {
+      console.error(e);
+      load();
+    }
   }
 
   const myPending    = myGigs.filter(g => g.status === 'pending');
