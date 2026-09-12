@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAllUsers, getAllUnavailability, createGig } from '../lib/db';
+import { getAllUsers, getAllUnavailability, createGig, createGigConfirmed } from '../lib/db';
 
 const TIMES = Array.from({length: 48}, (_, i) => {
   const h = Math.floor(i / 2).toString().padStart(2, '0');
@@ -235,6 +235,8 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
     setSubmitting(true);
     const dj    = users.find(u => u.uid === djUid);
     const dates = getDatesToSubmit();
+    // Assigning to a full admin (yourself) skips acceptance — auto-confirmed.
+    const isSelfAdmin = dj?.role === 'full_admin';
 
     if (editing || dates.length === 1) {
       const payload = {
@@ -250,8 +252,9 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
       }
       await onAssign(payload);
     } else {
+      const createFn = isSelfAdmin ? createGigConfirmed : createGig;
       for (const d of dates) {
-        await createGig({
+        await createFn({
           venue: lockedVenue || venue,
           date: d, time, djUid,
           djName: dj?.name, djEmail: dj?.email,
@@ -275,13 +278,19 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
   });
 
   const dates = getDatesToSubmit();
+  const selectedDj = users.find(u => u.uid === djUid);
+  const assigningToSelf = selectedDj?.role === 'full_admin';
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal" style={{maxHeight:'90vh',overflowY:'auto'}}>
         <div className="modal-title">{editing ? 'Edit gig' : lockedVenue ? `Assign gig at ${lockedVenue}` : 'Assign a gig'}</div>
         <div className="modal-sub">
-          {editing ? 'Changes save without affecting the gig\u2019s accepted status.' : 'DJ will need to accept before the gig is confirmed.'}
+          {editing
+            ? 'Changes save without affecting the gig\u2019s accepted status.'
+            : assigningToSelf
+              ? 'Assigning to yourself — gig will be confirmed automatically.'
+              : 'DJ will need to accept before the gig is confirmed.'}
         </div>
 
         {!editing && (
@@ -397,7 +406,7 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
         <div className="modal-actions">
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting || !isValid()}>
-            {submitting ? 'Saving…' : editing ? 'Save changes →' : dates.length > 1 ? `Create ${dates.length} gigs →` : 'Send to DJ →'}
+            {submitting ? 'Saving…' : editing ? 'Save changes →' : dates.length > 1 ? `Create ${dates.length} gigs →` : assigningToSelf ? 'Add gig →' : 'Send to DJ →'}
           </button>
         </div>
       </div>
