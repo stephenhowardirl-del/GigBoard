@@ -127,13 +127,15 @@ function GigMenu({ g, onConfirm, onReject, onEdit, onDelete }) {
 }
 
 function StatusPill({ status }) {
+  // Confirmed is the silent default — no pill. Only exceptions get a badge.
+  if (status === 'confirmed') return null;
   const config = {
-    confirmed:  { color:'#00ffc2', bg:'#00ffc215', border:'#00ffc230', label:'Confirmed' },
     pending:    { color:'#ffbb00', bg:'#ffbb0015', border:'#ffbb0030', label:'Pending' },
     rejected:   { color:'#ff4070', bg:'#ff407015', border:'#ff407030', label:'Rejected' },
     unassigned: { color:'#ff9900', bg:'#ff990015', border:'#ff990030', label:'Unassigned' },
   };
-  const c = config[status] || config.pending;
+  const c = config[status];
+  if (!c) return null;
   return (
     <span style={{fontSize:11,fontWeight:600,color:c.color,background:c.bg,border:`1px solid ${c.border}`,borderRadius:4,padding:'2px 7px',whiteSpace:'nowrap'}}>
       {c.label}
@@ -272,6 +274,14 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
       return a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || '');
     });
 
+  // Pending offers for this DJ across ALL dates (not just the current filter),
+  // so unanswered offers are visible no matter which range you're viewing.
+  const pendingCount = gigs.filter(g => {
+    const matchUid  = g.djUid === dj.uid;
+    const matchName = g.djName && dj.name && g.djName.toLowerCase() === dj.name.toLowerCase();
+    return (matchUid || matchName) && g.status === 'pending';
+  }).length;
+
   const initials = dj.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
@@ -305,8 +315,13 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
         </div>
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontSize:13,fontWeight:700,color:'#ffffff'}}>{dj.name}</div>
-          <div style={{fontSize:11,color:'#8080a0',marginTop:1}}>
-            {dragOver ? 'Drop to assign' : `${matched.length} gig${matched.length !== 1 ? 's' : ''}`}
+          <div style={{fontSize:11,color:'#8080a0',marginTop:1,display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+            <span>{dragOver ? 'Drop to assign' : `${matched.length} gig${matched.length !== 1 ? 's' : ''}`}</span>
+            {!dragOver && pendingCount > 0 && (
+              <span style={{color:'#ffbb00',fontWeight:700,background:'#ffbb0015',border:'1px solid #ffbb0030',borderRadius:4,padding:'0 6px',fontSize:10}}>
+                {pendingCount} pending
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -355,10 +370,15 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
   return (
     <div className="page-body" style={{maxWidth:'100%', paddingLeft:28, paddingRight:28}}>
       {pending.length > 0 && (
-        <div style={{background:'#2a1800',border:'1px solid #ffbb0040',borderRadius:8,padding:'10px 16px',marginBottom:16,display:'flex',alignItems:'center'}}>
+        <div
+          onClick={() => setFilter('all')}
+          title="Show all upcoming gigs"
+          style={{background:'#2a1800',border:'1px solid #ffbb0040',borderRadius:8,padding:'10px 16px',marginBottom:16,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer'}}
+        >
           <span style={{fontSize:13,color:'#ffbb00',fontWeight:700}}>
             ⏳ {pending.length} pending gig{pending.length !== 1 ? 's' : ''} need{pending.length === 1 ? 's' : ''} action
           </span>
+          <span style={{fontSize:11,color:'#b08040'}}>View all →</span>
         </div>
       )}
 
