@@ -157,10 +157,16 @@ function StatusPill({ status }) {
 function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete, draggable = false }) {
   const vc      = getVenueColor(g.venue);
   const logo    = getVenueLogo(g.venue);
-  const isToday = g.date === todayStr();
+  const today   = todayStr();
+  const isToday = g.date === today;
+  const isPast  = g.date < today;
+  const isException = g.status !== 'confirmed';
   const [showNotes, setShowNotes] = useState(false);
   const [hover, setHover]         = useState(false);
   const [dragging, setDragging]   = useState(false);
+
+  // Bottom row only renders when it has content: a today tag, a status badge, or a note.
+  const hasBottomRow = isToday || isException || g.notes;
 
   return (
     <div
@@ -182,10 +188,10 @@ function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete, draggable
         background: hover ? '#12121e' : isToday ? '#0e0e1a' : 'transparent',
         cursor: draggable ? 'grab' : 'pointer',
         transition:'background 0.12s', position:'relative',
-        opacity: dragging ? 0.4 : 1,
+        opacity: dragging ? 0.4 : isPast ? 0.55 : 1,
       }}
     >
-      <div style={{display:'flex', alignItems:'flex-start', gap:10, marginBottom:8}}>
+      <div style={{display:'flex', alignItems:'flex-start', gap:10}}>
         {logo ? (
           <img src={logo} alt={g.venue} style={{width:38,height:38,borderRadius:7,objectFit:'cover',flexShrink:0}} onError={e=>{e.target.style.display='none';}} />
         ) : (
@@ -194,32 +200,35 @@ function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete, draggable
           </div>
         )}
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:13,fontWeight:700,color:'#ffffff',lineHeight:1.3}}>{g.venue}</div>
-          <div style={{fontSize:11,color:'#d0d0e8',marginTop:3}}>{formatDate(g.date)} · {g.time}</div>
+          <div style={{fontSize:13,fontWeight:700,color: isPast ? '#a0a0b8' : '#ffffff',lineHeight:1.3}}>{g.venue}</div>
+          <div style={{fontSize:11,color: isPast ? '#707088' : '#d0d0e8',marginTop:3}}>{formatDate(g.date)} · {g.time}</div>
         </div>
-        <GigMenu g={g} onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete} />
+        <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:5,flexShrink:0}}>
+          <GigMenu g={g} onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete} />
+          {!hideFees && g.fee && (
+            <span style={{fontSize:13,color: isPast ? '#508070' : '#00ffc2',fontWeight:700,whiteSpace:'nowrap'}}>€{g.fee}</span>
+          )}
+        </div>
       </div>
 
-      <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-        {isToday && (
-          <span style={{fontSize:10,fontWeight:700,color:'#00ffc2',background:'#00ffc215',border:'1px solid #00ffc240',borderRadius:4,padding:'2px 7px',textTransform:'uppercase',letterSpacing:'0.06em',whiteSpace:'nowrap'}}>
-            {isNightTime(g.time) ? '🎧 Tonight' : '📅 Today'}
-          </span>
-        )}
-        <StatusPill status={g.status} />
-        {!hideFees && g.fee && <span style={{fontSize:13,color:'#00ffc2',fontWeight:700}}>€{g.fee}</span>}
-        {g.notes && (
-          <button
-            onClick={e => { e.stopPropagation(); setShowNotes(n => !n); }}
-            style={{background:'transparent',border:'none',color:'#ffbb00',fontSize:11,cursor:'pointer',padding:0,marginLeft:'auto'}}
-          >
-            📌 {showNotes ? 'Hide' : 'Note'}
-          </button>
-        )}
-        {hover && !g.notes && (
-          <span style={{marginLeft:'auto',fontSize:10,color:'#505070'}}>{draggable ? 'Drag to a DJ' : 'Click to edit'}</span>
-        )}
-      </div>
+      {hasBottomRow && (
+        <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginTop:8}}>
+          {isToday && (
+            <span style={{fontSize:10,fontWeight:700,color:'#00ffc2',background:'#00ffc215',border:'1px solid #00ffc240',borderRadius:4,padding:'2px 7px',textTransform:'uppercase',letterSpacing:'0.06em',whiteSpace:'nowrap'}}>
+              {isNightTime(g.time) ? '🎧 Tonight' : '📅 Today'}
+            </span>
+          )}
+          <StatusPill status={g.status} />
+          {g.notes && (
+            <button
+              onClick={e => { e.stopPropagation(); setShowNotes(n => !n); }}
+              style={{background:'transparent',border:'none',color:'#ffbb00',fontSize:11,cursor:'pointer',padding:0,marginLeft:'auto'}}
+            >
+              📌 {showNotes ? 'Hide' : 'Note'}
+            </button>
+          )}
+        </div>
+      )}
 
       {g.notes && showNotes && (
         <div onClick={e => e.stopPropagation()} style={{fontSize:11,color:'#ffdd80',marginTop:8,background:'#1a1400',border:'1px solid #ffbb0030',borderRadius:5,padding:'7px 9px'}}>
@@ -270,7 +279,7 @@ function UnassignedColumn({ gigs, hideFees, onConfirm, onReject, onEdit, onDelet
   );
 }
 
-function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, onEdit, onDelete, onDropAssign }) {
+function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, onEdit, onDelete, onDropAssign, onShowPending }) {
   const range = getDateRange(filter);
   const [dragOver, setDragOver] = useState(false);
 
@@ -345,7 +354,11 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
                 : `${matched.length} gig${matched.length !== 1 ? 's' : ''}${!hideFees && feeTotal > 0 ? ` · €${feeTotal}` : ''}`}
             </span>
             {!dragOver && pendingCount > 0 && (
-              <span style={{color:'#ffbb00',fontWeight:700,background:'#ffbb0015',border:'1px solid #ffbb0030',borderRadius:4,padding:'0 6px',fontSize:10}}>
+              <span
+                onClick={e => { e.stopPropagation(); onShowPending && onShowPending(); }}
+                title="Show all gigs including pending"
+                style={{color:'#ffbb00',fontWeight:700,background:'#ffbb0015',border:'1px solid #ffbb0030',borderRadius:4,padding:'0 6px',fontSize:10,cursor:'pointer'}}
+              >
                 {pendingCount} pending
               </span>
             )}
@@ -466,6 +479,7 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
             hideFees={hideFees} filter={filter}
             onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete}
             onDropAssign={onDropAssign}
+            onShowPending={() => setFilter('all')}
           />
         ))}
       </div>
