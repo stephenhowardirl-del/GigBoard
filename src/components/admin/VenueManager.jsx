@@ -24,8 +24,19 @@ export default function VenueManager({ onChanged }) {
   const [editing, setEditing]   = useState(null);
   const [editName, setEditName] = useState('');
   const [logoDraft, setLogoDraft] = useState({});
+  // All groups collapsed by default — expanded is a Set of group names currently open
+  const [expanded, setExpanded] = useState(new Set());
 
   useEffect(() => subscribeVenueConfig(setCfg), []);
+
+  function toggleExpanded(name) {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }
 
   async function persist(next) {
     setSaving(true);
@@ -44,6 +55,8 @@ export default function VenueManager({ onChanged }) {
     if (cfg.venues.some(v => v.name.toLowerCase() === name.toLowerCase())) { alert('That venue already exists'); return; }
     persist({ ...cfg, venues: [...cfg.venues, { name, group: newVenueGroup || null, logo: null }] });
     setNewVenue('');
+    // Auto-expand whichever section the new venue lands in
+    setExpanded(prev => new Set([...prev, newVenueGroup || '__ungrouped__']));
   }
 
   function updateVenue(name, patch) {
@@ -77,6 +90,8 @@ export default function VenueManager({ onChanged }) {
     const color = GROUP_COLOR_PALETTE[cfg.groups.length % GROUP_COLOR_PALETTE.length];
     persist({ ...cfg, groups: [...cfg.groups, { name, color }] });
     setNewGroup('');
+    // Auto-expand newly created group so you can add venues straight away
+    setExpanded(prev => new Set([...prev, name]));
   }
 
   function recolorGroup(name, color) {
@@ -90,11 +105,32 @@ export default function VenueManager({ onChanged }) {
       groups: cfg.groups.filter(g => g.name !== name),
       venues: cfg.venues.map(v => v.group === name ? { ...v, group: null } : v),
     });
+    setExpanded(prev => { const next = new Set(prev); next.delete(name); return next; });
   }
 
   const grouped    = cfg.groups.map(g => ({ ...g, venues: cfg.venues.filter(v => v.group === g.name) }));
   const ungrouped  = cfg.venues.filter(v => !v.group || !cfg.groups.some(g => g.name === v.group));
   const knownLogos = Array.from(new Set([...AVAILABLE_LOGOS, ...cfg.venues.map(v => v.logo).filter(Boolean)]));
+
+  function LogoStrip({ venues, color }) {
+    if (venues.length === 0) return null;
+    return (
+      <div style={{display:'flex',gap:4,alignItems:'center'}}>
+        {venues.slice(0, 6).map(v => v.logo ? (
+          <img key={v.name} src={v.logo} alt={v.name} title={v.name}
+            style={{width:22,height:22,borderRadius:4,objectFit:'cover',background:'#1a1a2e',opacity:0.8}}
+            onError={e=>{e.target.style.display='none';}}
+          />
+        ) : (
+          <div key={v.name} title={v.name}
+            style={{width:22,height:22,borderRadius:4,background:'#1a1a2e',display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <div style={{width:6,height:6,borderRadius:'50%',background:color}} />
+          </div>
+        ))}
+        {venues.length > 6 && <span style={{fontSize:10,color:'#505070'}}>+{venues.length - 6}</span>}
+      </div>
+    );
+  }
 
   function VenueRow({ v, color }) {
     const isEditing = editing === v.name;
@@ -108,7 +144,6 @@ export default function VenueManager({ onChanged }) {
             <div style={{width:8,height:8,borderRadius:'50%',background:color}} />
           </div>
         )}
-
         <div style={{flex:1,minWidth:160}}>
           {isEditing ? (
             <input
@@ -125,12 +160,10 @@ export default function VenueManager({ onChanged }) {
             </div>
           )}
         </div>
-
         <select value={v.group || ''} onChange={e => updateVenue(v.name, { group: e.target.value || null })} style={{...inputStyle, fontSize:12, padding:'6px 8px'}}>
           <option value=''>No group</option>
           {cfg.groups.map(g => <option key={g.name} value={g.name}>{g.name}</option>)}
         </select>
-
         <input
           list="gigboard-logos"
           value={logoValue}
@@ -140,7 +173,6 @@ export default function VenueManager({ onChanged }) {
           placeholder="logo filename"
           style={{...inputStyle, fontSize:12, padding:'6px 8px', width:150}}
         />
-
         <button onClick={() => removeVenue(v.name)} style={{background:'transparent',border:'1px solid #2a2a40',color:'#ff4070',borderRadius:5,padding:'5px 10px',fontSize:11,cursor:'pointer'}}>Remove</button>
       </div>
     );
@@ -179,35 +211,76 @@ export default function VenueManager({ onChanged }) {
         </div>
       </div>
 
-      {grouped.map(g => (
-        <div key={g.name} style={{background:'#0d0d18',border:'1px solid #1e1e30',borderRadius:10,overflow:'hidden',marginBottom:14}}>
-          <div style={{display:'flex',alignItems:'center',gap:10,padding:'12px 14px',background:'#131320',borderBottom:'1px solid #1e1e30'}}>
-            <div style={{width:10,height:10,borderRadius:'50%',background:g.color}} />
-            <div style={{flex:1,fontSize:13,fontWeight:700,color:'#ffffff'}}>{g.name} <span style={{color:'#8080a0',fontWeight:400}}>({g.venues.length})</span></div>
-            <div style={{display:'flex',gap:4}}>
-              {GROUP_COLOR_PALETTE.map(c => (
-                <div key={c} onClick={() => recolorGroup(g.name, c)} title={c}
-                  style={{width:14,height:14,borderRadius:'50%',background:c,cursor:'pointer',border: g.color === c ? '2px solid #fff' : '2px solid transparent'}} />
-              ))}
+      {/* Grouped venues — all collapsed by default, click header to expand */}
+      {grouped.map(g => {
+        const isOpen = expanded.has(g.name);
+        return (
+          <div key={g.name} style={{background:'#0d0d18',border:'1px solid #1e1e30',borderRadius:10,overflow:'hidden',marginBottom:14}}>
+            {/* Clickable header */}
+            <div
+              onClick={() => toggleExpanded(g.name)}
+              style={{display:'flex',alignItems:'center',gap:10,padding:'12px 14px',background:'#131320',cursor:'pointer',userSelect:'none'}}
+            >
+              <div style={{width:10,height:10,borderRadius:'50%',background:g.color,flexShrink:0}} />
+              <div style={{flex:1,fontSize:13,fontWeight:700,color:'#ffffff'}}>
+                {g.name} <span style={{color:'#8080a0',fontWeight:400}}>({g.venues.length})</span>
+              </div>
+              {/* Logo strip — only when collapsed so it doesn't duplicate the rows */}
+              {!isOpen && <LogoStrip venues={g.venues} color={g.color} />}
+              <div style={{fontSize:11,color:'#505070',marginLeft:4,flexShrink:0}}>{isOpen ? '▲' : '▼'}</div>
             </div>
-            <button onClick={() => removeGroup(g.name)} style={{background:'transparent',border:'1px solid #2a2a40',color:'#8080a0',borderRadius:5,padding:'4px 9px',fontSize:11,cursor:'pointer',marginLeft:8}}>Remove group</button>
-          </div>
-          {g.venues.length === 0 && <div style={{padding:'12px 14px',fontSize:12,color:'#505070'}}>No venues in this group yet.</div>}
-          {g.venues.map(v => <VenueRow key={v.name} v={v} color={g.color} />)}
-        </div>
-      ))}
 
+            {isOpen && (
+              <>
+                {/* Colour picker + remove — visible only when expanded */}
+                <div style={{display:'flex',alignItems:'center',gap:8,padding:'9px 14px',background:'#0f0f1e',borderBottom:'1px solid #1a1a2e',flexWrap:'wrap'}}>
+                  <span style={{fontSize:10,color:'#505070',textTransform:'uppercase',letterSpacing:'0.07em',fontWeight:700}}>Colour</span>
+                  <div style={{display:'flex',gap:4}}>
+                    {GROUP_COLOR_PALETTE.map(c => (
+                      <div key={c} onClick={() => recolorGroup(g.name, c)} title={c}
+                        style={{width:16,height:16,borderRadius:'50%',background:c,cursor:'pointer',border: g.color === c ? '2px solid #fff' : '2px solid transparent'}} />
+                    ))}
+                  </div>
+                  <div style={{marginLeft:'auto'}}>
+                    <button
+                      onClick={e => { e.stopPropagation(); removeGroup(g.name); }}
+                      style={{background:'transparent',border:'1px solid #2a2a40',color:'#8080a0',borderRadius:5,padding:'4px 9px',fontSize:11,cursor:'pointer'}}
+                    >
+                      Remove group
+                    </button>
+                  </div>
+                </div>
+                {g.venues.length === 0 && <div style={{padding:'12px 14px',fontSize:12,color:'#505070'}}>No venues in this group yet.</div>}
+                {g.venues.map(v => <VenueRow key={v.name} v={v} color={g.color} />)}
+              </>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Individual venues — also collapsible */}
       <div style={{background:'#0d0d18',border:'1px solid #1e1e30',borderRadius:10,overflow:'hidden',marginBottom:20}}>
-        <div style={{padding:'12px 14px',background:'#131320',borderBottom:'1px solid #1e1e30',fontSize:13,fontWeight:700,color:'#ffffff'}}>
-          Individual venues <span style={{color:'#8080a0',fontWeight:400}}>({ungrouped.length})</span>
+        <div
+          onClick={() => toggleExpanded('__ungrouped__')}
+          style={{display:'flex',alignItems:'center',gap:10,padding:'12px 14px',background:'#131320',cursor:'pointer',userSelect:'none'}}
+        >
+          <div style={{flex:1,fontSize:13,fontWeight:700,color:'#ffffff'}}>
+            Individual venues <span style={{color:'#8080a0',fontWeight:400}}>({ungrouped.length})</span>
+          </div>
+          {!expanded.has('__ungrouped__') && <LogoStrip venues={ungrouped} color="#00d4aa" />}
+          <div style={{fontSize:11,color:'#505070',marginLeft:4,flexShrink:0}}>{expanded.has('__ungrouped__') ? '▲' : '▼'}</div>
         </div>
-        {ungrouped.length === 0 && <div style={{padding:'12px 14px',fontSize:12,color:'#505070'}}>None.</div>}
-        {ungrouped.map(v => <VenueRow key={v.name} v={v} color="#00d4aa" />)}
+        {expanded.has('__ungrouped__') && (
+          <>
+            {ungrouped.length === 0 && <div style={{padding:'12px 14px',fontSize:12,color:'#505070'}}>None.</div>}
+            {ungrouped.map(v => <VenueRow key={v.name} v={v} color="#00d4aa" />)}
+          </>
+        )}
       </div>
 
       <div style={{background:'#0d0d18',border:'1px solid #1e1e30',borderRadius:10,padding:16}}>
         <span style={label}>Add a group</span>
-        <div style={{fontSize:12,color:'#8080a0',marginBottom:10}}>Groups bundle rooms under one owner, e.g. “Clancys Group”. Venue admins can be scoped to a group.</div>
+        <div style={{fontSize:12,color:'#8080a0',marginBottom:10}}>Groups bundle rooms under one owner, e.g. "Clancys Group". Venue admins can be scoped to a group.</div>
         <div style={{display:'flex',gap:8}}>
           <input
             value={newGroup}
