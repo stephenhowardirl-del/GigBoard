@@ -34,6 +34,9 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
   const [djUnavail, setDjUnavail]   = useState([]);
   const [loadingDJ, setLoadingDJ]   = useState(false);
   const [popup, setPopup]           = useState(null);
+  const [editMode, setEditMode]     = useState(false);
+
+  const canEdit = !!onToggleUnavail && !readOnly;
 
   useEffect(() => {
     if (showDJPicker) {
@@ -110,17 +113,21 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
   }
 
   function handleClick(d) {
+    const iso = isoForDay(d);
+
+    // Edit mode: every tap toggles availability, nothing else.
+    if (editMode) {
+      onToggleUnavail && onToggleUnavail(iso);
+      return;
+    }
+
+    // View mode: taps only ever SHOW things — never change availability.
     const dayGigs    = gigsOnDay(d);
     const unavailDJs = unavailDJsOnDay(d);
-    const iso        = isoForDay(d);
     const unavail    = isUnavail(d);
 
     if (dayGigs.length > 0 || unavailDJs.length > 0 || (isDJView && unavail)) {
       setPopup({ day: d, iso, gigs: dayGigs, unavailDJs, djUnavail: isDJView && unavail });
-      return;
-    }
-    if (!readOnly) {
-      onToggleUnavail && onToggleUnavail(iso);
     }
   }
 
@@ -130,13 +137,34 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
     <div className="cal-wrap" style={{position:'relative'}} onClick={() => setPopup(null)}>
 
       {/* Header row */}
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: showDJPicker ? 12 : 20}}>
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: showDJPicker ? 12 : 20, gap:8, flexWrap:'wrap'}}>
         <div style={{fontSize: isMobile ? 17 : 20, fontWeight:700, color:'#ffffff'}}>{MONTHS[month]} {year}</div>
         <div style={{display:'flex', gap:8, alignItems:'center'}}>
+          {canEdit && (
+            <button
+              onClick={e => { e.stopPropagation(); setEditMode(m => !m); setPopup(null); }}
+              style={{
+                background: editMode ? '#00ffc215' : 'transparent',
+                border: `1px solid ${editMode ? '#00ffc250' : '#2a2a40'}`,
+                color: editMode ? '#00ffc2' : '#9090b0',
+                borderRadius:6, padding:'6px 14px', fontSize:12, fontWeight:600, cursor:'pointer',
+                whiteSpace:'nowrap',
+              }}
+            >
+              {editMode ? '✓ Done' : '✏️ Edit availability'}
+            </button>
+          )}
           <button onClick={prevMonth} style={{background:'#131320',border:'1px solid #2a2a40',color:'#e8e8f0',borderRadius:6,width:32,height:32,cursor:'pointer',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center'}}>‹</button>
           <button onClick={nextMonth} style={{background:'#131320',border:'1px solid #2a2a40',color:'#e8e8f0',borderRadius:6,width:32,height:32,cursor:'pointer',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center'}}>›</button>
         </div>
       </div>
+
+      {/* Edit mode banner */}
+      {editMode && (
+        <div style={{background:'#1a1400',border:'1px solid #ffbb0040',borderRadius:8,padding:'9px 14px',marginBottom:14,fontSize:12,color:'#ffbb00',fontWeight:600}}>
+          ✏️ Editing availability — tap days to toggle unavailable, then press Done.
+        </div>
+      )}
 
       {/* DJ picker */}
       {showDJPicker && (
@@ -189,7 +217,9 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
         </div>
       )}
 
-      {!readOnly && !showDJPicker && <p style={{fontSize:11,color:'#505070',marginBottom:12}}>Tap a free day to mark yourself unavailable. Tap again to remove.</p>}
+      {canEdit && !editMode && !showDJPicker && (
+        <p style={{fontSize:11,color:'#505070',marginBottom:12}}>Use ✏️ Edit availability to mark days you can't play.</p>
+      )}
 
       {loadingDJ ? (
         <div style={{textAlign:'center',padding:'40px',color:'#505070',fontSize:13}}>Loading…</div>
@@ -203,7 +233,14 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
             ))}
           </div>
 
-          <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap: isMobile ? 2 : 3}} onClick={e => e.stopPropagation()}>
+          <div
+            style={{
+              display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap: isMobile ? 2 : 3,
+              outline: editMode ? '2px dashed #ffbb0050' : 'none',
+              outlineOffset: 4, borderRadius: 6,
+            }}
+            onClick={e => e.stopPropagation()}
+          >
             {Array.from({length: firstDow}, (_, i) => <div key={`e${i}`} style={{minHeight: isMobile ? 52 : 90}} />)}
             {Array.from({length: daysInMonth}, (_, i) => {
               const d       = i + 1;
@@ -223,7 +260,7 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
                       border: style.border,
                       borderRadius: 6,
                       minHeight: 52,
-                      cursor: 'pointer',
+                      cursor: editMode ? 'pointer' : (dayGigs.length > 0 || (isDJView && style.unavail) ? 'pointer' : 'default'),
                       userSelect: 'none',
                       display: 'flex',
                       flexDirection: 'column',
@@ -260,7 +297,7 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
                 );
               }
 
-              /* ---------- DESKTOP CELL: unchanged ---------- */
+              /* ---------- DESKTOP CELL ---------- */
               return (
                 <div
                   key={d}
@@ -271,7 +308,7 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
                     borderRadius: 6,
                     padding: '8px 8px 6px',
                     minHeight: 90,
-                    cursor: 'pointer',
+                    cursor: editMode ? 'pointer' : (dayGigs.length > 0 || (isDJView && style.unavail) ? 'pointer' : 'default'),
                     userSelect: 'none',
                     overflow: 'hidden',
                     display: 'flex',
@@ -337,7 +374,7 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
       )}
 
       {/* Popup */}
-      {popup && (
+      {popup && !editMode && (
         <div
           style={{
             position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)',
@@ -429,7 +466,7 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
           <div style={{width:10,height:10,borderRadius:'50%',background:'#ffbb00'}} />
           Pending
         </div>
-        {isDJView && (
+        {(canEdit || isDJView) && (
           <div style={{display:'flex',alignItems:'center',gap:6,fontSize:11,color:'#505070'}}>
             <div style={{width:10,height:10,borderRadius:'50%',background:'#ff6090'}} />
             Unavailable
