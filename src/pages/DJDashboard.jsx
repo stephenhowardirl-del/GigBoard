@@ -27,6 +27,45 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+function toIso(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function getDateRange(filter) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const dow     = (today.getDay() + 6) % 7;
+  const thisMon = new Date(today); thisMon.setDate(today.getDate() - dow);
+  const thisSun = new Date(thisMon); thisSun.setDate(thisMon.getDate() + 6);
+  const nextMon = new Date(thisMon); nextMon.setDate(thisMon.getDate() + 7);
+  const nextSun = new Date(nextMon); nextSun.setDate(nextMon.getDate() + 6);
+
+  if (filter === 'week')     return { from: toIso(thisMon), to: toIso(thisSun) };
+  if (filter === 'nextweek') return { from: toIso(nextMon), to: toIso(nextSun) };
+  if (filter === 'month') {
+    return { from: toIso(new Date(today.getFullYear(), today.getMonth(), 1)), to: toIso(new Date(today.getFullYear(), today.getMonth() + 1, 0)) };
+  }
+  if (filter === 'nextmonth') {
+    return { from: toIso(new Date(today.getFullYear(), today.getMonth() + 1, 1)), to: toIso(new Date(today.getFullYear(), today.getMonth() + 2, 0)) };
+  }
+  if (filter === 'restofyear') {
+    const start = new Date(today.getFullYear(), today.getMonth() + 2, 1);
+    return { from: toIso(start), to: `${today.getFullYear()}-12-31` };
+  }
+  if (filter === 'all') {
+    return { from: toIso(today), to: null };
+  }
+  return null;
+}
+
+const FILTERS = [
+  { key:'week',       label:'This week' },
+  { key:'nextweek',   label:'Next week' },
+  { key:'month',      label:'This month' },
+  { key:'nextmonth',  label:'Next month' },
+  { key:'restofyear', label:'Rest of year' },
+  { key:'all',        label:'All' },
+];
+
 function isoForDate(year, month, day) {
   return `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
 }
@@ -191,7 +230,7 @@ function EditGigModal({ gig, venues, onClose, onSaved }) {
   async function handleSave() {
     if (!venue || !date || !time) return;
     setSaving(true);
-    await updateGig(gig.id, { venue, date, time, notes, fee, djUid: gig.djUid, djName: gig.djName, djEmail: gig.djEmail || '' });
+    await updateGig(gig.id, { venue, date, time, notes, fee, djUid: gig.djUid, djName: gig.djName, djEmail: gig.djEmail || '', status: gig.status });
     setSaving(false);
     onSaved();
     onClose();
@@ -479,6 +518,7 @@ export default function DJDashboard({ previewProfile, hideFees }) {
   const isPreview = !!previewProfile;
 
   const [tab, setTab]                   = useState('schedule');
+  const [filter, setFilter]             = useState('week');
   const [gigs, setGigs]                 = useState([]);
   const [unavail, setUnavail]           = useState([]);
   const [loading, setLoading]           = useState(true);
@@ -521,9 +561,32 @@ export default function DJDashboard({ previewProfile, hideFees }) {
   const pastGigs     = confirmed.filter(g => g.date < todayStr()).reverse();
   const nextGig      = upcomingGigs[0];
 
+  // Filtered list for the schedule tab
+  const range = getDateRange(filter);
+  const filteredUpcoming = upcomingGigs.filter(g => {
+    if (!range) return true;
+    if (range.from && g.date < range.from) return false;
+    if (range.to && g.date > range.to) return false;
+    return true;
+  });
+
+  const rangeLabel = range
+    ? range.to
+      ? `${formatDate(range.from)} – ${formatDate(range.to)}`
+      : `${formatDate(range.from)} onwards`
+    : null;
+
   const monthEarnings    = gigs.filter(g => { if (g.status !== 'confirmed' || !g.fee) return false; const d = new Date(g.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).reduce((sum, g) => sum + Number(g.fee), 0);
   const upcomingEarnings = upcomingGigs.filter(g => g.fee).reduce((sum, g) => sum + Number(g.fee), 0);
   const pastEarnings     = pastGigs.filter(g => g.fee).reduce((sum, g) => sum + Number(g.fee), 0);
+
+  const filterBtnStyle = (active) => ({
+    background: active ? '#00ffc220' : 'transparent',
+    border: `1px solid ${active ? '#00ffc250' : '#2a2a40'}`,
+    color: active ? '#00ffc2' : '#8080a0',
+    borderRadius: 5, padding: '4px 10px', fontSize: 11,
+    cursor: 'pointer', whiteSpace: 'nowrap',
+  });
 
   if (loading) return <div className="loading">Loading...</div>;
 
@@ -582,13 +645,29 @@ export default function DJDashboard({ previewProfile, hideFees }) {
             </div>
           )}
 
-          {upcomingGigs.length > 0 && (
+          {/* Date filter pills — same as the admin gig list */}
+          <div style={{display:'flex',gap:4,flexWrap:'wrap',alignItems:'center',marginBottom:12}}>
+            {FILTERS.map(f => (
+              <button key={f.key} onClick={() => setFilter(f.key)} style={filterBtnStyle(filter === f.key)}>
+                {f.label}
+              </button>
+            ))}
+            {rangeLabel && <span style={{fontSize:11,color:'#505070',marginLeft:6}}>{rangeLabel}</span>}
+          </div>
+
+          {filteredUpcoming.length > 0 ? (
             <>
-              <div className="section-title">Upcoming gigs</div>
+              <div className="section-title">Upcoming gigs ({filteredUpcoming.length})</div>
               <div className="panel">
-                {upcomingGigs.map(g => <GigRow key={g.id} g={g} profile={profile} isPreview={isPreview} hideFees={hideFees} onEdit={setEditingGig} onInvoice={setInvoiceGig} isPast={false} />)}
+                {filteredUpcoming.map(g => <GigRow key={g.id} g={g} profile={profile} isPreview={isPreview} hideFees={hideFees} onEdit={setEditingGig} onInvoice={setInvoiceGig} isPast={false} />)}
               </div>
             </>
+          ) : (
+            upcomingGigs.length > 0 && (
+              <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,padding:20,textAlign:'center',color:'#8080a0',fontSize:13}}>
+                No gigs in this period — try another filter.
+              </div>
+            )
           )}
         </div>
       )}
