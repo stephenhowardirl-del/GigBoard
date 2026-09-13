@@ -12,6 +12,17 @@ function toIso(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function isNightTime(time) {
+  if (!time) return false;
+  const hour = parseInt(time.split(':')[0], 10);
+  return hour >= 18 || hour < 6;
+}
+
 function getDateRange(filter) {
   const today = new Date(); today.setHours(0,0,0,0);
   const dow     = (today.getDay() + 6) % 7;
@@ -144,8 +155,9 @@ function StatusPill({ status }) {
 }
 
 function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete, draggable = false }) {
-  const vc   = getVenueColor(g.venue);
-  const logo = getVenueLogo(g.venue);
+  const vc      = getVenueColor(g.venue);
+  const logo    = getVenueLogo(g.venue);
+  const isToday = g.date === todayStr();
   const [showNotes, setShowNotes] = useState(false);
   const [hover, setHover]         = useState(false);
   const [dragging, setDragging]   = useState(false);
@@ -165,8 +177,11 @@ function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete, draggable
       title={draggable ? 'Drag onto a DJ to assign, or click to edit' : 'Click to edit'}
       style={{
         borderBottom:'1px solid #1a1a2e', padding:'12px 14px',
+        paddingLeft: isToday ? 11 : 14,
+        borderLeft: isToday ? `3px solid ${vc.color}` : 'none',
+        background: hover ? '#12121e' : isToday ? '#0e0e1a' : 'transparent',
         cursor: draggable ? 'grab' : 'pointer',
-        background: hover ? '#12121e' : 'transparent', transition:'background 0.12s', position:'relative',
+        transition:'background 0.12s', position:'relative',
         opacity: dragging ? 0.4 : 1,
       }}
     >
@@ -186,6 +201,11 @@ function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete, draggable
       </div>
 
       <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+        {isToday && (
+          <span style={{fontSize:10,fontWeight:700,color:'#00ffc2',background:'#00ffc215',border:'1px solid #00ffc240',borderRadius:4,padding:'2px 7px',textTransform:'uppercase',letterSpacing:'0.06em',whiteSpace:'nowrap'}}>
+            {isNightTime(g.time) ? '🎧 Tonight' : '📅 Today'}
+          </span>
+        )}
         <StatusPill status={g.status} />
         {!hideFees && g.fee && <span style={{fontSize:13,color:'#00ffc2',fontWeight:700}}>€{g.fee}</span>}
         {g.notes && (
@@ -282,6 +302,9 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
     return (matchUid || matchName) && g.status === 'pending';
   }).length;
 
+  // Fee total for the gigs currently shown in this column.
+  const feeTotal = matched.reduce((sum, g) => sum + (g.fee ? Number(g.fee) : 0), 0);
+
   const initials = dj.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
@@ -316,7 +339,11 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontSize:13,fontWeight:700,color:'#ffffff'}}>{dj.name}</div>
           <div style={{fontSize:11,color:'#8080a0',marginTop:1,display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
-            <span>{dragOver ? 'Drop to assign' : `${matched.length} gig${matched.length !== 1 ? 's' : ''}`}</span>
+            <span>
+              {dragOver
+                ? 'Drop to assign'
+                : `${matched.length} gig${matched.length !== 1 ? 's' : ''}${!hideFees && feeTotal > 0 ? ` · €${feeTotal}` : ''}`}
+            </span>
             {!dragOver && pendingCount > 0 && (
               <span style={{color:'#ffbb00',fontWeight:700,background:'#ffbb0015',border:'1px solid #ffbb0030',borderRadius:4,padding:'0 6px',fontSize:10}}>
                 {pendingCount} pending
