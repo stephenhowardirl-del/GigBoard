@@ -597,14 +597,13 @@ export default function DJDashboard({ previewProfile, hideFees }) {
   return (
     <div>
       <div className="subnav">
-        <button className={'subnav-btn'+(tab==='schedule'?    ' active':'')} onClick={() => setTab('schedule')}>My schedule</button>
-        <button className={'subnav-btn'+(tab==='calendar'?    ' active':'')} onClick={() => setTab('calendar')}>Month view</button>
-        <button className={'subnav-btn'+(tab==='pending'?     ' active':'')} onClick={() => setTab('pending')}>
+        <button className={'subnav-btn'+(tab==='schedule'?  ' active':'')} onClick={() => setTab('schedule')}>My schedule</button>
+        <button className={'subnav-btn'+(tab==='calendar'?  ' active':'')} onClick={() => setTab('calendar')}>Month view</button>
+        <button className={'subnav-btn'+(tab==='pending'?   ' active':'')} onClick={() => setTab('pending')}>
           Pending{pending.length > 0 && <span className="notif-dot">{pending.length}</span>}
         </button>
-        <button className={'subnav-btn'+(tab==='history'?     ' active':'')} onClick={() => setTab('history')}>History</button>
-        <button className={'subnav-btn'+(tab==='availability'?' active':'')} onClick={() => setTab('availability')}>Availability</button>
-        <button className={'subnav-btn'+(tab==='financials'?  ' active':'')} onClick={() => setTab('financials')}>Financials</button>
+        <button className={'subnav-btn'+(tab==='history'?   ' active':'')} onClick={() => setTab('history')}>History</button>
+        <button className={'subnav-btn'+(tab==='financials'?' active':'')} onClick={() => setTab('financials')}>Financials</button>
         {!isPreview && selfAssignVenues.length > 0 && (
           <button className="subnav-btn" onClick={() => setShowBooking(true)} style={{color:'#00ffc2',borderBottom:'2px solid transparent'}}>+ Book a gig</button>
         )}
@@ -721,15 +720,7 @@ export default function DJDashboard({ previewProfile, hideFees }) {
       )}
 
       {tab === 'calendar' && (
-        <CalendarView gigs={gigs} unavailDates={unavail} onToggleUnavail={isPreview ? null : handleToggleUnavail} readOnly={isPreview} />
-      )}
-
-      {tab === 'availability' && (
         <div className="page-body">
-          <div style={{marginBottom:16}}>
-            <div style={{fontSize:15,fontWeight:700,color:'#ffffff',marginBottom:6}}>My availability</div>
-            <div style={{fontSize:12,color:'#8080a0'}}>Tap a free day to mark yourself unavailable. Tap again to remove.</div>
-          </div>
           <CalendarView
             gigs={gigs}
             unavailDates={unavail}
