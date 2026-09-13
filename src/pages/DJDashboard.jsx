@@ -590,6 +590,10 @@ export default function DJDashboard({ previewProfile, hideFees }) {
 
   if (loading) return <div className="loading">Loading...</div>;
 
+  const nextVc   = nextGig ? getVenueColor(nextGig.venue) : null;
+  const nextLogo = nextGig ? getVenueLogo(nextGig.venue) : null;
+  const daysAway = nextGig ? Math.round((new Date(nextGig.date+'T12:00:00') - new Date().setHours(0,0,0,0)) / 86400000) : 0;
+
   return (
     <div>
       <div className="subnav">
@@ -608,42 +612,68 @@ export default function DJDashboard({ previewProfile, hideFees }) {
 
       {tab === 'schedule' && (
         <div className="page-body">
-          <div className="stats-row" style={{marginBottom:20}}>
-            <div className="stat-card"><div className="stat-label">This month</div><div className="stat-val neon">{hideFees ? '—' : `€${monthEarnings}`}</div></div>
-            <div className="stat-card"><div className="stat-label">Upcoming total</div><div className="stat-val" style={{color:'#a080ff'}}>{hideFees ? '—' : `€${upcomingEarnings}`}</div></div>
-            <div className="stat-card"><div className="stat-label">Confirmed gigs</div><div className="stat-val">{upcomingGigs.length + todayGigs.length}</div></div>
-          </div>
-
           {todayGigs.length > 0 && <TodayBanner gigs={todayGigs} hideFees={hideFees} />}
 
-          {todayGigs.length === 0 && nextGig && (
-            <div className="next-gig-card" style={{borderColor: getVenueColor(nextGig.venue).color+'40', marginBottom:20}}>
-              <div style={{flex:1}}>
-                <div style={{fontSize:11,fontWeight:700,color:'#8080a0',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}}>Next up</div>
-                <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:8}}>
-                  {getVenueLogo(nextGig.venue) && <img src={getVenueLogo(nextGig.venue)} alt={nextGig.venue} style={{width:52,height:52,borderRadius:10,objectFit:'cover'}} onError={e=>{e.target.style.display='none';}} />}
-                  <div>
-                    <div style={{fontSize:20,fontWeight:700,color:'#ffffff'}}>{nextGig.venue}</div>
-                    <div style={{fontSize:14,color:'#d0d0e8',fontWeight:500,marginTop:3}}>{formatDate(nextGig.date)} · {nextGig.time}</div>
+          {/* Next up + stats side by side */}
+          <div style={{display:'flex',gap:12,marginBottom:20,flexWrap:'wrap',alignItems:'stretch'}}>
+            {/* Next up — compact single-row banner */}
+            <div style={{
+              flex:'2 1 380px', minWidth:0,
+              background:'var(--bg-surface)', border:`1px solid ${nextGig ? nextVc.color+'40' : 'var(--border)'}`,
+              borderRadius:12, padding:'14px 18px',
+              display:'flex', alignItems:'center', gap:14,
+            }}>
+              {nextGig ? (
+                <>
+                  {nextLogo ? (
+                    <img src={nextLogo} alt={nextGig.venue} style={{width:46,height:46,borderRadius:9,objectFit:'cover',flexShrink:0}} onError={e=>{e.target.style.display='none';}} />
+                  ) : (
+                    <div style={{width:46,height:46,borderRadius:9,background:nextVc.bg,border:`1px solid ${nextVc.color}40`,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      <div style={{width:11,height:11,borderRadius:'50%',background:nextVc.color}} />
+                    </div>
+                  )}
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:10,fontWeight:700,color:'#8080a0',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:3}}>Next up</div>
+                    <div style={{fontSize:16,fontWeight:700,color:'#ffffff',lineHeight:1.3}}>{nextGig.venue}</div>
+                    <div style={{fontSize:12,color:'#d0d0e8',marginTop:2}}>
+                      {formatDate(nextGig.date)} · {nextGig.time}
+                      {!hideFees && nextGig.fee && <span style={{color:'#00ffc2',fontWeight:700,marginLeft:8}}>€{nextGig.fee}</span>}
+                    </div>
+                    {nextGig.notes && <NotesBanner notes={nextGig.notes} />}
                   </div>
+                  <div style={{textAlign:'center',flexShrink:0,paddingLeft:8}}>
+                    <div style={{fontSize:28,fontWeight:700,fontFamily:'var(--font-mono)',color:'#00ffc2',lineHeight:1}}>{daysAway}</div>
+                    <div style={{fontSize:9,color:'#8080a0',letterSpacing:'0.08em',textTransform:'uppercase',marginTop:3}}>days away</div>
+                  </div>
+                </>
+              ) : (
+                <div style={{flex:1,textAlign:'center',color:'#8080a0',fontSize:13,padding:'10px 0'}}>
+                  No upcoming confirmed gigs.
                 </div>
-                {!hideFees && nextGig.fee && <div style={{fontSize:16,color:'#00ffc2',fontWeight:700}}>€{nextGig.fee}</div>}
-                {nextGig.notes && <NotesBanner notes={nextGig.notes} />}
-              </div>
-              <div style={{textAlign:'center',flexShrink:0}}>
-                <div style={{fontSize:40,fontWeight:700,fontFamily:'var(--font-mono)',color:'#00ffc2',lineHeight:1}}>
-                  {Math.round((new Date(nextGig.date+'T12:00:00') - new Date().setHours(0,0,0,0)) / 86400000)}
-                </div>
-                <div style={{fontSize:11,color:'#8080a0',letterSpacing:'0.1em',textTransform:'uppercase',marginTop:4}}>days away</div>
-              </div>
+              )}
             </div>
-          )}
 
-          {todayGigs.length === 0 && !nextGig && (
-            <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,padding:20,marginBottom:20,textAlign:'center',color:'#8080a0',fontSize:13}}>
-              No upcoming confirmed gigs.
+            {/* Compact stats panel */}
+            <div style={{
+              flex:'1 1 220px', minWidth:200,
+              background:'var(--bg-surface)', border:'1px solid var(--border)',
+              borderRadius:12, padding:'12px 18px',
+              display:'flex', flexDirection:'column', justifyContent:'center', gap:8,
+            }}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+                <span style={{fontSize:10,color:'#8080a0',textTransform:'uppercase',letterSpacing:'0.08em'}}>This month</span>
+                <span style={{fontSize:16,fontWeight:700,fontFamily:'var(--font-mono)',color:'#00ffc2'}}>{hideFees ? '—' : `€${monthEarnings}`}</span>
+              </div>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+                <span style={{fontSize:10,color:'#8080a0',textTransform:'uppercase',letterSpacing:'0.08em'}}>Upcoming total</span>
+                <span style={{fontSize:16,fontWeight:700,fontFamily:'var(--font-mono)',color:'#a080ff'}}>{hideFees ? '—' : `€${upcomingEarnings}`}</span>
+              </div>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+                <span style={{fontSize:10,color:'#8080a0',textTransform:'uppercase',letterSpacing:'0.08em'}}>Confirmed gigs</span>
+                <span style={{fontSize:16,fontWeight:700,fontFamily:'var(--font-mono)',color:'#e8e8f0'}}>{upcomingGigs.length + todayGigs.length}</span>
+              </div>
             </div>
-          )}
+          </div>
 
           {/* Date filter pills — same as the admin gig list */}
           <div style={{display:'flex',gap:4,flexWrap:'wrap',alignItems:'center',marginBottom:12}}>
