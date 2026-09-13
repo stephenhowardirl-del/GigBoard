@@ -6,6 +6,9 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 const DAYS   = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const DAYS_SHORT = ['M','T','W','T','F','S','S'];
 
+// Same palette and ordering as the gig list columns (admin first, then DJs in roster order)
+const DJ_COLORS = ['#00d4aa','#a080ff','#40a0ff','#ff60c0','#ffbb00','#80d040'];
+
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -29,7 +32,7 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
   const [year, setYear]             = useState(now.getFullYear());
   const [month, setMonth]           = useState(now.getMonth());
   const [selectedDJ, setSelectedDJ] = useState('all');
-  const [djList, setDjList]         = useState([]);
+  const [allUsers, setAllUsers]     = useState([]);
   const [djGigs, setDjGigs]         = useState([]);
   const [djUnavail, setDjUnavail]   = useState([]);
   const [loadingDJ, setLoadingDJ]   = useState(false);
@@ -40,9 +43,28 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
 
   useEffect(() => {
     if (showDJPicker) {
-      getAllUsers().then(u => setDjList(u.filter(x => x.role !== 'full_admin')));
+      getAllUsers().then(u => {
+        // Admin first, then everyone else in roster order — matches the gig list columns
+        const admins = u.filter(x => x.role === 'full_admin');
+        const rest   = u.filter(x => x.role !== 'full_admin');
+        setAllUsers([...admins, ...rest]);
+      });
     }
   }, [showDJPicker]);
+
+  // Picker shows non-admin DJs only (admin sees their own gigs in My gigs)
+  const djList = allUsers.filter(x => x.role !== 'full_admin');
+
+  // Colour lookup for the All DJs view — keyed by uid and lowercased name
+  const djColorMap = {};
+  allUsers.forEach((u, i) => {
+    const c = DJ_COLORS[i % DJ_COLORS.length];
+    if (u.uid)  djColorMap[u.uid] = c;
+    if (u.name) djColorMap[u.name.toLowerCase()] = c;
+  });
+  function djColorFor(g) {
+    return djColorMap[g.djUid] || djColorMap[(g.djName || '').toLowerCase()] || '#8080a0';
+  }
 
   useEffect(() => {
     if (!showDJPicker || selectedDJ === 'all') {
@@ -68,6 +90,7 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
   const firstDow    = (new Date(year, month, 1).getDay() + 6) % 7;
 
   const isDJView         = showDJPicker && selectedDJ !== 'all';
+  const isAllDJsView     = showDJPicker && selectedDJ === 'all';
   const activeGigs       = isDJView ? djGigs : (venueFilter ? gigs.filter(g => g.venue === venueFilter) : gigs);
   const activeUnavail    = isDJView ? djUnavail : unavailDates;
   const activeAllUnavail = isDJView ? [] : allUnavail;
@@ -104,8 +127,13 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
     let bg     = '#0a0a12';
     let border = '1px solid #1a1a28';
 
-    if (confirmed)    { bg = '#021a10'; border = '1px solid #00ffc225'; }
-    else if (pending) { bg = '#1a1000'; border = '1px solid #ffbb0025'; }
+    // All DJs view: keep the cell neutral so the per-DJ tile colours carry the meaning
+    if (isAllDJsView) {
+      if (dayGigs.length > 0) { bg = '#0d0d18'; border = '1px solid #22223a'; }
+    } else {
+      if (confirmed)    { bg = '#021a10'; border = '1px solid #00ffc225'; }
+      else if (pending) { bg = '#1a1000'; border = '1px solid #ffbb0025'; }
+    }
     if (unavail)      { bg = '#1a000a'; border = '1px solid #ff407040'; }
     if (isToday)      { border = '2px solid #00ffc2'; }
 
@@ -129,6 +157,12 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
     if (dayGigs.length > 0 || unavailDJs.length > 0 || (isDJView && unavail)) {
       setPopup({ day: d, iso, gigs: dayGigs, unavailDJs, djUnavail: isDJView && unavail });
     }
+  }
+
+  // Tile colours: All DJs view → per-DJ colour; otherwise status colour
+  function tileColor(g) {
+    if (isAllDJsView) return djColorFor(g);
+    return g.status === 'confirmed' ? '#00ffc2' : '#ffbb00';
   }
 
   const dayLabels = isMobile ? DAYS_SHORT : DAYS;
@@ -183,21 +217,27 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
             >
               All DJs
             </button>
-            {djList.map(dj => (
-              <button
-                key={dj.uid}
-                onClick={() => setSelectedDJ(dj.uid)}
-                style={{
-                  padding:'5px 14px', borderRadius:6, fontSize:12, cursor:'pointer',
-                  border: `1px solid ${selectedDJ === dj.uid ? '#a080ff50' : '#2a2a40'}`,
-                  background: selectedDJ === dj.uid ? '#a080ff15' : 'transparent',
-                  color: selectedDJ === dj.uid ? '#a080ff' : '#8080a0',
-                  fontWeight: selectedDJ === dj.uid ? 600 : 400,
-                }}
-              >
-                {dj.name.split(' ')[0]}
-              </button>
-            ))}
+            {djList.map(dj => {
+              const c = djColorMap[dj.uid] || '#a080ff';
+              const active = selectedDJ === dj.uid;
+              return (
+                <button
+                  key={dj.uid}
+                  onClick={() => setSelectedDJ(dj.uid)}
+                  style={{
+                    padding:'5px 14px', borderRadius:6, fontSize:12, cursor:'pointer',
+                    border: `1px solid ${active ? c+'50' : '#2a2a40'}`,
+                    background: active ? c+'15' : 'transparent',
+                    color: active ? c : '#8080a0',
+                    fontWeight: active ? 600 : 400,
+                    display:'flex', alignItems:'center', gap:6,
+                  }}
+                >
+                  <span style={{width:6,height:6,borderRadius:'50%',background:c,display:'inline-block'}} />
+                  {dj.name.split(' ')[0]}
+                </button>
+              );
+            })}
           </div>
           {isDJView && !isMobile && (
             <div style={{marginLeft:'auto', fontSize:12, color:'#8080a0'}}>
@@ -282,7 +322,7 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
                         {dayGigs.slice(0, 4).map((g, idx) => (
                           <div key={idx} style={{
                             width: 6, height: 6, borderRadius: '50%',
-                            background: g.status === 'confirmed' ? '#00ffc2' : '#ffbb00',
+                            background: tileColor(g),
                           }} />
                         ))}
                         {dayGigs.length > 4 && (
@@ -340,11 +380,13 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
                   {dayGigs.slice(0, 3).map((g, idx) => {
                     const vc   = getVenueColor(g.venue);
                     const logo = getVenueLogo(g.venue);
+                    const tc   = tileColor(g);
+                    const isPending = g.status === 'pending';
                     return (
                       <div key={idx} style={{
                         display: 'flex', alignItems: 'center', gap: 5,
-                        background: g.status === 'confirmed' ? '#00ffc210' : '#ffbb0010',
-                        border: `1px solid ${g.status === 'confirmed' ? '#00ffc220' : '#ffbb0020'}`,
+                        background: tc + '12',
+                        border: `1px ${isPending && isAllDJsView ? 'dashed' : 'solid'} ${tc + (isPending && isAllDJsView ? '60' : '25')}`,
                         borderRadius: 4, padding: '3px 5px',
                       }}>
                         {logo ? (
@@ -355,10 +397,10 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
                           </div>
                         )}
                         <div style={{minWidth:0, flex:1}}>
-                          <div style={{fontSize:10,fontWeight:600,color:g.status==='confirmed'?'#00ffc2':'#ffbb00',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
-                            {!isDJView && showDJPicker ? `${g.djName?.split(' ')[0]} · ` : ''}{g.venue?.split(' ').slice(0,2).join(' ')}
+                          <div style={{fontSize:10,fontWeight:600,color:tc,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                            {isAllDJsView ? `${g.djName?.split(' ')[0]} · ` : ''}{g.venue?.split(' ').slice(0,2).join(' ')}
                           </div>
-                          <div style={{fontSize:9,color:'#8080a0'}}>{g.time}</div>
+                          <div style={{fontSize:9,color:'#8080a0'}}>{g.time}{isPending && isAllDJsView ? ' · pending' : ''}</div>
                         </div>
                       </div>
                     );
@@ -408,6 +450,7 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
           {popup.gigs.map((g, i) => {
             const vc   = getVenueColor(g.venue);
             const logo = getVenueLogo(g.venue);
+            const tc   = tileColor(g);
             return (
               <div key={i} style={{
                 display:'flex', alignItems:'center', gap:12,
@@ -423,7 +466,12 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
                 )}
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:14,fontWeight:700,color:'#ffffff',marginBottom:2,lineHeight:1.3}}>{g.venue}</div>
-                  {showDJPicker && !isDJView && <div style={{fontSize:12,color:'#8080a0',marginBottom:2}}>{g.djName}</div>}
+                  {isAllDJsView && (
+                    <div style={{fontSize:12,color:tc,fontWeight:600,marginBottom:2,display:'flex',alignItems:'center',gap:6}}>
+                      <span style={{width:7,height:7,borderRadius:'50%',background:tc,display:'inline-block'}} />
+                      {g.djName}
+                    </div>
+                  )}
                   <div style={{fontSize:12,color:'#d0d0e8',fontWeight:500}}>{g.time}</div>
                   {g.fee && <div style={{fontSize:13,color:'#00ffc2',fontWeight:700,marginTop:3}}>€{g.fee}</div>}
                   {g.notes && (
@@ -458,19 +506,36 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
 
       {/* Legend */}
       <div style={{display:'flex',gap:16,marginTop:16,flexWrap:'wrap'}}>
-        <div style={{display:'flex',alignItems:'center',gap:6,fontSize:11,color:'#505070'}}>
-          <div style={{width:10,height:10,borderRadius:'50%',background:'#00ffc2'}} />
-          Confirmed
-        </div>
-        <div style={{display:'flex',alignItems:'center',gap:6,fontSize:11,color:'#505070'}}>
-          <div style={{width:10,height:10,borderRadius:'50%',background:'#ffbb00'}} />
-          Pending
-        </div>
-        {(canEdit || isDJView) && (
-          <div style={{display:'flex',alignItems:'center',gap:6,fontSize:11,color:'#505070'}}>
-            <div style={{width:10,height:10,borderRadius:'50%',background:'#ff6090'}} />
-            Unavailable
-          </div>
+        {isAllDJsView ? (
+          <>
+            {allUsers.map((u, i) => (
+              <div key={u.uid} style={{display:'flex',alignItems:'center',gap:6,fontSize:11,color:'#505070'}}>
+                <div style={{width:10,height:10,borderRadius:'50%',background:DJ_COLORS[i % DJ_COLORS.length]}} />
+                {u.name.split(' ')[0]}
+              </div>
+            ))}
+            <div style={{display:'flex',alignItems:'center',gap:6,fontSize:11,color:'#505070'}}>
+              <div style={{width:10,height:10,borderRadius:2,border:'1px dashed #8080a0'}} />
+              Pending
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{display:'flex',alignItems:'center',gap:6,fontSize:11,color:'#505070'}}>
+              <div style={{width:10,height:10,borderRadius:'50%',background:'#00ffc2'}} />
+              Confirmed
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:6,fontSize:11,color:'#505070'}}>
+              <div style={{width:10,height:10,borderRadius:'50%',background:'#ffbb00'}} />
+              Pending
+            </div>
+            {(canEdit || isDJView) && (
+              <div style={{display:'flex',alignItems:'center',gap:6,fontSize:11,color:'#505070'}}>
+                <div style={{width:10,height:10,borderRadius:'50%',background:'#ff6090'}} />
+                Unavailable
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
