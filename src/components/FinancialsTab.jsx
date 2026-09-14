@@ -25,10 +25,10 @@ function todayStr() {
 }
 
 const STATUS_CONFIG = {
-  draft:    { label:'Draft',    color:'#8080a0', bg:'#8080a015', border:'#8080a030' },
+  draft:    { label:'Draft',    color:'var(--text-secondary)', bg:'var(--bg-hover)', border:'var(--border-mid)' },
   sent:     { label:'Sent',     color:'#40a0ff', bg:'#40a0ff15', border:'#40a0ff30' },
-  overdue:  { label:'Overdue',  color:'#ff4070', bg:'#ff407015', border:'#ff407030' },
-  paid:     { label:'Paid',     color:'#00ffc2', bg:'#00ffc215', border:'#00ffc230' },
+  overdue:  { label:'Overdue',  color:'var(--danger)', bg:'var(--danger-bg)', border:'var(--danger-border)' },
+  paid:     { label:'Paid',     color:'var(--ok)', bg:'var(--ok-bg)', border:'var(--ok-border)' },
 };
 
 function StatusPill({ status, onClick }) {
@@ -97,7 +97,7 @@ function InvoiceTracker({ userUid }) {
   const totalPaid       = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + (i.total || 0), 0);
   const totalOutstanding = invoices.filter(i => i.status !== 'paid').reduce((s, i) => s + (i.total || 0), 0);
 
-  if (loading) return <div style={{textAlign:'center',padding:20,color:'#8080a0',fontSize:13}}>Loading invoices...</div>;
+  if (loading) return <div style={{textAlign:'center',padding:20,color:'var(--text-secondary)',fontSize:13}}>Loading invoices...</div>;
 
   return (
     <div>
@@ -113,7 +113,7 @@ function InvoiceTracker({ userUid }) {
         </div>
         <div className="stat-card">
           <div className="stat-label">Outstanding</div>
-          <div className="stat-val" style={{color: totalOutstanding > 0 ? '#ff9900' : '#8080a0'}}>€{totalOutstanding.toFixed(2)}</div>
+          <div className="stat-val" style={{color: totalOutstanding > 0 ? '#ff9900' : 'var(--text-secondary)'}}>€{totalOutstanding.toFixed(2)}</div>
         </div>
       </div>
 
@@ -132,9 +132,9 @@ function InvoiceTracker({ userUid }) {
             onClick={() => setFilter(f.key)}
             style={{
               padding:'4px 12px', borderRadius:20, fontSize:11, cursor:'pointer',
-              border: `1px solid ${filter === f.key ? '#00ffc250' : '#2a2a40'}`,
-              background: filter === f.key ? '#00ffc215' : 'transparent',
-              color: filter === f.key ? '#00ffc2' : '#8080a0',
+              border: `1px solid ${filter === f.key ? 'var(--neon-border)' : 'var(--border-mid)'}`,
+              background: filter === f.key ? 'var(--neon-bg)' : 'transparent',
+              color: filter === f.key ? 'var(--neon)' : 'var(--text-secondary)',
               fontWeight: filter === f.key ? 600 : 400,
             }}
           >
@@ -144,13 +144,13 @@ function InvoiceTracker({ userUid }) {
       </div>
 
       {invoices.length === 0 && (
-        <div style={{background:'#0d0d18',border:'1px solid #1e1e30',borderRadius:10,padding:24,textAlign:'center',color:'#505070',fontSize:13}}>
+        <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,padding:24,textAlign:'center',color:'var(--text-muted)',fontSize:13}}>
           No invoices yet. Generate one from your gigs.
         </div>
       )}
 
       {filtered.length === 0 && invoices.length > 0 && (
-        <div style={{textAlign:'center',color:'#505070',fontSize:13,padding:16}}>No invoices match this filter.</div>
+        <div style={{textAlign:'center',color:'var(--text-muted)',fontSize:13,padding:16}}>No invoices match this filter.</div>
       )}
 
       {filtered.map(inv => {
@@ -162,7 +162,7 @@ function InvoiceTracker({ userUid }) {
           <div
             key={inv.id}
             style={{
-              background:'#0d0d18', border:`1px solid ${isOverdue ? '#ff407030' : '#1e1e30'}`,
+              background:'var(--bg-surface)', border:`1px solid ${isOverdue ? 'var(--danger-border)' : 'var(--border)'}`,
               borderRadius:10, marginBottom:8, overflow:'hidden',
             }}
           >
@@ -176,45 +176,45 @@ function InvoiceTracker({ userUid }) {
             >
               <div style={{flex:1, minWidth:0}}>
                 <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:3}}>
-                  <span style={{fontSize:13,fontWeight:700,color:'#ffffff',fontFamily:'var(--font-mono)'}}>{inv.invoiceNum}</span>
+                  <span style={{fontSize:13,fontWeight:700,color:'var(--text-primary)',fontFamily:'var(--font-mono)'}}>{inv.invoiceNum}</span>
                   <StatusPill status={inv.status} />
                 </div>
-                <div style={{fontSize:12,color:'#8080a0'}}>
+                <div style={{fontSize:12,color:'var(--text-secondary)'}}>
                   {inv.venue} · {formatDateShort(inv.createdAt)}
                 </div>
                 {inv.dueDate && inv.status !== 'paid' && (
-                  <div style={{fontSize:11,color: isOverdue ? '#ff4070' : '#8080a0',marginTop:2}}>
+                  <div style={{fontSize:11,color: isOverdue ? 'var(--danger)' : 'var(--text-secondary)',marginTop:2}}>
                     {isOverdue ? '⚠ Overdue — ' : 'Due '}
                     {formatDateShort(inv.dueDate)}
                   </div>
                 )}
               </div>
               <div style={{textAlign:'right',flexShrink:0}}>
-                <div style={{fontSize:15,fontWeight:700,color: inv.status === 'paid' ? '#00ffc2' : '#ffffff'}}>
+                <div style={{fontSize:15,fontWeight:700,color: inv.status === 'paid' ? 'var(--money)' : 'var(--text-primary)'}}>
                   €{(inv.total || 0).toFixed(2)}
                 </div>
-                <div style={{fontSize:10,color:'#505070',marginTop:2}}>{isExpanded ? '▲' : '▼'}</div>
+                <div style={{fontSize:10,color:'var(--text-muted)',marginTop:2}}>{isExpanded ? '▲' : '▼'}</div>
               </div>
             </div>
 
             {/* Expanded detail */}
             {isExpanded && (
-              <div style={{borderTop:'1px solid #1e1e30',padding:'14px 16px',background:'#0a0a12'}}>
+              <div style={{borderTop:'1px solid var(--border)',padding:'14px 16px',background:'var(--bg-base)'}}>
 
                 {/* Gig lines */}
                 {inv.gigs && inv.gigs.length > 0 && (
                   <div style={{marginBottom:14}}>
-                    <div style={{fontSize:10,color:'#505070',textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:8}}>Line items</div>
+                    <div style={{fontSize:10,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:8}}>Line items</div>
                     {inv.gigs.map((g, i) => (
-                      <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:12,padding:'5px 0',borderBottom:'1px solid #1a1a2e'}}>
-                        <span style={{color:'#c0c0d8'}}>{g.venue} · {formatDateShort(g.date)}</span>
-                        <span style={{color:'#00ffc2',fontWeight:600}}>€{Number(g.fee).toFixed(2)}</span>
+                      <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:12,padding:'5px 0',borderBottom:'1px solid var(--bg-hover)'}}>
+                        <span style={{color:'var(--text-secondary)'}}>{g.venue} · {formatDateShort(g.date)}</span>
+                        <span style={{color:'var(--money)',fontWeight:600}}>€{Number(g.fee).toFixed(2)}</span>
                       </div>
                     ))}
                     {inv.hasVat && (
-                      <div style={{display:'flex',justifyContent:'space-between',fontSize:12,padding:'5px 0',borderBottom:'1px solid #1a1a2e'}}>
-                        <span style={{color:'#8080a0'}}>VAT (23%)</span>
-                        <span style={{color:'#8080a0'}}>€{((inv.total || 0) - inv.gigs.reduce((s,g) => s+Number(g.fee),0)).toFixed(2)}</span>
+                      <div style={{display:'flex',justifyContent:'space-between',fontSize:12,padding:'5px 0',borderBottom:'1px solid var(--bg-hover)'}}>
+                        <span style={{color:'var(--text-secondary)'}}>VAT (23%)</span>
+                        <span style={{color:'var(--text-secondary)'}}>€{((inv.total || 0) - inv.gigs.reduce((s,g) => s+Number(g.fee),0)).toFixed(2)}</span>
                       </div>
                     )}
                   </div>
@@ -229,9 +229,9 @@ function InvoiceTracker({ userUid }) {
                       disabled={updating === inv.id || inv.status === s}
                       style={{
                         padding:'6px 14px', borderRadius:6, fontSize:12, cursor: inv.status === s ? 'default' : 'pointer',
-                        border: `1px solid ${inv.status === s ? STATUS_CONFIG[s].border : '#2a2a40'}`,
+                        border: `1px solid ${inv.status === s ? STATUS_CONFIG[s].border : 'var(--border-mid)'}`,
                         background: inv.status === s ? STATUS_CONFIG[s].bg : 'transparent',
-                        color: inv.status === s ? STATUS_CONFIG[s].color : '#8080a0',
+                        color: inv.status === s ? STATUS_CONFIG[s].color : 'var(--text-secondary)',
                         fontWeight: inv.status === s ? 600 : 400,
                         opacity: updating === inv.id ? 0.5 : 1,
                       }}
@@ -272,7 +272,7 @@ function VenueBreakdown({ gigs, year, hideFees }) {
 
   if (rows.length === 0) {
     return (
-      <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,padding:24,textAlign:'center',color:'#505070',fontSize:13,marginBottom:24}}>
+      <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,padding:24,textAlign:'center',color:'var(--text-muted)',fontSize:13,marginBottom:24}}>
         No confirmed gigs with fees in {year}.
       </div>
     );
@@ -281,11 +281,11 @@ function VenueBreakdown({ gigs, year, hideFees }) {
   return (
     <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden',marginBottom:24}}>
       {/* Header row */}
-      <div style={{display:'flex',alignItems:'center',gap:12,padding:'10px 16px',borderBottom:'1px solid #1e1e30',background:'#131320'}}>
-        <div style={{flex:1,fontSize:10,color:'#505070',textTransform:'uppercase',letterSpacing:'0.08em',fontWeight:700}}>Venue</div>
-        <div style={{width:50,textAlign:'right',fontSize:10,color:'#505070',textTransform:'uppercase',letterSpacing:'0.08em',fontWeight:700}}>Gigs</div>
-        <div style={{width:90,textAlign:'right',fontSize:10,color:'#505070',textTransform:'uppercase',letterSpacing:'0.08em',fontWeight:700}}>Earned</div>
-        <div style={{width:90,textAlign:'right',fontSize:10,color:'#505070',textTransform:'uppercase',letterSpacing:'0.08em',fontWeight:700}}>Booked</div>
+      <div style={{display:'flex',alignItems:'center',gap:12,padding:'10px 16px',borderBottom:'1px solid var(--border)',background:'var(--bg-raised)'}}>
+        <div style={{flex:1,fontSize:10,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.08em',fontWeight:700}}>Venue</div>
+        <div style={{width:50,textAlign:'right',fontSize:10,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.08em',fontWeight:700}}>Gigs</div>
+        <div style={{width:90,textAlign:'right',fontSize:10,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.08em',fontWeight:700}}>Earned</div>
+        <div style={{width:90,textAlign:'right',fontSize:10,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.08em',fontWeight:700}}>Booked</div>
       </div>
 
       {rows.map((r, i) => {
@@ -293,22 +293,22 @@ function VenueBreakdown({ gigs, year, hideFees }) {
         const logo = getVenueLogo(r.venue);
         const barW = (r.booked / maxBooked) * 100;
         return (
-          <div key={r.venue} style={{position:'relative',borderBottom: i < rows.length-1 ? '1px solid #1a1a2e' : 'none'}}>
+          <div key={r.venue} style={{position:'relative',borderBottom: i < rows.length-1 ? '1px solid var(--bg-hover)' : 'none'}}>
             {/* Subtle proportional bar behind the row */}
             {!hideFees && (
-              <div style={{position:'absolute',top:0,left:0,bottom:0,width:`${barW}%`,background:'#00ffc206',pointerEvents:'none'}} />
+              <div style={{position:'absolute',top:0,left:0,bottom:0,width:`${barW}%`,background:'var(--money-bg)',pointerEvents:'none'}} />
             )}
             <div style={{display:'flex',alignItems:'center',gap:12,padding:'11px 16px',position:'relative'}}>
               {logo ? (
                 <img src={logo} alt={r.venue} style={{width:32,height:32,borderRadius:6,objectFit:'cover',flexShrink:0}} onError={e=>{e.target.style.display='none';}} />
               ) : (
-                <div style={{width:32,height:32,borderRadius:6,background:'#1a1a2e',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <div style={{width:32,height:32,borderRadius:6,background:'var(--bg-hover)',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
                   <div style={{width:7,height:7,borderRadius:'50%',background:vc.color}} />
                 </div>
               )}
-              <div style={{flex:1,minWidth:0,fontSize:13,fontWeight:700,color:'#ffffff',lineHeight:1.3}}>{r.venue}</div>
-              <div style={{width:50,textAlign:'right',fontSize:12,color:'#8080a0'}}>{r.count}</div>
-              <div style={{width:90,textAlign:'right',fontSize:13,fontWeight:700,color:'#00ffc2'}}>{hideFees ? '—' : `€${r.earned}`}</div>
+              <div style={{flex:1,minWidth:0,fontSize:13,fontWeight:700,color:'var(--text-primary)',lineHeight:1.3}}>{r.venue}</div>
+              <div style={{width:50,textAlign:'right',fontSize:12,color:'var(--text-secondary)'}}>{r.count}</div>
+              <div style={{width:90,textAlign:'right',fontSize:13,fontWeight:700,color:'var(--money)'}}>{hideFees ? '—' : `€${r.earned}`}</div>
               <div style={{width:90,textAlign:'right',fontSize:13,fontWeight:700,color:'#a080ff'}}>{hideFees ? '—' : `€${r.booked}`}</div>
             </div>
           </div>
@@ -364,13 +364,13 @@ export default function FinancialsTab({ gigs, profile, userUid, hideFees }) {
   }).reduce((sum, g) => sum + Number(g.fee), 0);
 
   let pctLabel = '';
-  let pctColor = '#6060a0';
+  let pctColor = 'var(--text-secondary)';
   if (prevMonthTotal > 0) {
     const pct = Math.round(((thisMonthTotal - prevMonthTotal) / prevMonthTotal) * 100);
     pctLabel   = pct >= 0 ? `+${pct}% vs last month` : `${pct}% vs last month`;
-    pctColor   = pct >= 0 ? '#00ffc2' : '#ff4070';
+    pctColor   = pct >= 0 ? 'var(--money)' : 'var(--danger)';
   } else if (thisMonthTotal > 0) {
-    pctLabel = 'New earnings'; pctColor = '#00ffc2';
+    pctLabel = 'New earnings'; pctColor = 'var(--money)';
   }
 
   const upcomingTotal = confirmedWithFee.filter(g => g.date >= today).reduce((sum, g) => sum + Number(g.fee), 0);
@@ -449,9 +449,9 @@ export default function FinancialsTab({ gigs, profile, userUid, hideFees }) {
 
   const tabStyle = (active) => ({
     padding:'6px 16px', borderRadius:6, fontSize:12, cursor:'pointer',
-    border: `1px solid ${active ? '#00ffc250' : '#2a2a40'}`,
-    background: active ? '#00ffc215' : 'transparent',
-    color: active ? '#00ffc2' : '#8080a0',
+    border: `1px solid ${active ? 'var(--neon-border)' : 'var(--border-mid)'}`,
+    background: active ? 'var(--neon-bg)' : 'transparent',
+    color: active ? 'var(--neon)' : 'var(--text-secondary)',
     fontWeight: active ? 600 : 400,
   });
 
@@ -470,7 +470,7 @@ export default function FinancialsTab({ gigs, profile, userUid, hideFees }) {
           <div className="stats-row" style={{marginBottom:24}}>
             <div className="stat-card">
               <div className="stat-label">{MONTHS[prevMonth]} revenue</div>
-              <div className="stat-val" style={{color:'#6060a0'}}>{hideFees ? '—' : `€${prevMonthTotal}`}</div>
+              <div className="stat-val" style={{color:'var(--text-secondary)'}}>{hideFees ? '—' : `€${prevMonthTotal}`}</div>
             </div>
             <div className="stat-card">
               <div className="stat-label">{MONTHS[currentMonth]} revenue</div>
@@ -483,7 +483,7 @@ export default function FinancialsTab({ gigs, profile, userUid, hideFees }) {
             </div>
             <div className="stat-card">
               <div className="stat-label">Upcoming booked</div>
-              <div className="stat-val" style={{color:'#ffbb00'}}>{hideFees ? '—' : `€${upcomingTotal}`}</div>
+              <div className="stat-val" style={{color:'var(--pending)'}}>{hideFees ? '—' : `€${upcomingTotal}`}</div>
             </div>
           </div>
 
@@ -498,7 +498,7 @@ export default function FinancialsTab({ gigs, profile, userUid, hideFees }) {
 
           <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,padding:'20px 16px',marginBottom:24}}>
             {hideFees ? (
-              <div style={{textAlign:'center',padding:20,color:'#505070',fontSize:13}}>Fees are hidden.</div>
+              <div style={{textAlign:'center',padding:20,color:'var(--text-muted)',fontSize:13}}>Fees are hidden.</div>
             ) : (
               <div style={{display:'flex',alignItems:'flex-end',gap:6,height:120}}>
                 {monthlyData.map((val, i) => {
@@ -506,11 +506,11 @@ export default function FinancialsTab({ gigs, profile, userUid, hideFees }) {
                   const barH = val > 0 ? Math.max((val / maxMonthly) * 100, 8) : 0;
                   return (
                     <div key={i} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
-                      <div style={{fontSize:9,color:'#6060a0',fontFamily:'var(--font-mono)'}}>{val > 0 ? `€${val}` : ''}</div>
+                      <div style={{fontSize:9,color:'var(--text-secondary)',fontFamily:'var(--font-mono)'}}>{val > 0 ? `€${val}` : ''}</div>
                       <div style={{width:'100%',height:100,display:'flex',alignItems:'flex-end'}}>
-                        <div style={{width:'100%',height:`${barH}%`,background:isCurrentMonth?'#00ffc2':'#00ffc240',borderRadius:'3px 3px 0 0',transition:'height 0.3s',minHeight:val>0?4:0}} />
+                        <div style={{width:'100%',height:`${barH}%`,background:isCurrentMonth?'var(--money)':'var(--money-soft)',borderRadius:'3px 3px 0 0',transition:'height 0.3s',minHeight:val>0?4:0}} />
                       </div>
-                      <div style={{fontSize:9,color:isCurrentMonth?'#00ffc2':'#404060',textTransform:'uppercase',letterSpacing:'0.05em'}}>{MONTHS[i]}</div>
+                      <div style={{fontSize:9,color:isCurrentMonth?'var(--money)':'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>{MONTHS[i]}</div>
                     </div>
                   );
                 })}
@@ -521,8 +521,8 @@ export default function FinancialsTab({ gigs, profile, userUid, hideFees }) {
           <div className="section-title" style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <span>By venue — {year}</span>
             {!hideFees && (
-              <span style={{fontSize:11,color:'#505070'}}>
-                <span style={{color:'#00ffc2',fontWeight:700}}>Earned</span> = played · <span style={{color:'#a080ff',fontWeight:700}}>Booked</span> = incl. upcoming
+              <span style={{fontSize:11,color:'var(--text-muted)'}}>
+                <span style={{color:'var(--money)',fontWeight:700}}>Earned</span> = played · <span style={{color:'var(--violet)',fontWeight:700}}>Booked</span> = incl. upcoming
               </span>
             )}
           </div>
@@ -539,35 +539,35 @@ export default function FinancialsTab({ gigs, profile, userUid, hideFees }) {
       {activeTab === 'report' && (
         <>
           <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,padding:20,marginBottom:20}}>
-            <div style={{fontSize:12,color:'#8080a0',marginBottom:16}}>
+            <div style={{fontSize:12,color:'var(--text-secondary)',marginBottom:16}}>
               Select a date range to generate a PDF report of your earnings{hasVat ? ' including VAT breakdown.' : '.'}
             </div>
             <div style={{display:'flex',gap:12,marginBottom:16,flexWrap:'wrap'}}>
               <div style={{flex:1,minWidth:140}}>
-                <label style={{fontSize:11,color:'#8080a0',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>From</label>
-                <input type="date" value={reportFrom} onChange={e => setReportFrom(e.target.value)} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px',boxSizing:'border-box'}} />
+                <label style={{fontSize:11,color:'var(--text-secondary)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>From</label>
+                <input type="date" value={reportFrom} onChange={e => setReportFrom(e.target.value)} style={{width:'100%',background:'var(--bg-base)',border:'1px solid var(--border-mid)',borderRadius:6,color:'var(--text-primary)',fontSize:13,padding:'8px 10px',boxSizing:'border-box'}} />
               </div>
               <div style={{flex:1,minWidth:140}}>
-                <label style={{fontSize:11,color:'#8080a0',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>To</label>
-                <input type="date" value={reportTo} onChange={e => setReportTo(e.target.value)} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px',boxSizing:'border-box'}} />
+                <label style={{fontSize:11,color:'var(--text-secondary)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>To</label>
+                <input type="date" value={reportTo} onChange={e => setReportTo(e.target.value)} style={{width:'100%',background:'var(--bg-base)',border:'1px solid var(--border-mid)',borderRadius:6,color:'var(--text-primary)',fontSize:13,padding:'8px 10px',boxSizing:'border-box'}} />
               </div>
             </div>
 
             {reportGigs.length > 0 && (
-              <div style={{background:'#13131f',border:'1px solid #1e1e2e',borderRadius:8,padding:12,marginBottom:16}}>
-                <div style={{fontSize:11,color:'#8080a0',marginBottom:8}}>{reportGigs.length} gig{reportGigs.length!==1?'s':''} in this period</div>
+              <div style={{background:'var(--bg-raised)',border:'1px solid var(--border)',borderRadius:8,padding:12,marginBottom:16}}>
+                <div style={{fontSize:11,color:'var(--text-secondary)',marginBottom:8}}>{reportGigs.length} gig{reportGigs.length!==1?'s':''} in this period</div>
                 {hasVat && (
                   <>
-                    <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#9090b0',marginBottom:4}}><span>Subtotal</span><span>€{reportSubtotal.toFixed(2)}</span></div>
-                    <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#9090b0',marginBottom:6}}><span>VAT 23%</span><span>€{reportVat.toFixed(2)}</span></div>
+                    <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'var(--text-secondary)',marginBottom:4}}><span>Subtotal</span><span>€{reportSubtotal.toFixed(2)}</span></div>
+                    <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'var(--text-secondary)',marginBottom:6}}><span>VAT 23%</span><span>€{reportVat.toFixed(2)}</span></div>
                   </>
                 )}
-                <div style={{display:'flex',justifyContent:'space-between',fontSize:14,color:'#00ffc2',fontWeight:600}}><span>Total</span><span>€{reportTotal.toFixed(2)}</span></div>
+                <div style={{display:'flex',justifyContent:'space-between',fontSize:14,color:'var(--money)',fontWeight:600}}><span>Total</span><span>€{reportTotal.toFixed(2)}</span></div>
               </div>
             )}
 
             {reportFrom && reportTo && reportGigs.length === 0 && (
-              <div style={{fontSize:13,color:'#8080a0',marginBottom:16}}>No confirmed gigs with fees in this period.</div>
+              <div style={{fontSize:13,color:'var(--text-secondary)',marginBottom:16}}>No confirmed gigs with fees in this period.</div>
             )}
 
             <button onClick={generateVatReport} disabled={reportGigs.length===0||generating} className="btn btn-primary" style={{width:'100%'}}>
