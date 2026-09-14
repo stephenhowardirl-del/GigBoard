@@ -17,6 +17,10 @@
   --ok:        #00d4aa;
   --ok-bg:     #0d2a26;
   --ok-border: #00d4aa30;
+  --money:      #00d4aa;
+  --money-dim:  #4d8a78;
+  --money-soft: #00d4aa40;
+  --money-bg:   #00d4aa08;
   --pending:        #ffbb00;
   --pending-bg:     #2a2008;
   --pending-border: #ffbb0030;
@@ -51,6 +55,10 @@
   --ok:        #0c7a5e;
   --ok-bg:     #dcf2ea;
   --ok-border: #9fdcc6;
+  --money:      #0c7a5e;
+  --money-dim:  #93b8ab;
+  --money-soft: #0c7a5e40;
+  --money-bg:   #0c7a5e0d;
   --pending:        #935c04;
   --pending-bg:     #faeeda;
   --pending-border: #eccf9c;
