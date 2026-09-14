@@ -138,12 +138,12 @@ function GigMenu({ g, onConfirm, onReject, onEdit, onDelete }) {
 }
 
 function StatusPill({ status }) {
-  // Confirmed is the silent default — no pill. Only exceptions get a badge.
-  if (status === 'confirmed') return null;
+  // Confirmed is the silent default — no pill. Unassigned needs no pill either:
+  // the orange Unassigned column already says it. Only real exceptions get a badge.
+  if (status === 'confirmed' || status === 'unassigned') return null;
   const config = {
     pending:    { color:'var(--pending)', bg:'var(--pending-bg)', border:'var(--pending-border)', label:'Pending' },
     rejected:   { color:'var(--danger)', bg:'var(--danger-bg)', border:'var(--danger-border)', label:'Rejected' },
-    unassigned: { color:'#ff9900', bg:'#ff990015', border:'#ff990030', label:'Unassigned' },
   };
   const c = config[status];
   if (!c) return null;
@@ -160,7 +160,7 @@ function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete, draggable
   const today   = todayStr();
   const isToday = g.date === today;
   const isPast  = g.date < today;
-  const isException = g.status !== 'confirmed';
+  const isException = g.status !== 'confirmed' && g.status !== 'unassigned';
   const [showNotes, setShowNotes] = useState(false);
   const [hover, setHover]         = useState(false);
   const [dragging, setDragging]   = useState(false);
