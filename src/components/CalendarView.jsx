@@ -52,8 +52,8 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
     }
   }, [showDJPicker]);
 
-  // Picker shows non-admin DJs only (admin sees their own gigs in My gigs)
-  const djList = allUsers.filter(x => x.role !== 'full_admin');
+  // Picker shows everyone, admin included (admin first, matching the gig list order)
+  const djList = allUsers;
 
   // Colour lookup for the All DJs view — keyed by uid and lowercased name
   const djColorMap = {};
@@ -251,7 +251,7 @@ export default function CalendarView({ gigs = [], unavailDates = [], allUnavail 
       {/* DJ view info banner */}
       {isDJView && (
         <div style={{background:'var(--bg-surface)', border:'1px solid var(--border-mid)', borderRadius:8, padding:'10px 14px', marginBottom:14, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
-          <div style={{width:8, height:8, borderRadius:'50%', background:'#a080ff', flexShrink:0}} />
+          <div style={{width:8, height:8, borderRadius:'50%', background: djColorMap[selectedDJ] || '#a080ff', flexShrink:0}} />
           <span style={{fontSize:13, color:'var(--text-primary)', fontWeight:600}}>{selectedDJName}</span>
           <span style={{fontSize:12, color:'var(--text-secondary)'}}>— red days = marked unavailable</span>
         </div>
