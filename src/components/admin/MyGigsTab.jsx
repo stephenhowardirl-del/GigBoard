@@ -62,7 +62,7 @@ function isNightTime(time) {
 function NotesBanner({ notes }) {
   if (!notes) return null;
   return (
-    <div style={{background:'#1a1400',border:'1px solid #ffbb0040',borderRadius:6,padding:'7px 10px',marginTop:8,fontSize:12,color:'#ffdd80',display:'flex',alignItems:'flex-start',gap:7}}>
+    <div style={{background:'var(--pending-bg)',border:'1px solid var(--pending-border)',borderRadius:6,padding:'7px 10px',marginTop:8,fontSize:12,color:'var(--pending)',display:'flex',alignItems:'flex-start',gap:7}}>
       <span style={{fontSize:14,flexShrink:0}}>📌</span>
       <span>{notes}</span>
     </div>
@@ -73,9 +73,9 @@ function TodayBanner({ gigs, hideFees }) {
   const sorted = [...gigs].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
   const allDay = sorted.every(g => !isNightTime(g.time));
   const label  = allDay ? '📅 Today' : '🎧 Tonight';
-  const accent = allDay ? '#00ffc2' : '#ff9900';
-  const bg     = allDay ? '#001a10' : '#1a0a00';
-  const border = allDay ? '#00ffc240' : '#ff990060';
+  const accent = allDay ? 'var(--ok)' : '#ff9900';
+  const bg     = allDay ? 'var(--ok-bg)' : 'var(--pending-bg)';
+  const border = allDay ? 'var(--ok-border)' : '#ff990060';
 
   return (
     <div style={{background:bg, border:`2px solid ${border}`, borderRadius:12, padding:'16px 20px', marginBottom:20}}>
@@ -84,7 +84,7 @@ function TodayBanner({ gigs, hideFees }) {
         const vc   = getVenueColor(g.venue);
         const logo = getVenueLogo(g.venue);
         return (
-          <div key={g.id} style={{display:'flex',alignItems:'center',gap:14,paddingTop:i>0?14:0,marginTop:i>0?14:0,borderTop:i>0?`1px solid ${accent}20`:'none'}}>
+          <div key={g.id} style={{display:'flex',alignItems:'center',gap:14,paddingTop:i>0?14:0,marginTop:i>0?14:0,borderTop:i>0?`1px solid ${border}`:'none'}}>
             {logo ? (
               <img src={logo} alt={g.venue} style={{width:54,height:54,borderRadius:10,objectFit:'cover',flexShrink:0}} onError={e=>{e.target.style.display='none';}} />
             ) : (
@@ -93,9 +93,9 @@ function TodayBanner({ gigs, hideFees }) {
               </div>
             )}
             <div style={{flex:1}}>
-              <div style={{fontSize:18,fontWeight:700,color:'#ffffff',marginBottom:4}}>{g.venue}</div>
-              <div style={{fontSize:14,color:'#d0d0e8',fontWeight:500}}>{g.time}</div>
-              {!hideFees && g.fee && <div style={{fontSize:15,color:'#00ffc2',fontWeight:700,marginTop:6}}>€{g.fee}</div>}
+              <div style={{fontSize:18,fontWeight:700,color:'var(--text-primary)',marginBottom:4}}>{g.venue}</div>
+              <div style={{fontSize:14,color:'var(--text-primary)',fontWeight:500}}>{g.time}</div>
+              {!hideFees && g.fee && <div style={{fontSize:15,color:'var(--money)',fontWeight:700,marginTop:6}}>€{g.fee}</div>}
               {g.notes && <NotesBanner notes={g.notes} />}
             </div>
           </div>
@@ -111,29 +111,29 @@ function GigRow({ g, hideFees, onInvoice, isPast }) {
   const logo = getVenueLogo(g.venue);
   return (
     <div className="timeline-item" style={{
-      borderLeft: isPast ? '3px solid #2a2a40' : `3px solid ${vc.color}`,
+      borderLeft: isPast ? '3px solid var(--border-mid)' : `3px solid ${vc.color}`,
       opacity: isPast ? 0.7 : 1,
     }}>
       <div className="timeline-date">
-        <div className="timeline-day" style={{color: isPast ? '#505070' : vc.color, fontSize:18, fontWeight:700}}>{d.getDate()}</div>
-        <div className="timeline-month" style={{color:'#505070', fontSize:11}}>{d.toLocaleDateString('en-IE',{month:'short'})}</div>
+        <div className="timeline-day" style={{color: isPast ? 'var(--text-muted)' : vc.color, fontSize:18, fontWeight:700}}>{d.getDate()}</div>
+        <div className="timeline-month" style={{color:'var(--text-muted)', fontSize:11}}>{d.toLocaleDateString('en-IE',{month:'short'})}</div>
       </div>
-      <div className="timeline-line" style={{background: isPast ? '#2a2a4040' : vc.color+'40'}} />
+      <div className="timeline-line" style={{background: isPast ? 'var(--border)' : vc.color+'40'}} />
       <div style={{flex:1, minWidth:0}}>
         <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:6}}>
           {logo && <img src={logo} alt={g.venue} style={{width:44,height:44,borderRadius:8,objectFit:'cover',flexShrink:0,opacity:isPast?0.6:1}} onError={e=>{e.target.style.display='none';}} />}
           <div>
-            <div style={{fontSize:15,fontWeight:700,color: isPast ? '#8080a0' : '#ffffff'}}>{g.venue}</div>
-            <div style={{fontSize:13,color:'#505070',fontWeight:500,marginTop:2}}>{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
+            <div style={{fontSize:15,fontWeight:700,color: isPast ? 'var(--text-secondary)' : 'var(--text-primary)'}}>{g.venue}</div>
+            <div style={{fontSize:13,color:'var(--text-muted)',fontWeight:500,marginTop:2}}>{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
           </div>
         </div>
-        {!hideFees && g.fee && <div style={{fontSize:14,color: isPast ? '#506050' : '#00ffc2',fontWeight:700,marginTop:2}}>€{g.fee}</div>}
+        {!hideFees && g.fee && <div style={{fontSize:14,color: isPast ? 'var(--money-dim)' : 'var(--money)',fontWeight:700,marginTop:2}}>€{g.fee}</div>}
         {g.notes && <NotesBanner notes={g.notes} />}
       </div>
       {!hideFees && g.fee && (
         <button
           onClick={() => onInvoice(g)}
-          style={{background:'transparent',border:'1px solid #2a2a40',color: isPast ? '#505070' : '#9090b0',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap',alignSelf:'center'}}
+          style={{background:'transparent',border:'1px solid var(--border-mid)',color: isPast ? 'var(--text-muted)' : 'var(--text-secondary)',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap',alignSelf:'center'}}
         >
           🧾 Invoice
         </button>
@@ -182,17 +182,17 @@ export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, hideFee
   const subBtnStyle = (active) => ({
     padding: '5px 14px',
     borderRadius: 6,
-    border: `1px solid ${active ? '#00ffc250' : '#2a2a40'}`,
-    background: active ? '#00ffc215' : 'transparent',
-    color: active ? '#00ffc2' : '#8080a0',
+    border: `1px solid ${active ? 'var(--neon-border)' : 'var(--border-mid)'}`,
+    background: active ? 'var(--neon-bg)' : 'transparent',
+    color: active ? 'var(--neon)' : 'var(--text-secondary)',
     fontSize: 12, fontWeight: active ? 600 : 400,
     cursor: 'pointer', transition: 'all 0.15s',
   });
 
   const filterBtnStyle = (active) => ({
-    background: active ? '#00ffc220' : 'transparent',
-    border: `1px solid ${active ? '#00ffc250' : '#2a2a40'}`,
-    color: active ? '#00ffc2' : '#8080a0',
+    background: active ? 'var(--neon-bg)' : 'transparent',
+    border: `1px solid ${active ? 'var(--neon-border)' : 'var(--border-mid)'}`,
+    color: active ? 'var(--neon)' : 'var(--text-secondary)',
     borderRadius: 5, padding: '4px 10px', fontSize: 11,
     cursor: 'pointer', whiteSpace: 'nowrap',
   });
@@ -207,7 +207,7 @@ export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, hideFee
       <div style={{display:'flex', gap:6, marginBottom:20}}>
         <button style={subBtnStyle(subtab==='upcoming')}     onClick={() => setSubtab('upcoming')}>Upcoming</button>
         <button style={subBtnStyle(subtab==='history')}      onClick={() => setSubtab('history')}>
-          History {pastGigs.length > 0 && <span style={{fontSize:10,color:'#8080a0'}}>({pastGigs.length})</span>}
+          History {pastGigs.length > 0 && <span style={{fontSize:10,color:'var(--text-secondary)'}}>({pastGigs.length})</span>}
         </button>
         <button style={subBtnStyle(subtab==='availability')} onClick={() => setSubtab('availability')}>Availability</button>
       </div>
@@ -236,21 +236,21 @@ export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, hideFee
                     </div>
                   )}
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:10,fontWeight:700,color:'#8080a0',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:3}}>Next up</div>
-                    <div style={{fontSize:16,fontWeight:700,color:'#ffffff',lineHeight:1.3}}>{nextGig.venue}</div>
-                    <div style={{fontSize:12,color:'#d0d0e8',marginTop:2}}>
+                    <div style={{fontSize:10,fontWeight:700,color:'var(--text-secondary)',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:3}}>Next up</div>
+                    <div style={{fontSize:16,fontWeight:700,color:'var(--text-primary)',lineHeight:1.3}}>{nextGig.venue}</div>
+                    <div style={{fontSize:12,color:'var(--text-primary)',marginTop:2}}>
                       {formatDate(nextGig.date)} · {nextGig.time}
-                      {!hideFees && nextGig.fee && <span style={{color:'#00ffc2',fontWeight:700,marginLeft:8}}>€{nextGig.fee}</span>}
+                      {!hideFees && nextGig.fee && <span style={{color:'var(--money)',fontWeight:700,marginLeft:8}}>€{nextGig.fee}</span>}
                     </div>
                     {nextGig.notes && <NotesBanner notes={nextGig.notes} />}
                   </div>
                   <div style={{textAlign:'center',flexShrink:0,paddingLeft:8}}>
-                    <div style={{fontSize:28,fontWeight:700,fontFamily:'var(--font-mono)',color:'#00ffc2',lineHeight:1}}>{daysAway}</div>
-                    <div style={{fontSize:9,color:'#8080a0',letterSpacing:'0.08em',textTransform:'uppercase',marginTop:3}}>days away</div>
+                    <div style={{fontSize:28,fontWeight:700,fontFamily:'var(--font-mono)',color:'var(--neon)',lineHeight:1}}>{daysAway}</div>
+                    <div style={{fontSize:9,color:'var(--text-secondary)',letterSpacing:'0.08em',textTransform:'uppercase',marginTop:3}}>days away</div>
                   </div>
                 </>
               ) : (
-                <div style={{flex:1,textAlign:'center',color:'#8080a0',fontSize:13,padding:'10px 0'}}>
+                <div style={{flex:1,textAlign:'center',color:'var(--text-secondary)',fontSize:13,padding:'10px 0'}}>
                   No upcoming confirmed gigs.
                 </div>
               )}
@@ -264,23 +264,23 @@ export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, hideFee
               display:'flex', flexDirection:'column', justifyContent:'center', gap:8,
             }}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
-                <span style={{fontSize:10,color:'#8080a0',textTransform:'uppercase',letterSpacing:'0.08em'}}>This month</span>
-                <span style={{fontSize:16,fontWeight:700,fontFamily:'var(--font-mono)',color:'#00ffc2'}}>{hideFees ? '—' : `€${myMonthEarnings}`}</span>
+                <span style={{fontSize:10,color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:'0.08em'}}>This month</span>
+                <span style={{fontSize:16,fontWeight:700,fontFamily:'var(--font-mono)',color:'var(--money)'}}>{hideFees ? '—' : `€${myMonthEarnings}`}</span>
               </div>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
-                <span style={{fontSize:10,color:'#8080a0',textTransform:'uppercase',letterSpacing:'0.08em'}}>Upcoming total</span>
+                <span style={{fontSize:10,color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:'0.08em'}}>Upcoming total</span>
                 <span style={{fontSize:16,fontWeight:700,fontFamily:'var(--font-mono)',color:'#a080ff'}}>{hideFees ? '—' : `€${myUpcomingEarnings}`}</span>
               </div>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
-                <span style={{fontSize:10,color:'#8080a0',textTransform:'uppercase',letterSpacing:'0.08em'}}>Confirmed gigs</span>
-                <span style={{fontSize:16,fontWeight:700,fontFamily:'var(--font-mono)',color:'#e8e8f0'}}>{upcomingGigs.length + todayGigs.length}</span>
+                <span style={{fontSize:10,color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:'0.08em'}}>Confirmed gigs</span>
+                <span style={{fontSize:16,fontWeight:700,fontFamily:'var(--font-mono)',color:'var(--text-primary)'}}>{upcomingGigs.length + todayGigs.length}</span>
               </div>
             </div>
           </div>
 
           {myPending.length > 0 && (
             <>
-              <div className="section-title" style={{color:'#ffbb00'}}>Pending — action required</div>
+              <div className="section-title" style={{color:'var(--pending)'}}>Pending — action required</div>
               {myPending.map(g => {
                 const vc   = getVenueColor(g.venue);
                 const logo = getVenueLogo(g.venue);
@@ -291,11 +291,11 @@ export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, hideFee
                       <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:8}}>
                         {logo && <img src={logo} alt={g.venue} style={{width:44,height:44,borderRadius:8,objectFit:'cover'}} onError={e=>{e.target.style.display='none';}} />}
                         <div>
-                          <div style={{fontSize:16,fontWeight:700,color:'#ffffff'}}>{g.venue}</div>
-                          <div style={{fontSize:13,color:'#d0d0e8',fontWeight:500,marginTop:2}}>{formatDate(g.date)} · {g.time}</div>
+                          <div style={{fontSize:16,fontWeight:700,color:'var(--text-primary)'}}>{g.venue}</div>
+                          <div style={{fontSize:13,color:'var(--text-primary)',fontWeight:500,marginTop:2}}>{formatDate(g.date)} · {g.time}</div>
                         </div>
                       </div>
-                      {!hideFees && g.fee && <div style={{fontSize:15,color:'#00ffc2',fontWeight:700,marginBottom:10}}>Fee: €{g.fee}</div>}
+                      {!hideFees && g.fee && <div style={{fontSize:15,color:'var(--money)',fontWeight:700,marginBottom:10}}>Fee: €{g.fee}</div>}
                       {g.notes && <NotesBanner notes={g.notes} />}
                       <div className="pending-actions" style={{marginTop:12}}>
                         <button className="btn btn-primary" onClick={() => onAccept(g)}>Accept</button>
@@ -315,7 +315,7 @@ export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, hideFee
                 {f.label}
               </button>
             ))}
-            {rangeLabel && <span style={{fontSize:11,color:'#505070',marginLeft:6}}>{rangeLabel}</span>}
+            {rangeLabel && <span style={{fontSize:11,color:'var(--text-muted)',marginLeft:6}}>{rangeLabel}</span>}
           </div>
 
           {filteredUpcoming.length > 0 ? (
@@ -327,7 +327,7 @@ export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, hideFee
             </>
           ) : (
             upcomingGigs.length > 0 && (
-              <div style={{background:'#0d0d18',border:'1px solid #1e1e30',borderRadius:10,padding:20,textAlign:'center',color:'#505070',fontSize:13}}>
+              <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,padding:20,textAlign:'center',color:'var(--text-muted)',fontSize:13}}>
                 No gigs in this period — try another filter.
               </div>
             )
@@ -339,14 +339,14 @@ export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, hideFee
       {subtab === 'history' && (
         <>
           {pastGigs.length === 0 ? (
-            <div style={{background:'#0d0d18',border:'1px solid #1e1e30',borderRadius:10,padding:20,textAlign:'center',color:'#505070',fontSize:13}}>
+            <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,padding:20,textAlign:'center',color:'var(--text-muted)',fontSize:13}}>
               No past gigs yet.
             </div>
           ) : (
             <>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
-                <div style={{fontSize:13,color:'#8080a0'}}>{pastGigs.length} completed gig{pastGigs.length !== 1 ? 's' : ''}</div>
-                {!hideFees && <div style={{fontSize:13,color:'#00ffc2',fontWeight:700}}>Total earned: €{pastEarnings}</div>}
+                <div style={{fontSize:13,color:'var(--text-secondary)'}}>{pastGigs.length} completed gig{pastGigs.length !== 1 ? 's' : ''}</div>
+                {!hideFees && <div style={{fontSize:13,color:'var(--money)',fontWeight:700}}>Total earned: €{pastEarnings}</div>}
               </div>
               <div className="panel">
                 {pastGigs.map(g => <GigRow key={g.id} g={g} hideFees={hideFees} onInvoice={setInvoiceGig} isPast={true} />)}
