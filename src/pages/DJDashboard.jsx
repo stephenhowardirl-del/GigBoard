@@ -106,14 +106,14 @@ function SingleCalendar({ selected, onChange, gigDates = [] }) {
   const today       = todayStr();
 
   return (
-    <div style={{background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:8,padding:12}}>
+    <div style={{background:'var(--bg-base)',border:'1px solid var(--border-mid)',borderRadius:8,padding:12}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-        <button onClick={prevMonth} style={{background:'transparent',border:'none',color:'#6060a0',fontSize:16,cursor:'pointer',padding:'0 6px'}}>‹</button>
-        <div style={{fontSize:12,color:'#e8e8f0',fontWeight:600}}>{MONTHS[month]} {year}</div>
-        <button onClick={nextMonth} style={{background:'transparent',border:'none',color:'#6060a0',fontSize:16,cursor:'pointer',padding:'0 6px'}}>›</button>
+        <button onClick={prevMonth} style={{background:'transparent',border:'none',color:'var(--text-secondary)',fontSize:16,cursor:'pointer',padding:'0 6px'}}>‹</button>
+        <div style={{fontSize:12,color:'var(--text-primary)',fontWeight:600}}>{MONTHS[month]} {year}</div>
+        <button onClick={nextMonth} style={{background:'transparent',border:'none',color:'var(--text-secondary)',fontSize:16,cursor:'pointer',padding:'0 6px'}}>›</button>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2,marginBottom:4}}>
-        {DAYS.map(d => <div key={d} style={{fontSize:9,color:'#404060',textAlign:'center',padding:'2px 0',textTransform:'uppercase'}}>{d}</div>)}
+        {DAYS.map(d => <div key={d} style={{fontSize:9,color:'var(--text-muted)',textAlign:'center',padding:'2px 0',textTransform:'uppercase'}}>{d}</div>)}
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2}}>
         {Array.from({length: firstDow}, (_, i) => <div key={`e${i}`} />)}
@@ -129,9 +129,9 @@ function SingleCalendar({ selected, onChange, gigDates = [] }) {
               textAlign:'center', padding:'5px 0', borderRadius:4, fontSize:11,
               cursor: isPast ? 'not-allowed' : 'pointer',
               fontWeight: isSelected ? 700 : 400,
-              background: isSelected ? '#00ffc2' : isToday ? '#0a1a14' : 'transparent',
-              color: isSelected ? '#000' : isPast ? '#2a2a40' : isToday ? '#00ffc2' : hasGig ? '#ffbb00' : '#c0c0d0',
-              border: isToday && !isSelected ? '1px solid #00ffc230' : '1px solid transparent',
+              background: isSelected ? 'var(--neon)' : isToday ? 'var(--neon-bg)' : 'transparent',
+              color: isSelected ? 'var(--on-neon)' : isPast ? 'var(--border-mid)' : isToday ? 'var(--neon)' : hasGig ? '#ffbb00' : 'var(--text-primary)',
+              border: isToday && !isSelected ? '1px solid var(--neon-border)' : '1px solid transparent',
               position: 'relative',
             }}>
               {d}
@@ -140,7 +140,7 @@ function SingleCalendar({ selected, onChange, gigDates = [] }) {
           );
         })}
       </div>
-      {selected && <div style={{marginTop:10,fontSize:11,color:'#00ffc2',textAlign:'center',fontWeight:600}}>{formatDate(selected)}</div>}
+      {selected && <div style={{marginTop:10,fontSize:11,color:'var(--neon)',textAlign:'center',fontWeight:600}}>{formatDate(selected)}</div>}
     </div>
   );
 }
@@ -163,14 +163,14 @@ function MultiCalendar({ selected, onChange }) {
   }
 
   return (
-    <div style={{background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:8,padding:12}}>
+    <div style={{background:'var(--bg-base)',border:'1px solid var(--border-mid)',borderRadius:8,padding:12}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-        <button onClick={prevMonth} style={{background:'transparent',border:'none',color:'#6060a0',fontSize:16,cursor:'pointer',padding:'0 6px'}}>‹</button>
-        <div style={{fontSize:12,color:'#e8e8f0',fontWeight:600}}>{MONTHS[month]} {year}</div>
-        <button onClick={nextMonth} style={{background:'transparent',border:'none',color:'#6060a0',fontSize:16,cursor:'pointer',padding:'0 6px'}}>›</button>
+        <button onClick={prevMonth} style={{background:'transparent',border:'none',color:'var(--text-secondary)',fontSize:16,cursor:'pointer',padding:'0 6px'}}>‹</button>
+        <div style={{fontSize:12,color:'var(--text-primary)',fontWeight:600}}>{MONTHS[month]} {year}</div>
+        <button onClick={nextMonth} style={{background:'transparent',border:'none',color:'var(--text-secondary)',fontSize:16,cursor:'pointer',padding:'0 6px'}}>›</button>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2,marginBottom:4}}>
-        {DAYS.map(d => <div key={d} style={{fontSize:9,color:'#404060',textAlign:'center',padding:'2px 0',textTransform:'uppercase'}}>{d}</div>)}
+        {DAYS.map(d => <div key={d} style={{fontSize:9,color:'var(--text-muted)',textAlign:'center',padding:'2px 0',textTransform:'uppercase'}}>{d}</div>)}
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2}}>
         {Array.from({length: firstDow}, (_, i) => <div key={`e${i}`} />)}
@@ -185,16 +185,16 @@ function MultiCalendar({ selected, onChange }) {
               textAlign:'center', padding:'5px 0', borderRadius:4, fontSize:11,
               cursor: isPast ? 'not-allowed' : 'pointer',
               fontWeight: isSelected ? 700 : 400,
-              background: isSelected ? '#00ffc2' : isToday ? '#0a1a14' : 'transparent',
-              color: isSelected ? '#000' : isPast ? '#2a2a40' : isToday ? '#00ffc2' : '#c0c0d0',
-              border: isSelected ? '1px solid #00ffc2' : isToday ? '1px solid #00ffc230' : '1px solid transparent',
+              background: isSelected ? 'var(--neon)' : isToday ? 'var(--neon-bg)' : 'transparent',
+              color: isSelected ? 'var(--on-neon)' : isPast ? 'var(--border-mid)' : isToday ? 'var(--neon)' : 'var(--text-primary)',
+              border: isSelected ? '1px solid var(--neon)' : isToday ? '1px solid var(--neon-border)' : '1px solid transparent',
             }}>
               {d}
             </div>
           );
         })}
       </div>
-      {selected.length > 0 && <div style={{marginTop:10,fontSize:11,color:'#00ffc2',textAlign:'center',fontWeight:600}}>{selected.length} date{selected.length !== 1 ? 's' : ''} selected</div>}
+      {selected.length > 0 && <div style={{marginTop:10,fontSize:11,color:'var(--neon)',textAlign:'center',fontWeight:600}}>{selected.length} date{selected.length !== 1 ? 's' : ''} selected</div>}
     </div>
   );
 }
@@ -202,7 +202,7 @@ function MultiCalendar({ selected, onChange }) {
 function NotesBanner({ notes }) {
   if (!notes) return null;
   return (
-    <div style={{background:'#1a1400',border:'1px solid #ffbb0040',borderRadius:6,padding:'7px 10px',marginTop:8,fontSize:12,color:'#ffdd80',display:'flex',alignItems:'flex-start',gap:7}}>
+    <div style={{background:'var(--pending-bg)',border:'1px solid var(--pending-border)',borderRadius:6,padding:'7px 10px',marginTop:8,fontSize:12,color:'var(--pending)',display:'flex',alignItems:'flex-start',gap:7}}>
       <span style={{fontSize:14,flexShrink:0}}>📌</span>
       <span>{notes}</span>
     </div>
@@ -212,7 +212,7 @@ function NotesBanner({ notes }) {
 function SuccessToast({ message, onDone }) {
   useEffect(() => { const t = setTimeout(onDone, 3000); return () => clearTimeout(t); }, []);
   return (
-    <div style={{position:'fixed',bottom:30,left:'50%',transform:'translateX(-50%)',background:'#002a1a',border:'1px solid #00ffcc60',borderRadius:10,padding:'14px 24px',color:'#00ffcc',fontSize:14,fontWeight:600,zIndex:400,boxShadow:'0 8px 24px #00000080',display:'flex',alignItems:'center',gap:10}}>
+    <div style={{position:'fixed',bottom:30,left:'50%',transform:'translateX(-50%)',background:'var(--ok-bg)',border:'1px solid var(--ok-border)',borderRadius:10,padding:'14px 24px',color:'var(--ok)',fontSize:14,fontWeight:600,zIndex:400,boxShadow:'0 8px 24px #00000080',display:'flex',alignItems:'center',gap:10}}>
       <span style={{fontSize:18}}>✓</span>
       {message}
     </div>
@@ -238,33 +238,33 @@ function EditGigModal({ gig, venues, onClose, onSaved }) {
 
   return (
     <div style={{position:'fixed',inset:0,background:'#00000080',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:20}} onClick={onClose}>
-      <div style={{background:'#0d0d14',border:'1px solid #2a2a40',borderRadius:12,padding:28,width:'100%',maxWidth:420,maxHeight:'90vh',overflowY:'auto'}} onClick={e => e.stopPropagation()}>
-        <div style={{fontSize:17,fontWeight:600,color:'#e8e8f0',marginBottom:4}}>Edit gig</div>
-        <div style={{fontSize:12,color:'#8080a0',marginBottom:20}}>Update the details for this gig.</div>
+      <div style={{background:'var(--bg-surface)',border:'1px solid var(--border-mid)',borderRadius:12,padding:28,width:'100%',maxWidth:420,maxHeight:'90vh',overflowY:'auto'}} onClick={e => e.stopPropagation()}>
+        <div style={{fontSize:17,fontWeight:600,color:'var(--text-primary)',marginBottom:4}}>Edit gig</div>
+        <div style={{fontSize:12,color:'var(--text-secondary)',marginBottom:20}}>Update the details for this gig.</div>
         <div style={{marginBottom:14}}>
-          <label style={{fontSize:11,color:'#8080a0',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Venue</label>
-          <select value={venue} onChange={e => setVenue(e.target.value)} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'}}>
+          <label style={{fontSize:11,color:'var(--text-secondary)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Venue</label>
+          <select value={venue} onChange={e => setVenue(e.target.value)} style={{width:'100%',background:'var(--bg-base)',border:'1px solid var(--border-mid)',borderRadius:6,color:'var(--text-primary)',fontSize:13,padding:'8px 10px'}}>
             {venues.map(v => <option key={v} value={v}>{v}</option>)}
           </select>
         </div>
         <div style={{marginBottom:14}}>
-          <label style={{fontSize:11,color:'#8080a0',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Date</label>
+          <label style={{fontSize:11,color:'var(--text-secondary)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Date</label>
           <SingleCalendar selected={date} onChange={setDate} />
         </div>
         <div style={{marginBottom:14}}>
-          <label style={{fontSize:11,color:'#8080a0',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Time</label>
-          <select value={time} onChange={e => setTime(e.target.value)} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'}}>
+          <label style={{fontSize:11,color:'var(--text-secondary)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Time</label>
+          <select value={time} onChange={e => setTime(e.target.value)} style={{width:'100%',background:'var(--bg-base)',border:'1px solid var(--border-mid)',borderRadius:6,color:'var(--text-primary)',fontSize:13,padding:'8px 10px'}}>
             <option value=''>Select time</option>
             {TIMES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
         <div style={{marginBottom:14}}>
-          <label style={{fontSize:11,color:'#8080a0',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Fee (€)</label>
-          <input type="number" value={fee} onChange={e => setFee(e.target.value)} placeholder="e.g. 150" style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'}} />
+          <label style={{fontSize:11,color:'var(--text-secondary)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Fee (€)</label>
+          <input type="number" value={fee} onChange={e => setFee(e.target.value)} placeholder="e.g. 150" style={{width:'100%',background:'var(--bg-base)',border:'1px solid var(--border-mid)',borderRadius:6,color:'var(--text-primary)',fontSize:13,padding:'8px 10px'}} />
         </div>
         <div style={{marginBottom:20}}>
-          <label style={{fontSize:11,color:'#8080a0',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Notes (optional)</label>
-          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px',resize:'vertical',fontFamily:'inherit'}} />
+          <label style={{fontSize:11,color:'var(--text-secondary)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'}}>Notes (optional)</label>
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} style={{width:'100%',background:'var(--bg-base)',border:'1px solid var(--border-mid)',borderRadius:6,color:'var(--text-primary)',fontSize:13,padding:'8px 10px',resize:'vertical',fontFamily:'inherit'}} />
         </div>
         <div style={{display:'flex',gap:10}}>
           <button onClick={onClose} className="btn btn-ghost" style={{flex:1}}>Cancel</button>
@@ -325,21 +325,21 @@ function SelfAssignModal({ venues, profile, gigs, onClose, onBooked }) {
 
   const btnStyle = (active) => ({
     flex:1, padding:'7px 0', borderRadius:6,
-    border: `1px solid ${active ? '#00ffc250' : '#2a2a40'}`,
-    background: active ? '#00ffc215' : 'transparent',
-    color: active ? '#00ffc2' : '#8080a0',
+    border: `1px solid ${active ? 'var(--neon-border)' : 'var(--border-mid)'}`,
+    background: active ? 'var(--neon-bg)' : 'transparent',
+    color: active ? 'var(--neon)' : 'var(--text-secondary)',
     fontSize:12, fontWeight: active ? 600 : 400,
     cursor:'pointer', transition:'all 0.15s',
   });
 
-  const fl = {fontSize:11,color:'#8080a0',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'};
-  const fi = {width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'};
+  const fl = {fontSize:11,color:'var(--text-secondary)',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.07em'};
+  const fi = {width:'100%',background:'var(--bg-base)',border:'1px solid var(--border-mid)',borderRadius:6,color:'var(--text-primary)',fontSize:13,padding:'8px 10px'};
 
   return (
     <div style={{position:'fixed',inset:0,background:'#00000080',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:20}} onClick={onClose}>
-      <div style={{background:'#0d0d14',border:'1px solid #2a2a40',borderRadius:12,padding:28,width:'100%',maxWidth:420,maxHeight:'90vh',overflowY:'auto'}} onClick={e => e.stopPropagation()}>
-        <div style={{fontSize:17,fontWeight:600,color:'#e8e8f0',marginBottom:4}}>Book a gig</div>
-        <div style={{fontSize:12,color:'#8080a0',marginBottom:16}}>Goes straight to confirmed.</div>
+      <div style={{background:'var(--bg-surface)',border:'1px solid var(--border-mid)',borderRadius:12,padding:28,width:'100%',maxWidth:420,maxHeight:'90vh',overflowY:'auto'}} onClick={e => e.stopPropagation()}>
+        <div style={{fontSize:17,fontWeight:600,color:'var(--text-primary)',marginBottom:4}}>Book a gig</div>
+        <div style={{fontSize:12,color:'var(--text-secondary)',marginBottom:16}}>Goes straight to confirmed.</div>
 
         <div style={{display:'flex',gap:6,marginBottom:16}}>
           <button style={btnStyle(mode==='single')}    onClick={() => setMode('single')}>Single date</button>
@@ -368,7 +368,7 @@ function SelfAssignModal({ venues, profile, gigs, onClose, onBooked }) {
             {multiDates.length > 0 && (
               <div style={{marginTop:8,display:'flex',flexWrap:'wrap',gap:4}}>
                 {multiDates.map(d => (
-                  <span key={d} style={{fontSize:10,background:'#00ffc215',border:'1px solid #00ffc230',color:'#00ffc2',borderRadius:4,padding:'2px 6px'}}>
+                  <span key={d} style={{fontSize:10,background:'var(--neon-bg)',border:'1px solid var(--neon-border)',color:'var(--neon)',borderRadius:4,padding:'2px 6px'}}>
                     {new Date(d+'T12:00:00').toLocaleDateString('en-IE',{day:'numeric',month:'short'})}
                   </span>
                 ))}
@@ -390,13 +390,13 @@ function SelfAssignModal({ venues, profile, gigs, onClose, onBooked }) {
               <div style={{flex:1}}><label style={fl}>To</label><input type="date" value={recurEnd} onChange={e => setRecurEnd(e.target.value)} style={fi} /></div>
             </div>
             {preview.length > 0 && (
-              <div style={{background:'#0a1a10',border:'1px solid #00ffc230',borderRadius:6,padding:10,marginBottom:14}}>
-                <div style={{fontSize:11,color:'#00ffc2',fontWeight:600,marginBottom:6}}>
+              <div style={{background:'var(--neon-bg)',border:'1px solid var(--neon-border)',borderRadius:6,padding:10,marginBottom:14}}>
+                <div style={{fontSize:11,color:'var(--neon)',fontWeight:600,marginBottom:6}}>
                   {preview.length} gig{preview.length !== 1 ? 's' : ''} will be created — every {DAY_NAMES[recurDay]}
                 </div>
                 <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
                   {preview.map(d => (
-                    <span key={d} style={{fontSize:10,background:'#00ffc215',border:'1px solid #00ffc230',color:'#00ffc2',borderRadius:4,padding:'2px 6px'}}>
+                    <span key={d} style={{fontSize:10,background:'var(--neon-bg)',border:'1px solid var(--neon-border)',color:'var(--neon)',borderRadius:4,padding:'2px 6px'}}>
                       {new Date(d+'T12:00:00').toLocaleDateString('en-IE',{day:'numeric',month:'short'})}
                     </span>
                   ))}
@@ -443,34 +443,34 @@ function GigRow({ g, profile, isPreview, hideFees, onEdit, onInvoice, isPast }) 
 
   return (
     <div className="timeline-item" style={{
-      borderLeft: isPast ? '3px solid #2a2a40' : `3px solid ${vc.color}`,
+      borderLeft: isPast ? '3px solid var(--border-mid)' : `3px solid ${vc.color}`,
       opacity: isPast ? 0.7 : 1,
       flexWrap:'wrap',
     }}>
       <div className="timeline-date">
-        <div className="timeline-day" style={{color: isPast ? '#505070' : vc.color}}>{d.getDate()}</div>
-        <div className="timeline-month" style={{color:'#505070'}}>{d.toLocaleDateString('en-IE',{month:'short'})}</div>
+        <div className="timeline-day" style={{color: isPast ? 'var(--text-muted)' : vc.color}}>{d.getDate()}</div>
+        <div className="timeline-month" style={{color:'var(--text-muted)'}}>{d.toLocaleDateString('en-IE',{month:'short'})}</div>
       </div>
-      <div className="timeline-line" style={{background: isPast ? '#2a2a4040' : vc.color+'40'}} />
+      <div className="timeline-line" style={{background: isPast ? 'var(--border)' : vc.color+'40'}} />
       <div style={{flex:1, minWidth:0}}>
         <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:6}}>
           {logo && <img src={logo} alt={g.venue} style={{width:40,height:40,borderRadius:8,objectFit:'cover',flexShrink:0,opacity: isPast ? 0.6 : 1}} onError={e=>{e.target.style.display='none';}} />}
           <div>
-            <div className="timeline-venue" style={{fontSize:14,fontWeight:700,color: isPast ? '#8080a0' : '#ffffff'}}>{g.venue}</div>
-            <div style={{fontSize:12,color:'#505070',fontWeight:500,marginTop:2}}>{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
+            <div className="timeline-venue" style={{fontSize:14,fontWeight:700,color: isPast ? 'var(--text-secondary)' : 'var(--text-primary)'}}>{g.venue}</div>
+            <div style={{fontSize:12,color:'var(--text-muted)',fontWeight:500,marginTop:2}}>{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
           </div>
         </div>
-        {!hideFees && g.fee && <div style={{fontSize:13,color: isPast ? '#506050' : '#00ffc2',fontWeight:700,marginTop:2}}>€{g.fee}</div>}
+        {!hideFees && g.fee && <div style={{fontSize:13,color: isPast ? 'var(--money-dim)' : 'var(--money)',fontWeight:700,marginTop:2}}>€{g.fee}</div>}
         {g.notes && <NotesBanner notes={g.notes} />}
       </div>
       {!isPreview && !isPast && (
         <div style={{display:'flex',flexDirection:'column',gap:6,alignSelf:'center'}}>
-          {isSelfAssigned && <button onClick={() => onEdit(g)} style={{background:'transparent',border:'1px solid #2a2a40',color:'#9090b0',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>✏️ Edit</button>}
-          {!hideFees && g.fee && <button onClick={() => onInvoice(g)} style={{background:'transparent',border:'1px solid #2a2a40',color:'#9090b0',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>🧾 Invoice</button>}
+          {isSelfAssigned && <button onClick={() => onEdit(g)} style={{background:'transparent',border:'1px solid var(--border-mid)',color:'var(--text-secondary)',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>✏️ Edit</button>}
+          {!hideFees && g.fee && <button onClick={() => onInvoice(g)} style={{background:'transparent',border:'1px solid var(--border-mid)',color:'var(--text-secondary)',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>🧾 Invoice</button>}
         </div>
       )}
       {!isPreview && isPast && g.fee && !hideFees && (
-        <button onClick={() => onInvoice(g)} style={{background:'transparent',border:'1px solid #2a2a40',color:'#505070',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap',alignSelf:'center'}}>🧾 Invoice</button>
+        <button onClick={() => onInvoice(g)} style={{background:'transparent',border:'1px solid var(--border-mid)',color:'var(--text-muted)',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap',alignSelf:'center'}}>🧾 Invoice</button>
       )}
     </div>
   );
@@ -480,9 +480,9 @@ function TodayBanner({ gigs, hideFees }) {
   const sorted = [...gigs].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
   const allDay = sorted.every(g => !isNightTime(g.time));
   const label  = allDay ? '📅 Today' : '🎧 Tonight';
-  const accent = allDay ? '#00ffc2' : '#ff9900';
-  const bg     = allDay ? '#001a10' : '#1a0a00';
-  const border = allDay ? '#00ffc240' : '#ff990060';
+  const accent = allDay ? 'var(--ok)' : '#ff9900';
+  const bg     = allDay ? 'var(--ok-bg)' : 'var(--pending-bg)';
+  const border = allDay ? 'var(--ok-border)' : '#ff990060';
 
   return (
     <div style={{background:bg, border:`2px solid ${border}`, borderRadius:12, padding:'16px 20px', marginBottom:20}}>
@@ -491,7 +491,7 @@ function TodayBanner({ gigs, hideFees }) {
         const vc   = getVenueColor(g.venue);
         const logo = getVenueLogo(g.venue);
         return (
-          <div key={g.id} style={{display:'flex',alignItems:'center',gap:14,paddingTop:i>0?14:0,marginTop:i>0?14:0,borderTop:i>0?`1px solid ${accent}20`:'none'}}>
+          <div key={g.id} style={{display:'flex',alignItems:'center',gap:14,paddingTop:i>0?14:0,marginTop:i>0?14:0,borderTop:i>0?`1px solid ${border}`:'none'}}>
             {logo ? (
               <img src={logo} alt={g.venue} style={{width:54,height:54,borderRadius:10,objectFit:'cover',flexShrink:0}} onError={e=>{e.target.style.display='none';}} />
             ) : (
@@ -500,9 +500,9 @@ function TodayBanner({ gigs, hideFees }) {
               </div>
             )}
             <div style={{flex:1}}>
-              <div style={{fontSize:18,fontWeight:700,color:'#ffffff',marginBottom:4}}>{g.venue}</div>
-              <div style={{fontSize:14,color:'#d0d0e8',fontWeight:500}}>{g.time}</div>
-              {!hideFees && g.fee && <div style={{fontSize:15,color:'#00ffc2',fontWeight:700,marginTop:6}}>€{g.fee}</div>}
+              <div style={{fontSize:18,fontWeight:700,color:'var(--text-primary)',marginBottom:4}}>{g.venue}</div>
+              <div style={{fontSize:14,color:'var(--text-primary)',fontWeight:500}}>{g.time}</div>
+              {!hideFees && g.fee && <div style={{fontSize:15,color:'var(--money)',fontWeight:700,marginTop:6}}>€{g.fee}</div>}
               {g.notes && <NotesBanner notes={g.notes} />}
             </div>
           </div>
@@ -581,9 +581,9 @@ export default function DJDashboard({ previewProfile, hideFees }) {
   const pastEarnings     = pastGigs.filter(g => g.fee).reduce((sum, g) => sum + Number(g.fee), 0);
 
   const filterBtnStyle = (active) => ({
-    background: active ? '#00ffc220' : 'transparent',
-    border: `1px solid ${active ? '#00ffc250' : '#2a2a40'}`,
-    color: active ? '#00ffc2' : '#8080a0',
+    background: active ? 'var(--neon-bg)' : 'transparent',
+    border: `1px solid ${active ? 'var(--neon-border)' : 'var(--border-mid)'}`,
+    color: active ? 'var(--neon)' : 'var(--text-secondary)',
     borderRadius: 5, padding: '4px 10px', fontSize: 11,
     cursor: 'pointer', whiteSpace: 'nowrap',
   });
@@ -605,7 +605,7 @@ export default function DJDashboard({ previewProfile, hideFees }) {
         <button className={'subnav-btn'+(tab==='history'?   ' active':'')} onClick={() => setTab('history')}>History</button>
         <button className={'subnav-btn'+(tab==='financials'?' active':'')} onClick={() => setTab('financials')}>Financials</button>
         {!isPreview && selfAssignVenues.length > 0 && (
-          <button className="subnav-btn" onClick={() => setShowBooking(true)} style={{color:'#00ffc2',borderBottom:'2px solid transparent'}}>+ Book a gig</button>
+          <button className="subnav-btn" onClick={() => setShowBooking(true)} style={{color:'var(--neon)',borderBottom:'2px solid transparent'}}>+ Book a gig</button>
         )}
       </div>
 
@@ -632,21 +632,21 @@ export default function DJDashboard({ previewProfile, hideFees }) {
                     </div>
                   )}
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:10,fontWeight:700,color:'#8080a0',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:3}}>Next up</div>
-                    <div style={{fontSize:16,fontWeight:700,color:'#ffffff',lineHeight:1.3}}>{nextGig.venue}</div>
-                    <div style={{fontSize:12,color:'#d0d0e8',marginTop:2}}>
+                    <div style={{fontSize:10,fontWeight:700,color:'var(--text-secondary)',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:3}}>Next up</div>
+                    <div style={{fontSize:16,fontWeight:700,color:'var(--text-primary)',lineHeight:1.3}}>{nextGig.venue}</div>
+                    <div style={{fontSize:12,color:'var(--text-primary)',marginTop:2}}>
                       {formatDate(nextGig.date)} · {nextGig.time}
-                      {!hideFees && nextGig.fee && <span style={{color:'#00ffc2',fontWeight:700,marginLeft:8}}>€{nextGig.fee}</span>}
+                      {!hideFees && nextGig.fee && <span style={{color:'var(--money)',fontWeight:700,marginLeft:8}}>€{nextGig.fee}</span>}
                     </div>
                     {nextGig.notes && <NotesBanner notes={nextGig.notes} />}
                   </div>
                   <div style={{textAlign:'center',flexShrink:0,paddingLeft:8}}>
-                    <div style={{fontSize:28,fontWeight:700,fontFamily:'var(--font-mono)',color:'#00ffc2',lineHeight:1}}>{daysAway}</div>
-                    <div style={{fontSize:9,color:'#8080a0',letterSpacing:'0.08em',textTransform:'uppercase',marginTop:3}}>days away</div>
+                    <div style={{fontSize:28,fontWeight:700,fontFamily:'var(--font-mono)',color:'var(--neon)',lineHeight:1}}>{daysAway}</div>
+                    <div style={{fontSize:9,color:'var(--text-secondary)',letterSpacing:'0.08em',textTransform:'uppercase',marginTop:3}}>days away</div>
                   </div>
                 </>
               ) : (
-                <div style={{flex:1,textAlign:'center',color:'#8080a0',fontSize:13,padding:'10px 0'}}>
+                <div style={{flex:1,textAlign:'center',color:'var(--text-secondary)',fontSize:13,padding:'10px 0'}}>
                   No upcoming confirmed gigs.
                 </div>
               )}
@@ -660,16 +660,16 @@ export default function DJDashboard({ previewProfile, hideFees }) {
               display:'flex', flexDirection:'column', justifyContent:'center', gap:8,
             }}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
-                <span style={{fontSize:10,color:'#8080a0',textTransform:'uppercase',letterSpacing:'0.08em'}}>This month</span>
-                <span style={{fontSize:16,fontWeight:700,fontFamily:'var(--font-mono)',color:'#00ffc2'}}>{hideFees ? '—' : `€${monthEarnings}`}</span>
+                <span style={{fontSize:10,color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:'0.08em'}}>This month</span>
+                <span style={{fontSize:16,fontWeight:700,fontFamily:'var(--font-mono)',color:'var(--money)'}}>{hideFees ? '—' : `€${monthEarnings}`}</span>
               </div>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
-                <span style={{fontSize:10,color:'#8080a0',textTransform:'uppercase',letterSpacing:'0.08em'}}>Upcoming total</span>
+                <span style={{fontSize:10,color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:'0.08em'}}>Upcoming total</span>
                 <span style={{fontSize:16,fontWeight:700,fontFamily:'var(--font-mono)',color:'#a080ff'}}>{hideFees ? '—' : `€${upcomingEarnings}`}</span>
               </div>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
-                <span style={{fontSize:10,color:'#8080a0',textTransform:'uppercase',letterSpacing:'0.08em'}}>Confirmed gigs</span>
-                <span style={{fontSize:16,fontWeight:700,fontFamily:'var(--font-mono)',color:'#e8e8f0'}}>{upcomingGigs.length + todayGigs.length}</span>
+                <span style={{fontSize:10,color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:'0.08em'}}>Confirmed gigs</span>
+                <span style={{fontSize:16,fontWeight:700,fontFamily:'var(--font-mono)',color:'var(--text-primary)'}}>{upcomingGigs.length + todayGigs.length}</span>
               </div>
             </div>
           </div>
@@ -681,7 +681,7 @@ export default function DJDashboard({ previewProfile, hideFees }) {
                 {f.label}
               </button>
             ))}
-            {rangeLabel && <span style={{fontSize:11,color:'#505070',marginLeft:6}}>{rangeLabel}</span>}
+            {rangeLabel && <span style={{fontSize:11,color:'var(--text-muted)',marginLeft:6}}>{rangeLabel}</span>}
           </div>
 
           {filteredUpcoming.length > 0 ? (
@@ -693,7 +693,7 @@ export default function DJDashboard({ previewProfile, hideFees }) {
             </>
           ) : (
             upcomingGigs.length > 0 && (
-              <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,padding:20,textAlign:'center',color:'#8080a0',fontSize:13}}>
+              <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,padding:20,textAlign:'center',color:'var(--text-secondary)',fontSize:13}}>
                 No gigs in this period — try another filter.
               </div>
             )
@@ -708,8 +708,8 @@ export default function DJDashboard({ previewProfile, hideFees }) {
           ) : (
             <>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
-                <div style={{fontSize:13,color:'#8080a0'}}>{pastGigs.length} completed gig{pastGigs.length !== 1 ? 's' : ''}</div>
-                {!hideFees && <div style={{fontSize:13,color:'#00ffc2',fontWeight:700}}>Total earned: €{pastEarnings}</div>}
+                <div style={{fontSize:13,color:'var(--text-secondary)'}}>{pastGigs.length} completed gig{pastGigs.length !== 1 ? 's' : ''}</div>
+                {!hideFees && <div style={{fontSize:13,color:'var(--money)',fontWeight:700}}>Total earned: €{pastEarnings}</div>}
               </div>
               <div className="panel">
                 {pastGigs.map(g => <GigRow key={g.id} g={g} profile={profile} isPreview={isPreview} hideFees={hideFees} onEdit={setEditingGig} onInvoice={setInvoiceGig} isPast={true} />)}
@@ -743,10 +743,10 @@ export default function DJDashboard({ previewProfile, hideFees }) {
                     {logo && <img src={logo} alt={g.venue} style={{width:48,height:48,borderRadius:10,objectFit:'cover'}} onError={e=>{e.target.style.display='none';}} />}
                     <div>
                       <div className="pending-venue" style={{fontSize:16,fontWeight:700}}>{g.venue}</div>
-                      <div style={{fontSize:13,color:'#c0c0d8',fontWeight:500,marginTop:3}}>{formatDate(g.date)} · {g.time}</div>
+                      <div style={{fontSize:13,color:'var(--text-secondary)',fontWeight:500,marginTop:3}}>{formatDate(g.date)} · {g.time}</div>
                     </div>
                   </div>
-                  {!hideFees && g.fee && <div style={{fontSize:15,color:'#00ffc2',fontWeight:700,marginBottom:10}}>Fee: €{g.fee}</div>}
+                  {!hideFees && g.fee && <div style={{fontSize:15,color:'var(--money)',fontWeight:700,marginBottom:10}}>Fee: €{g.fee}</div>}
                   {g.notes && <NotesBanner notes={g.notes} />}
                   <div className="pending-actions" style={{marginTop:12}}>
                     <button className="btn btn-primary" onClick={() => handleAccept(g)}>Accept</button>
