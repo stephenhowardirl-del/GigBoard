@@ -593,6 +593,7 @@ export default function DJDashboard({ previewProfile, hideFees }) {
   const nextVc   = nextGig ? getVenueColor(nextGig.venue) : null;
   const nextLogo = nextGig ? getVenueLogo(nextGig.venue) : null;
   const daysAway = nextGig ? Math.round((new Date(nextGig.date+'T12:00:00') - new Date().setHours(0,0,0,0)) / 86400000) : 0;
+  const nextUpLabel = todayGigs.length > 0 ? (todayGigs.some(g => isNightTime(g.time)) ? 'After tonight' : 'After today') : 'Next up';
 
   return (
     <div>
@@ -632,7 +633,7 @@ export default function DJDashboard({ previewProfile, hideFees }) {
                     </div>
                   )}
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:10,fontWeight:700,color:'var(--text-secondary)',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:3}}>Next up</div>
+                    <div style={{fontSize:10,fontWeight:700,color:'var(--text-secondary)',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:3}}>{nextUpLabel}</div>
                     <div style={{fontSize:16,fontWeight:700,color:'var(--text-primary)',lineHeight:1.3}}>{nextGig.venue}</div>
                     <div style={{fontSize:12,color:'var(--text-primary)',marginTop:2}}>
                       {formatDate(nextGig.date)} · {nextGig.time}
