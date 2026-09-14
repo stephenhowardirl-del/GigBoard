@@ -114,10 +114,15 @@ export default function AdminDashboard({ hideFees }) {
     } catch (e) { console.error(e); }
   }
 
-  // Drag-and-drop: assign an unassigned gig to a DJ by dropping it on their column.
+  // Drag-and-drop: drop a gig on a DJ column to assign it, or to move it from another DJ.
   async function handleDropAssign(gigId, dj) {
     const gig = gigs.find(g => g.id === gigId);
-    if (!gig || gig.status !== 'unassigned') return;
+    if (!gig || gig.status === 'rejected') return;
+
+    // Dropped on the DJ who already has it — nothing to do.
+    const alreadyTheirs = gig.djUid === dj.uid ||
+      (gig.djName && dj.name && gig.djName.toLowerCase() === dj.name.toLowerCase());
+    if (alreadyTheirs) return;
 
     // Conflict checks before assigning.
     const djUnavailDates = unavail.find(u => u.uid === dj.uid)?.dates || [];
@@ -135,6 +140,15 @@ export default function AdminDashboard({ hideFees }) {
       if (!window.confirm(lines.join('\n'))) return;
     }
 
+    // Moving a gig off another DJ — confirm the swap first.
+    if (gig.status !== 'unassigned') {
+      const fromName = gig.djName || 'its current DJ';
+      const toNote   = dj.uid === profile?.uid
+        ? 'It will be auto-confirmed.'
+        : `${dj.name} will get a pending offer to accept.`;
+      if (!window.confirm(`Move ${gig.venue} (${gig.date} · ${gig.time}) from ${fromName} to ${dj.name}?\n\n${toNote}`)) return;
+    }
+
     // Assigning to yourself auto-confirms; anyone else gets a pending offer.
     const newStatus = dj.uid === profile?.uid ? 'confirmed' : 'pending';
     const djEmail   = dj.email || (dj.uid === profile?.uid ? (profile?.email || '') : '');
@@ -145,6 +159,21 @@ export default function AdminDashboard({ hideFees }) {
         djUid: dj.uid, djName: dj.name || '', djEmail,
         notes: gig.notes, fee: gig.fee,
         status: newStatus,
+      });
+    } catch (e) { console.error(e); }
+  }
+
+  // Drag-and-drop: drop a gig on the Unassigned column to take it off its DJ.
+  async function handleDropUnassign(gigId) {
+    const gig = gigs.find(g => g.id === gigId);
+    if (!gig || gig.status === 'unassigned') return;
+    if (!window.confirm(`Unassign ${gig.venue} (${gig.date} · ${gig.time}) from ${gig.djName || 'its DJ'}?`)) return;
+    try {
+      await updateGig(gigId, {
+        venue: gig.venue, date: gig.date, time: gig.time,
+        djUid: '', djName: '', djEmail: '',
+        notes: gig.notes, fee: gig.fee,
+        status: 'unassigned',
       });
     } catch (e) { console.error(e); }
   }
@@ -198,12 +227,12 @@ export default function AdminDashboard({ hideFees }) {
   const gigListUsers = profile ? [{ uid: profile.uid, name: profile.name, email: profile.email, role: 'full_admin' }, ...users] : users;
 
   if (loading) return <div className="loading">Loading…</div>;
-  if (error)   return <div className="loading" style={{color:'#ff4070'}}>Error: {error} — try refreshing.</div>;
+  if (error)   return <div className="loading" style={{color:'var(--danger)'}}>Error: {error} — try refreshing.</div>;
 
   if (previewDJ) {
     return (
       <>
-        <div style={{background:'#1a0a00',border:'1px solid #ff990060',padding:'10px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+        <div style={{background:'var(--pending-bg)',border:'1px solid #ff990060',padding:'10px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
           <div style={{fontSize:13,color:'#ff9900',fontWeight:600}}>👁 Previewing as {previewDJ.name}</div>
           <button onClick={() => setPreviewDJ(null)} style={{background:'#ff990020',border:'1px solid #ff990060',color:'#ff9900',borderRadius:6,padding:'4px 14px',fontSize:12,cursor:'pointer',fontWeight:600}}>Exit preview</button>
         </div>
@@ -244,6 +273,7 @@ export default function AdminDashboard({ hideFees }) {
           onEdit={g => { setEditingGig(g); setShowModal(true); }}
           onDelete={handleDelete}
           onDropAssign={handleDropAssign}
+          onDropUnassign={handleDropUnassign}
         />
       )}
 
