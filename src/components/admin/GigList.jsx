@@ -164,6 +164,7 @@ function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete, draggable
   const [showNotes, setShowNotes] = useState(false);
   const [hover, setHover]         = useState(false);
   const [dragging, setDragging]   = useState(false);
+  const canDrag = draggable && !isPast;
 
   // Bottom row only renders when it has content: a today tag, a status badge, or a note.
   const hasBottomRow = isToday || isException || g.notes;
@@ -173,20 +174,20 @@ function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete, draggable
       onClick={() => onEdit(g)}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      draggable={draggable}
+      draggable={canDrag}
       onDragStart={e => {
         e.dataTransfer.setData('text/gig-id', g.id);
         e.dataTransfer.effectAllowed = 'move';
         setDragging(true);
       }}
       onDragEnd={() => setDragging(false)}
-      title={draggable ? 'Drag onto a DJ to assign, or click to edit' : 'Click to edit'}
+      title={canDrag ? 'Drag onto a DJ column to assign or move, or click to edit' : 'Click to edit'}
       style={{
         borderBottom:'1px solid var(--bg-hover)', padding:'12px 14px',
         paddingLeft: isToday ? 11 : 14,
         borderLeft: isToday ? `3px solid ${vc.color}` : 'none',
         background: hover ? 'var(--bg-hover)' : isToday ? 'var(--bg-raised)' : 'transparent',
-        cursor: draggable ? 'grab' : 'pointer',
+        cursor: canDrag ? 'grab' : 'pointer',
         transition:'background 0.12s', position:'relative',
         opacity: dragging ? 0.4 : isPast ? 0.55 : 1,
       }}
@@ -239,8 +240,9 @@ function GigCard({ g, hideFees, onConfirm, onReject, onEdit, onDelete, draggable
   );
 }
 
-function UnassignedColumn({ gigs, hideFees, onConfirm, onReject, onEdit, onDelete }) {
+function UnassignedColumn({ gigs, hideFees, onConfirm, onReject, onEdit, onDelete, onDropUnassign }) {
   // Permanent fixture: shows ALL unassigned gigs regardless of the date filter.
+  const [dragOver, setDragOver] = useState(false);
   const matched = gigs
     .filter(g => g.status === 'unassigned')
     .sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''));
@@ -248,10 +250,28 @@ function UnassignedColumn({ gigs, hideFees, onConfirm, onReject, onEdit, onDelet
   const empty = matched.length === 0;
 
   return (
-    <div style={{
-      background: empty ? 'var(--bg-surface)' : 'var(--pending-bg)',
-      border: empty ? '1px solid var(--border)' : '1px solid #ff990040',
+    <div
+      onDragOver={e => {
+        if (e.dataTransfer.types.includes('text/gig-id')) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          setDragOver(true);
+        }
+      }}
+      onDragLeave={e => {
+        if (!e.currentTarget.contains(e.relatedTarget)) setDragOver(false);
+      }}
+      onDrop={e => {
+        e.preventDefault();
+        setDragOver(false);
+        const gigId = e.dataTransfer.getData('text/gig-id');
+        if (gigId && onDropUnassign) onDropUnassign(gigId);
+      }}
+      style={{
+      background: dragOver ? 'var(--pending-bg)' : empty ? 'var(--bg-surface)' : 'var(--pending-bg)',
+      border: dragOver ? '2px dashed #ff9900' : empty ? '1px solid var(--border)' : '1px solid #ff990040',
       borderRadius:10, overflow:'hidden', flex:'1 1 0', minWidth:0,
+      transition:'background 0.12s, border 0.12s',
     }}>
       <div style={{padding:'12px 14px', borderBottom: empty ? '1px solid var(--border)' : '1px solid #ff990030', display:'flex', alignItems:'center', gap:10, background: empty ? 'var(--bg-raised)' : 'var(--pending-bg)'}}>
         <div style={{
@@ -263,7 +283,9 @@ function UnassignedColumn({ gigs, hideFees, onConfirm, onReject, onEdit, onDelet
         }}>
           {empty ? '✓' : '!'}
         </div>
-        <div style={{fontSize:13,fontWeight:700,color: empty ? 'var(--text-secondary)' : '#ff9900'}}>Unassigned</div>
+        <div style={{fontSize:13,fontWeight:700,color: dragOver ? '#ff9900' : empty ? 'var(--text-secondary)' : '#ff9900'}}>
+          {dragOver ? 'Drop to unassign' : 'Unassigned'}
+        </div>
       </div>
 
       {empty ? (
@@ -370,7 +392,7 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
         <div style={{padding:'20px 14px',textAlign:'center',color:'var(--text-muted)',fontSize:12}}>No gigs in this period</div>
       ) : (
         matched.map(g => (
-          <GigCard key={g.id} g={g} hideFees={hideFees} onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete} />
+          <GigCard key={g.id} g={g} hideFees={hideFees} draggable onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete} />
         ))
       )}
     </div>
@@ -388,7 +410,7 @@ const FILTERS = [
   { key:'all',        label:'All' },
 ];
 
-export default function GigList({ gigs, users = [], hideFees, onConfirm, onReject, onEdit, onDelete, onDropAssign }) {
+export default function GigList({ gigs, users = [], hideFees, onConfirm, onReject, onEdit, onDelete, onDropAssign, onDropUnassign }) {
   const [filter, setFilter]       = useState('week');
   const [hiddenDJs, setHiddenDJs] = useState({});
 
@@ -471,6 +493,7 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
         <UnassignedColumn
           gigs={gigs} hideFees={hideFees}
           onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete}
+          onDropUnassign={onDropUnassign}
         />
         {visibleUsers.map(dj => (
           <DJColumn
