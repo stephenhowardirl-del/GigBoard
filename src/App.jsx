@@ -37,16 +37,16 @@ function GigBoardLogo() {
   return (
     <div style={{display:'flex', alignItems:'center', gap:10}}>
       <svg width="28" height="28" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-        <rect width="32" height="32" rx="6" fill="#0a0a0f"/>
-        <rect x="2" y="12" width="3" height="8" rx="1.5" fill="#00ffc2"/>
-        <rect x="7" y="9" width="3" height="14" rx="1.5" fill="#00ffc2" opacity="0.8"/>
-        <rect x="12" y="6" width="3" height="20" rx="1.5" fill="#00ffc2"/>
-        <rect x="17" y="11" width="3" height="10" rx="1.5" fill="#00ffc2" opacity="0.7"/>
-        <rect x="22" y="8" width="3" height="16" rx="1.5" fill="#00ffc2" opacity="0.9"/>
-        <rect x="27" y="13" width="3" height="6" rx="1.5" fill="#00ffc2" opacity="0.6"/>
+        <rect width="32" height="32" rx="6" fill="#0b1220"/>
+        <rect x="2" y="12" width="3" height="8" rx="1.5" fill="#4da3ff"/>
+        <rect x="7" y="9" width="3" height="14" rx="1.5" fill="#4da3ff" opacity="0.8"/>
+        <rect x="12" y="6" width="3" height="20" rx="1.5" fill="#4da3ff"/>
+        <rect x="17" y="11" width="3" height="10" rx="1.5" fill="#4da3ff" opacity="0.7"/>
+        <rect x="22" y="8" width="3" height="16" rx="1.5" fill="#4da3ff" opacity="0.9"/>
+        <rect x="27" y="13" width="3" height="6" rx="1.5" fill="#4da3ff" opacity="0.6"/>
       </svg>
-      <div style={{fontFamily:'var(--font-mono)', fontSize:16, fontWeight:500, letterSpacing:'0.06em', color:'#fff'}}>
-        GIG<span style={{color:'#00ffc2'}}>BOARD</span>
+      <div style={{fontFamily:'var(--font-mono)', fontSize:16, fontWeight:500, letterSpacing:'0.06em', color:'var(--text-primary)'}}>
+        GIG<span style={{color:'var(--neon)'}}>BOARD</span>
       </div>
     </div>
   );
@@ -58,10 +58,16 @@ export default function App() {
   const [showProfile, setShowProfile]   = useState(false);
   const [hideFees, setHideFees]         = useState(false);
   const [venuesReady, setVenuesReady]   = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem('gigboard-theme') || 'dark');
 
   useEffect(() => {
     if (user) loadVenueConfig().finally(() => setVenuesReady(true));
   }, [user]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('gigboard-theme', theme);
+  }, [theme]);
 
   if (loading)      return <div className="loading">Loading GigBoard…</div>;
   if (!user)        return <LoginPage />;
@@ -91,18 +97,18 @@ export default function App() {
           </div>
           {showMenu && (
             <div
-              style={{position:'absolute',top:44,right:0,zIndex:200,background:'#0d0d14',border:'1px solid #2a2a40',borderRadius:8,minWidth:200,overflow:'hidden',boxShadow:'0 8px 24px #00000060'}}
+              style={{position:'absolute',top:44,right:0,zIndex:200,background:'var(--bg-surface)',border:'1px solid var(--border-mid)',borderRadius:8,minWidth:200,overflow:'hidden',boxShadow:'0 8px 24px #00000060'}}
               onClick={e => e.stopPropagation()}
             >
-              <div style={{padding:'10px 14px',borderBottom:'1px solid #1e1e2e'}}>
-                <div style={{fontSize:12,fontWeight:500,color:'#e8e8f0'}}>{profile.name}</div>
-                <div style={{fontSize:11,color:'#404060',marginTop:2}}>{user.email}</div>
+              <div style={{padding:'10px 14px',borderBottom:'1px solid var(--border)'}}>
+                <div style={{fontSize:12,fontWeight:500,color:'var(--text-primary)'}}>{profile.name}</div>
+                <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>{user.email}</div>
               </div>
 
               {(profile.role === 'dj' || profile.role === 'full_admin') && (
                 <button
                   onClick={() => { setShowMenu(false); setShowProfile(true); }}
-                  style={{width:'100%',padding:'10px 14px',background:'transparent',border:'none',borderBottom:'1px solid #1e1e2e',color:'#e8e8f0',fontSize:13,fontWeight:500,textAlign:'left',cursor:'pointer',display:'flex',alignItems:'center',gap:8}}
+                  style={{width:'100%',padding:'10px 14px',background:'transparent',border:'none',borderBottom:'1px solid var(--border)',color:'var(--text-primary)',fontSize:13,fontWeight:500,textAlign:'left',cursor:'pointer',display:'flex',alignItems:'center',gap:8}}
                 >
                   👤 My Profile
                 </button>
@@ -110,17 +116,27 @@ export default function App() {
 
               <button
                 onClick={() => setHideFees(h => !h)}
-                style={{width:'100%',padding:'10px 14px',background:'transparent',border:'none',borderBottom:'1px solid #1e1e2e',color:'#e8e8f0',fontSize:13,fontWeight:500,textAlign:'left',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between'}}
+                style={{width:'100%',padding:'10px 14px',background:'transparent',border:'none',borderBottom:'1px solid var(--border)',color:'var(--text-primary)',fontSize:13,fontWeight:500,textAlign:'left',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between'}}
               >
                 <span style={{display:'flex',alignItems:'center',gap:8}}>💰 Hide fees</span>
-                <span style={{width:32,height:18,borderRadius:9,background: hideFees ? '#00ffc2' : '#2a2a40',position:'relative',transition:'background 0.2s',flexShrink:0}}>
+                <span style={{width:32,height:18,borderRadius:9,background: hideFees ? 'var(--neon)' : 'var(--border-mid)',position:'relative',transition:'background 0.2s',flexShrink:0}}>
                   <span style={{position:'absolute',top:2,left: hideFees ? 16 : 2,width:14,height:14,borderRadius:'50%',background:'#fff',transition:'left 0.2s'}} />
                 </span>
               </button>
 
               <button
+                onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+                style={{width:'100%',padding:'10px 14px',background:'transparent',border:'none',borderBottom:'1px solid var(--border)',color:'var(--text-primary)',fontSize:13,fontWeight:500,textAlign:'left',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between'}}
+              >
+                <span style={{display:'flex',alignItems:'center',gap:8}}>☀️ Light mode</span>
+                <span style={{width:32,height:18,borderRadius:9,background: theme === 'light' ? 'var(--neon)' : 'var(--border-mid)',position:'relative',transition:'background 0.2s',flexShrink:0}}>
+                  <span style={{position:'absolute',top:2,left: theme === 'light' ? 16 : 2,width:14,height:14,borderRadius:'50%',background:'#fff',transition:'left 0.2s'}} />
+                </span>
+              </button>
+
+              <button
                 onClick={() => { setShowMenu(false); logout(); }}
-                style={{width:'100%',padding:'10px 14px',background:'transparent',border:'none',color:'#ff4070',fontSize:13,fontWeight:500,textAlign:'left',cursor:'pointer',display:'flex',alignItems:'center',gap:8}}
+                style={{width:'100%',padding:'10px 14px',background:'transparent',border:'none',color:'var(--danger)',fontSize:13,fontWeight:500,textAlign:'left',cursor:'pointer',display:'flex',alignItems:'center',gap:8}}
               >
                 🚪 Sign out
               </button>
