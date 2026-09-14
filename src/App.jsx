@@ -37,13 +37,13 @@ function GigBoardLogo() {
   return (
     <div style={{display:'flex', alignItems:'center', gap:10}}>
       <svg width="28" height="28" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-        <rect width="32" height="32" rx="6" fill="#0b1220"/>
-        <rect x="2" y="12" width="3" height="8" rx="1.5" fill="#4da3ff"/>
-        <rect x="7" y="9" width="3" height="14" rx="1.5" fill="#4da3ff" opacity="0.8"/>
-        <rect x="12" y="6" width="3" height="20" rx="1.5" fill="#4da3ff"/>
-        <rect x="17" y="11" width="3" height="10" rx="1.5" fill="#4da3ff" opacity="0.7"/>
-        <rect x="22" y="8" width="3" height="16" rx="1.5" fill="#4da3ff" opacity="0.9"/>
-        <rect x="27" y="13" width="3" height="6" rx="1.5" fill="#4da3ff" opacity="0.6"/>
+        <rect width="32" height="32" rx="6" fill="var(--neon-bg)"/>
+        <rect x="2" y="12" width="3" height="8" rx="1.5" fill="var(--neon)"/>
+        <rect x="7" y="9" width="3" height="14" rx="1.5" fill="var(--neon)" opacity="0.8"/>
+        <rect x="12" y="6" width="3" height="20" rx="1.5" fill="var(--neon)"/>
+        <rect x="17" y="11" width="3" height="10" rx="1.5" fill="var(--neon)" opacity="0.7"/>
+        <rect x="22" y="8" width="3" height="16" rx="1.5" fill="var(--neon)" opacity="0.9"/>
+        <rect x="27" y="13" width="3" height="6" rx="1.5" fill="var(--neon)" opacity="0.6"/>
       </svg>
       <div style={{fontFamily:'var(--font-mono)', fontSize:16, fontWeight:500, letterSpacing:'0.06em', color:'var(--text-primary)'}}>
         GIG<span style={{color:'var(--neon)'}}>BOARD</span>
