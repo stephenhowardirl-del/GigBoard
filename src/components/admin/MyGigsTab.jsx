@@ -199,7 +199,7 @@ export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, hideFee
 
   const nextVc   = nextGig ? getVenueColor(nextGig.venue) : null;
   const nextLogo = nextGig ? getVenueLogo(nextGig.venue) : null;
-  const daysAway = nextGig ? Math.round((new Date(nextGig.date + 'T12:00:00') - new Date().setHours(0,0,0,0)) / 86400000) : 0;
+  const daysAway = nextGig ? Math.round((new Date(nextGig.date + 'T12:00:00') - new Date(todayStr() + 'T12:00:00')) / 86400000) : 0;
   const nextUpLabel = todayGigs.length > 0 ? (todayGigs.some(g => isNightTime(g.time)) ? 'After tonight' : 'After today') : 'Next up';
 
   return (
