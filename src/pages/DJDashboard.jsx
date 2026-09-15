@@ -542,7 +542,16 @@ export default function DJDashboard({ previewProfile, hideFees }) {
   useEffect(() => { if (profile?.uid) load(); }, [profile?.uid]);
 
   async function handleAccept(gig) { await updateGigStatus(gig.id, 'confirmed'); load(); }
-  async function handleReject(gig) { await updateGigStatus(gig.id, 'rejected');  load(); }
+  async function handleReject(gig) {
+    // Rejecting sends the gig straight back to the Unassigned pool for re-filling.
+    await updateGig(gig.id, {
+      venue: gig.venue, date: gig.date, time: gig.time,
+      djUid: '', djName: '', djEmail: '',
+      notes: gig.notes, fee: gig.fee,
+      status: 'unassigned',
+    });
+    load();
+  }
   async function handleToggleUnavail(isoDate) {
     if (isPreview) return;
     const next = unavail.includes(isoDate) ? unavail.filter(d => d !== isoDate) : [...unavail, isoDate];
@@ -592,7 +601,7 @@ export default function DJDashboard({ previewProfile, hideFees }) {
 
   const nextVc   = nextGig ? getVenueColor(nextGig.venue) : null;
   const nextLogo = nextGig ? getVenueLogo(nextGig.venue) : null;
-  const daysAway = nextGig ? Math.round((new Date(nextGig.date+'T12:00:00') - new Date().setHours(0,0,0,0)) / 86400000) : 0;
+  const daysAway = nextGig ? Math.round((new Date(nextGig.date + 'T12:00:00') - new Date(todayStr() + 'T12:00:00')) / 86400000) : 0;
   const nextUpLabel = todayGigs.length > 0 ? (todayGigs.some(g => isNightTime(g.time)) ? 'After tonight' : 'After today') : 'Next up';
 
   return (
