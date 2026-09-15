@@ -186,9 +186,22 @@ export default function AdminDashboard({ hideFees }) {
   }
 
   async function handleConfirm(gigId)   { try { await updateGigStatus(gigId, 'confirmed'); } catch (e) { console.error(e); } }
-  async function handleRejectGig(gigId) { try { await updateGigStatus(gigId, 'rejected');  } catch (e) { console.error(e); } }
+
+  // Rejected gigs don't disappear — they go straight back to the Unassigned pool.
+  async function rejectToUnassigned(gig) {
+    if (!gig) return;
+    try {
+      await updateGig(gig.id, {
+        venue: gig.venue, date: gig.date, time: gig.time,
+        djUid: '', djName: '', djEmail: '',
+        notes: gig.notes, fee: gig.fee,
+        status: 'unassigned',
+      });
+    } catch (e) { console.error(e); }
+  }
+  async function handleRejectGig(gigId) { await rejectToUnassigned(gigs.find(g => g.id === gigId)); }
   async function handleAcceptMyGig(gig) { try { await updateGigStatus(gig.id, 'confirmed'); } catch (e) { console.error(e); } }
-  async function handleRejectMyGig(gig) { try { await updateGigStatus(gig.id, 'rejected');  } catch (e) { console.error(e); } }
+  async function handleRejectMyGig(gig) { await rejectToUnassigned(gig); }
 
   async function handleToggleUnavail(isoDate) {
     const next = myUnavail.includes(isoDate) ? myUnavail.filter(d => d !== isoDate) : [...myUnavail, isoDate];
