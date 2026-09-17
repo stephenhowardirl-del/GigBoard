@@ -435,7 +435,7 @@ function SelfAssignModal({ venues, profile, gigs, onClose, onBooked }) {
   );
 }
 
-function GigRow({ g, profile, isPreview, hideFees, onEdit, onInvoice, isPast }) {
+function GigRow({ g, profile, isPreview, hideFees, onEdit, onInvoice, onHandBack, isPast }) {
   const d    = new Date(g.date + 'T12:00:00');
   const vc   = getVenueColor(g.venue);
   const logo = getVenueLogo(g.venue);
@@ -467,6 +467,7 @@ function GigRow({ g, profile, isPreview, hideFees, onEdit, onInvoice, isPast }) 
         <div style={{display:'flex',flexDirection:'column',gap:6,alignSelf:'center'}}>
           {isSelfAssigned && <button onClick={() => onEdit(g)} style={{background:'transparent',border:'1px solid var(--border-mid)',color:'var(--text-secondary)',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>✏️ Edit</button>}
           {!hideFees && g.fee && <button onClick={() => onInvoice(g)} style={{background:'transparent',border:'1px solid var(--border-mid)',color:'var(--text-secondary)',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>🧾 Invoice</button>}
+          {onHandBack && <button onClick={() => onHandBack(g)} title="Return this gig to the unassigned pool" style={{background:'transparent',border:'1px solid var(--danger-border)',color:'var(--danger)',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>↩ Hand back</button>}
         </div>
       )}
       {!isPreview && isPast && g.fee && !hideFees && (
@@ -552,6 +553,20 @@ export default function DJDashboard({ previewProfile, hideFees }) {
     });
     load();
   }
+  async function handleHandBack(gig) {
+    // A DJ can hand a confirmed gig back when circumstances change —
+    // it returns to the Unassigned pool for the admin to re-fill.
+    if (!window.confirm(`Hand back ${gig.venue} (${formatDate(gig.date)} · ${gig.time})?\n\nIt will go back to the unassigned pool to be re-filled.`)) return;
+    await updateGig(gig.id, {
+      venue: gig.venue, date: gig.date, time: gig.time,
+      djUid: '', djName: '', djEmail: '',
+      notes: gig.notes, fee: gig.fee,
+      status: 'unassigned',
+    });
+    load();
+    setToast('Gig handed back');
+  }
+
   async function handleToggleUnavail(isoDate) {
     if (isPreview) return;
     const next = unavail.includes(isoDate) ? unavail.filter(d => d !== isoDate) : [...unavail, isoDate];
@@ -698,7 +713,7 @@ export default function DJDashboard({ previewProfile, hideFees }) {
             <>
               <div className="section-title">Upcoming gigs ({filteredUpcoming.length})</div>
               <div className="panel">
-                {filteredUpcoming.map(g => <GigRow key={g.id} g={g} profile={profile} isPreview={isPreview} hideFees={hideFees} onEdit={setEditingGig} onInvoice={setInvoiceGig} isPast={false} />)}
+                {filteredUpcoming.map(g => <GigRow key={g.id} g={g} profile={profile} isPreview={isPreview} hideFees={hideFees} onEdit={setEditingGig} onInvoice={setInvoiceGig} onHandBack={handleHandBack} isPast={false} />)}
               </div>
             </>
           ) : (
