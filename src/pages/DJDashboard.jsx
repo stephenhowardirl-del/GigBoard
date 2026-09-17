@@ -463,15 +463,17 @@ function GigRow({ g, profile, isPreview, hideFees, onEdit, onInvoice, onHandBack
         {!hideFees && g.fee && <div style={{fontSize:13,color: isPast ? 'var(--money-dim)' : 'var(--money)',fontWeight:700,marginTop:2}}>€{g.fee}</div>}
         {g.notes && <NotesBanner notes={g.notes} />}
       </div>
-      {!isPreview && !isPast && (
-        <div style={{display:'flex',flexDirection:'column',gap:6,alignSelf:'center'}}>
-          {isSelfAssigned && <button onClick={() => onEdit(g)} style={{background:'transparent',border:'1px solid var(--border-mid)',color:'var(--text-secondary)',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>✏️ Edit</button>}
-          {!hideFees && g.fee && <button onClick={() => onInvoice(g)} style={{background:'transparent',border:'1px solid var(--border-mid)',color:'var(--text-secondary)',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>🧾 Invoice</button>}
-          {onHandBack && <button onClick={() => onHandBack(g)} title="Return this gig to the unassigned pool" style={{background:'transparent',border:'1px solid var(--danger-border)',color:'var(--danger)',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>↩ Hand back</button>}
+      {!isPast && (
+        // In admin preview the buttons render greyed-out and inert, so the
+        // layout matches exactly what the DJ sees without being clickable.
+        <div style={{display:'flex',flexDirection:'column',gap:6,alignSelf:'center', opacity: isPreview ? 0.45 : 1}}>
+          {isSelfAssigned && <button disabled={isPreview} onClick={() => onEdit(g)} style={{background:'transparent',border:'1px solid var(--border-mid)',color:'var(--text-secondary)',borderRadius:5,padding:'4px 10px',fontSize:11,cursor: isPreview ? 'not-allowed' : 'pointer',whiteSpace:'nowrap'}}>✏️ Edit</button>}
+          {!hideFees && g.fee && <button disabled={isPreview} onClick={() => onInvoice(g)} style={{background:'transparent',border:'1px solid var(--border-mid)',color:'var(--text-secondary)',borderRadius:5,padding:'4px 10px',fontSize:11,cursor: isPreview ? 'not-allowed' : 'pointer',whiteSpace:'nowrap'}}>🧾 Invoice</button>}
+          {onHandBack && <button disabled={isPreview} onClick={() => onHandBack(g)} title="Return this gig to the unassigned pool" style={{background:'transparent',border:'1px solid var(--danger-border)',color:'var(--danger)',borderRadius:5,padding:'4px 10px',fontSize:11,cursor: isPreview ? 'not-allowed' : 'pointer',whiteSpace:'nowrap'}}>↩ Hand back</button>}
         </div>
       )}
-      {!isPreview && isPast && g.fee && !hideFees && (
-        <button onClick={() => onInvoice(g)} style={{background:'transparent',border:'1px solid var(--border-mid)',color:'var(--text-muted)',borderRadius:5,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap',alignSelf:'center'}}>🧾 Invoice</button>
+      {isPast && g.fee && !hideFees && (
+        <button disabled={isPreview} onClick={() => onInvoice(g)} style={{background:'transparent',border:'1px solid var(--border-mid)',color:'var(--text-muted)',borderRadius:5,padding:'4px 10px',fontSize:11,cursor: isPreview ? 'not-allowed' : 'pointer',whiteSpace:'nowrap',alignSelf:'center', opacity: isPreview ? 0.45 : 1}}>🧾 Invoice</button>
       )}
     </div>
   );
