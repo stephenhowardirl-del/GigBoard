@@ -7,6 +7,7 @@ import VenueAdminDashboard from './pages/VenueAdminDashboard';
 import DJDashboard from './pages/DJDashboard';
 import DJProfile from './pages/DJProfile';
 import ErrorBoundary from './components/ErrorBoundary';
+import NotificationBell from './components/NotificationBell';
 import { loadVenueConfig } from './lib/venueGroups';
 import './index.css';
 
@@ -78,6 +79,8 @@ export default function App() {
     <div style={{minHeight:'100vh'}} onClick={() => setShowMenu(false)}>
       <div className="topbar">
         <GigBoardLogo />
+        <div style={{display:'flex', alignItems:'center', gap:14}}>
+        <NotificationBell address={profile.role === 'full_admin' ? 'admin' : user.uid} />
         <div className="user-chip" style={{position:'relative'}}>
           <div>
             <div style={{fontSize:13,fontWeight:500,lineHeight:1.2,textAlign:'right'}}>{profile.name}</div>
@@ -142,6 +145,7 @@ export default function App() {
               </button>
             </div>
           )}
+        </div>
         </div>
       </div>
 
