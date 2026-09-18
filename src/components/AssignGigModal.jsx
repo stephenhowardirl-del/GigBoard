@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAllUsers, getAllUnavailability, getAllGigs, createGig, createGigConfirmed } from '../lib/db';
+import { getAllUsers, getAllUnavailability, getAllGigs, createGig, createGigConfirmed, createNotification } from '../lib/db';
 
 const TIMES = Array.from({length: 48}, (_, i) => {
   const h = Math.floor(i / 2).toString().padStart(2, '0');
@@ -289,6 +289,15 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
             assignedBy: 'Steve Howard',
           });
         }
+      }
+      // One summary notification for the whole batch (not one per gig).
+      if (!unassigned && !isSelfAdmin && dj) {
+        const sorted = [...dates].sort();
+        createNotification(
+          djUid,
+          `New gig offers (${dates.length})`,
+          `${lockedVenue || venue} — ${sorted[0]} to ${sorted[sorted.length - 1]} · ${time}`
+        );
       }
       // Trigger parent reload by calling onAssign with a dummy signal
       await onAssign({ _bulkCreated: true });
