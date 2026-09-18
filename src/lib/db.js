@@ -165,3 +165,52 @@ export async function getVenues() {
 export async function saveVenues(list) {
   await setDoc(doc(db, 'settings', 'venues'), { list });
 }
+
+// ---------- In-app notifications ----------
+// Addressed either to a specific user's uid, or to the sentinel 'admin'
+// (there is one full admin, so DJ actions notify 'admin').
+
+function nowStr() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+export async function createNotification(toUid, title, body, gigId = null) {
+  // Never let a failed notification break the action that triggered it.
+  try {
+    await addDoc(collection(db, 'notifications'), {
+      toUid,
+      title,
+      body: body || '',
+      gigId,
+      read: false,
+      createdAt: nowStr(),
+    });
+  } catch (e) { console.error('createNotification failed', e); }
+}
+
+export function subscribeNotifications(toUid, callback) {
+  return onSnapshot(
+    query(collection(db, 'notifications'), where('toUid', '==', toUid)),
+    snap => {
+      const list = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      callback(list);
+    },
+    err => console.error(err)
+  );
+}
+
+export async function markNotificationsRead(ids) {
+  try {
+    await Promise.all(ids.map(id => updateDoc(doc(db, 'notifications', id), { read: true })));
+  } catch (e) { console.error(e); }
+}
+
+export async function deleteNotifications(ids) {
+  try {
+    await Promise.all(ids.map(id => deleteDoc(doc(db, 'notifications', id))));
+  } catch (e) { console.error(e); }
+}
