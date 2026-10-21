@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getGigsForVenue, getGigsForDJ, createGig, updateGigStatus, getUnavailableDates, setUnavailableDates } from '../lib/db';
-import { addGigToCalendar, removeGigFromCalendar } from '../lib/calendar';
+import { getGigsForVenue, getGigsForDJ, createGig, updateGig, updateGigStatus, getUnavailableDates, setUnavailableDates, createNotification } from '../lib/db';
 import { useAuth } from '../hooks/useAuth';
 import CalendarView from '../components/CalendarView';
 import AssignGigModal from '../components/AssignGigModal';
@@ -11,22 +10,26 @@ function formatDate(iso) {
   return d.toLocaleDateString('en-IE', { weekday:'short', day:'numeric', month:'short' });
 }
 
-function daysUntil(iso) {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const gig   = new Date(iso + 'T12:00:00');
-  return Math.ceil((gig - today) / 86400000);
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-export default function VenueAdminDashboard() {
-  const { profile, accessToken } = useAuth();
+function daysUntil(iso) {
+  // Noon-to-noon so the count never carries a stray half-day.
+  return Math.round((new Date(iso + 'T12:00:00') - new Date(todayStr() + 'T12:00:00')) / 86400000);
+}
+
+export default function VenueAdminDashboard({ hideFees }) {
+  const { profile } = useAuth();
   const venue = profile?.venueScope;
 
-  const [tab, setTab]           = useState('list');
+  const [tab, setTab]             = useState('list');
   const [venueGigs, setVenueGigs] = useState([]);
-  const [myGigs, setMyGigs]     = useState([]);
-  const [unavail, setUnavail]   = useState([]);
+  const [myGigs, setMyGigs]       = useState([]);
+  const [unavail, setUnavail]     = useState([]);
   const [showModal, setShowModal] = useState(false);
-  const [loading, setLoading]   = useState(true);
+  const [loading, setLoading]     = useState(true);
 
   async function load() {
     const [vg, mg, un] = await Promise.all([
@@ -43,30 +46,41 @@ export default function VenueAdminDashboard() {
   useEffect(() => { if (venue) load(); }, [venue]);
 
   async function handleAssign(gigData) {
-    await createGig({ ...gigData, assignedBy: profile.name });
+    // Multi-date/recurring: the modal already created the gigs (and the
+    // DJ's batch notification) — this is just the reload signal.
+    if (gigData._bulkCreated) { load(); return; }
+
+    try {
+      if (!gigData.djUid) {
+        // No DJ picked — goes to the unassigned pool for the full admin to fill.
+        await createGig({ ...gigData, assignedBy: profile.name, status: 'unassigned' });
+      } else {
+        await createGig({ ...gigData, assignedBy: profile.name });
+        // Offer notification to the DJ (unless the venue admin assigned themselves).
+        if (gigData.djUid !== profile.uid) {
+          createNotification(gigData.djUid, 'New gig offer', `${gigData.venue} — ${gigData.date} · ${gigData.time}`);
+        }
+      }
+    } catch (e) { console.error(e); }
     load();
   }
 
+  // Accepting / rejecting the venue admin's OWN gig offers (as a DJ).
   async function handleAccept(gig) {
-    try {
-      let calId = null;
-      if (accessToken) {
-        calId = await addGigToCalendar(accessToken, gig);
-      }
-      await updateGigStatus(gig.id, 'confirmed', calId);
-      load();
-    } catch (e) {
-      console.error('Calendar error:', e);
-      await updateGigStatus(gig.id, 'confirmed');
-      load();
-    }
+    await updateGigStatus(gig.id, 'confirmed');
+    createNotification('admin', `${profile.name} accepted a gig`, `${gig.venue} — ${gig.date} · ${gig.time}`);
+    load();
   }
 
   async function handleReject(gig) {
-    if (gig.calendarEventId && accessToken) {
-      await removeGigFromCalendar(accessToken, gig.calendarEventId);
-    }
-    await updateGigStatus(gig.id, 'rejected');
+    // Rejecting sends the gig straight back to the Unassigned pool for re-filling.
+    await updateGig(gig.id, {
+      venue: gig.venue, date: gig.date, time: gig.time,
+      djUid: '', djName: '', djEmail: '',
+      notes: gig.notes, fee: gig.fee,
+      status: 'unassigned',
+    });
+    createNotification('admin', `${profile.name} rejected a gig`, `${gig.venue} — ${gig.date} · ${gig.time} · back in the unassigned pool`);
     load();
   }
 
@@ -78,8 +92,9 @@ export default function VenueAdminDashboard() {
     await setUnavailableDates(profile.uid, next);
   }
 
-  const pendingMyGigs   = myGigs.filter(g => g.status === 'pending');
-  const confirmedMyGigs = myGigs.filter(g => g.status === 'confirmed' && g.date >= new Date().toISOString().split('T')[0]);
+  const upcomingVenueGigs = venueGigs.filter(g => g.date >= todayStr() && g.status !== 'rejected');
+  const pendingMyGigs     = myGigs.filter(g => g.status === 'pending');
+  const confirmedMyGigs   = myGigs.filter(g => g.status === 'confirmed' && g.date >= todayStr());
   const nextGig = confirmedMyGigs[0];
 
   if (loading) return <div className="loading">Loading…</div>;
@@ -103,15 +118,18 @@ export default function VenueAdminDashboard() {
           </div>
           <div className="panel">
             <div className="panel-head">{venue} — upcoming gigs</div>
-            {venueGigs.length === 0 && <div className="empty-state">No gigs at {venue} yet.</div>}
-            {venueGigs.map(g => (
+            {upcomingVenueGigs.length === 0 && <div className="empty-state">No upcoming gigs at {venue}.</div>}
+            {upcomingVenueGigs.map(g => (
               <div key={g.id} className="gig-row">
                 <div className="gig-dot" style={{background:'#40a0ff'}} />
                 <div className="gig-info">
                   <div className="gig-venue">{g.venue}</div>
                   <div className="gig-meta">{formatDate(g.date)} · {g.time}</div>
                 </div>
-                <span className="dj-tag" style={{background:'#001020',color:'#40a0ff',marginRight:6}}>{g.djName?.split(' ')[0]}</span>
+                {g.djName
+                  ? <span className="dj-tag" style={{background:'#40a0ff15',color:'#40a0ff',marginRight:6}}>{g.djName.split(' ')[0]}</span>
+                  : <span className="dj-tag" style={{background:'#ff990015',color:'#ff9900',marginRight:6}}>Unassigned</span>
+                }
                 <span className={`badge badge-${g.status}`}>{g.status.charAt(0).toUpperCase()+g.status.slice(1)}</span>
               </div>
             ))}
@@ -153,7 +171,7 @@ export default function VenueAdminDashboard() {
                   <div>
                     <div className="timeline-venue">{g.venue}</div>
                     <div className="timeline-sub">{g.time} · {d.toLocaleDateString('en-IE',{weekday:'long'})}</div>
-                    {g.calendarEventId && <div className="cal-badge">📅 In Google Calendar</div>}
+                    {!hideFees && g.fee && <div style={{fontSize:13,color:'var(--money)',fontWeight:700,marginTop:3}}>€{g.fee}</div>}
                   </div>
                 </div>
               );
@@ -171,9 +189,10 @@ export default function VenueAdminDashboard() {
               <div className="pending-body">
                 <div className="pending-venue">{g.venue}</div>
                 <div className="pending-meta">{formatDate(g.date)} · {g.time}</div>
+                {!hideFees && g.fee && <div style={{fontSize:14,color:'var(--money)',fontWeight:700,marginBottom:8}}>Fee: €{g.fee}</div>}
                 {g.notes && <div style={{fontSize:12,color:'var(--text-secondary)',marginBottom:12}}>Note: {g.notes}</div>}
                 <div className="pending-actions">
-                  <button className="btn btn-primary" onClick={() => handleAccept(g)}>Accept — add to calendar</button>
+                  <button className="btn btn-primary" onClick={() => handleAccept(g)}>Accept</button>
                   <button className="btn btn-danger" onClick={() => handleReject(g)}>Reject</button>
                 </div>
               </div>
