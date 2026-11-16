@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getGigsForVenue, getGigsForDJ, createGig, updateGig, updateGigStatus, getUnavailableDates, setUnavailableDates, createNotification } from '../lib/db';
+import { getGigsForVenue, getGigsForDJ, createGig, updateGig, updateGigStatus, getUnavailableDates, setUnavailableDates } from '../lib/db';
 import { useAuth } from '../hooks/useAuth';
 import CalendarView from '../components/CalendarView';
 import AssignGigModal from '../components/AssignGigModal';
@@ -46,8 +46,8 @@ export default function VenueAdminDashboard({ hideFees }) {
   useEffect(() => { if (venue) load(); }, [venue]);
 
   async function handleAssign(gigData) {
-    // Multi-date/recurring: the modal already created the gigs (and the
-    // DJ's batch notification) — this is just the reload signal.
+    // Multi-date/recurring: the modal already created the gigs —
+    // this is just the reload signal.
     if (gigData._bulkCreated) { load(); return; }
 
     try {
@@ -56,10 +56,6 @@ export default function VenueAdminDashboard({ hideFees }) {
         await createGig({ ...gigData, assignedBy: profile.name, status: 'unassigned' });
       } else {
         await createGig({ ...gigData, assignedBy: profile.name });
-        // Offer notification to the DJ (unless the venue admin assigned themselves).
-        if (gigData.djUid !== profile.uid) {
-          createNotification(gigData.djUid, 'New gig offer', `${gigData.venue} — ${gigData.date} · ${gigData.time}`);
-        }
       }
     } catch (e) { console.error(e); }
     load();
@@ -68,7 +64,6 @@ export default function VenueAdminDashboard({ hideFees }) {
   // Accepting / rejecting the venue admin's OWN gig offers (as a DJ).
   async function handleAccept(gig) {
     await updateGigStatus(gig.id, 'confirmed');
-    createNotification('admin', `${profile.name} accepted a gig`, `${gig.venue} — ${gig.date} · ${gig.time}`);
     load();
   }
 
@@ -80,7 +75,6 @@ export default function VenueAdminDashboard({ hideFees }) {
       notes: gig.notes, fee: gig.fee,
       status: 'unassigned',
     });
-    createNotification('admin', `${profile.name} rejected a gig`, `${gig.venue} — ${gig.date} · ${gig.time} · back in the unassigned pool`);
     load();
   }
 
