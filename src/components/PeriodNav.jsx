@@ -91,7 +91,7 @@ export default function PeriodNav({ mode, offset, onChange }) {
         </div>
       )}
 
-      <span style={{fontSize:11, color: offset === 0 || mode === 'all' ? 'var(--text-muted)' : 'var(--neon)', fontWeight: offset === 0 || mode === 'all' ? 400 : 600}}>
+      <span style={{fontSize:15, fontWeight:700, color: offset === 0 || mode === 'all' ? 'var(--text-primary)' : 'var(--neon)', whiteSpace:'nowrap'}}>
         {range.label}
       </span>
     </div>
