@@ -3,7 +3,7 @@ import {
   createGig, createGigConfirmed, updateGig, deleteGig, getAllUsers,
   updateUserRole, updateUserSelfAssignVenues, getAllUnavailability,
   updateGigStatus, getUnavailableDates, setUnavailableDates,
-  getInvitedEmails, saveInvitedEmails, subscribeGigs, createNotification,
+  getInvitedEmails, saveInvitedEmails, subscribeGigs,
 } from '../lib/db';
 import { getVenueNames, subscribeVenueConfig } from '../lib/venueGroups';
 import { useAuth } from '../hooks/useAuth';
@@ -18,7 +18,8 @@ import DJDashboard from './DJDashboard';
 
 export default function AdminDashboard({ hideFees }) {
   const { user, profile } = useAuth();
-  const [tab, setTab]               = useState('list');
+  // On mobile the dashboard opens on your own gigs; the column board is a desktop view.
+  const [tab, setTab]               = useState(() => window.innerWidth <= 768 ? 'mygigs' : 'list');
   const [gigs, setGigs]             = useState([]);
   const [myUnavail, setMyUnavail]   = useState([]);
   const [users, setUsers]           = useState([]);
@@ -87,7 +88,6 @@ export default function AdminDashboard({ hideFees }) {
         await createGigConfirmed({ ...gigData, assignedBy: 'Steve Howard' });
       } else {
         await createGig({ ...gigData, assignedBy: 'Steve Howard' });
-        createNotification(gigData.djUid, 'New gig offer', `${gigData.venue} — ${gigData.date} · ${gigData.time}`);
       }
     } catch (e) { console.error(e); }
   }
@@ -109,19 +109,9 @@ export default function AdminDashboard({ hideFees }) {
       newStatus = 'unassigned';
     }
 
-    const prev = editingGig;
     setEditingGig(null);
     try {
       await updateGig(gigId, { ...fields, status: newStatus });
-      // Notify the DJ when relevant (never notify yourself).
-      if (prev.status === 'unassigned' && fields.djUid && fields.djUid !== profile?.uid) {
-        createNotification(fields.djUid, 'New gig offer', `${fields.venue} — ${fields.date} · ${fields.time}`);
-      } else if (
-        fields.djUid && fields.djUid === prev.djUid && fields.djUid !== profile?.uid &&
-        (fields.date !== prev.date || fields.time !== prev.time)
-      ) {
-        createNotification(fields.djUid, 'Gig updated', `${fields.venue} is now ${fields.date} · ${fields.time}`);
-      }
     } catch (e) { console.error(e); }
   }
 
@@ -171,14 +161,6 @@ export default function AdminDashboard({ hideFees }) {
         notes: gig.notes, fee: gig.fee,
         status: newStatus,
       });
-      // Tell the DJ who lost the gig (unless that was you)...
-      if (gig.djUid && gig.djUid !== dj.uid && gig.djUid !== profile?.uid) {
-        createNotification(gig.djUid, 'Gig reassigned', `${gig.venue} (${gig.date} · ${gig.time}) was moved to ${dj.name}`);
-      }
-      // ...and the DJ who got it (unless that's you).
-      if (dj.uid !== profile?.uid) {
-        createNotification(dj.uid, 'New gig offer', `${gig.venue} — ${gig.date} · ${gig.time}`);
-      }
     } catch (e) { console.error(e); }
   }
 
@@ -194,9 +176,6 @@ export default function AdminDashboard({ hideFees }) {
         notes: gig.notes, fee: gig.fee,
         status: 'unassigned',
       });
-      if (gig.djUid && gig.djUid !== profile?.uid) {
-        createNotification(gig.djUid, 'Gig unassigned', `${gig.venue} (${gig.date} · ${gig.time}) was taken off your schedule`);
-      }
     } catch (e) { console.error(e); }
   }
 
@@ -219,9 +198,6 @@ export default function AdminDashboard({ hideFees }) {
         notes: gig.notes, fee: gig.fee,
         status: 'unassigned',
       });
-      if (gig.djUid && gig.djUid !== profile?.uid) {
-        createNotification(gig.djUid, 'Offer withdrawn', `${gig.venue} (${gig.date} · ${gig.time}) is no longer assigned to you`);
-      }
     } catch (e) { console.error(e); }
   }
   async function handleRejectGig(gigId) { await rejectToUnassigned(gigs.find(g => g.id === gigId)); }
