@@ -18,6 +18,17 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+// Stack the DJ columns vertically on phones instead of crushing them side by side.
+function useIsMobile() {
+  const [mobile, setMobile] = useState(window.innerWidth <= 768);
+  useEffect(() => {
+    const onResize = () => setMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  return mobile;
+}
+
 function isNightTime(time) {
   if (!time) return false;
   const hour = parseInt(time.split(':')[0], 10);
@@ -391,6 +402,7 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
   const [mode, setMode]           = useState('week');
   const [offset, setOffset]       = useState(0);
   const [hiddenDJs, setHiddenDJs] = useState({});
+  const isMobile                  = useIsMobile();
 
   const pending = gigs.filter(g => g.status === 'pending');
 
@@ -404,7 +416,7 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
   const collapseBefore = mode !== 'all' && offset === 0 ? todayStr() : null;
 
   return (
-    <div className="page-body" style={{maxWidth:'100%', paddingLeft:28, paddingRight:28}}>
+    <div className="page-body" style={{maxWidth:'100%', paddingLeft: isMobile ? 14 : 28, paddingRight: isMobile ? 14 : 28}}>
       {pending.length > 0 && (
         <div
           onClick={() => { setMode('all'); setOffset(0); }}
@@ -447,7 +459,7 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
         })}
       </div>
 
-      <div style={{display:'flex', gap:10, alignItems:'flex-start', width:'100%'}}>
+      <div style={{display:'flex', flexDirection: isMobile ? 'column' : 'row', gap:10, alignItems: isMobile ? 'stretch' : 'flex-start', width:'100%'}}>
         <UnassignedColumn
           gigs={gigs} hideFees={hideFees}
           onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete}
