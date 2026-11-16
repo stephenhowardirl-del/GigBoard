@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { getGigsForDJ, updateGigStatus, getUnavailableDates, setUnavailableDates, createGigConfirmed, updateGig } from '../lib/db';
+import { getGigsForDJ, updateGigStatus, getUnavailableDates, setUnavailableDates, createGigConfirmed, updateGig, createNotification } from '../lib/db';
 import { getVenueColor, getVenueLogo } from '../lib/venueGroups';
 import { useAuth } from '../hooks/useAuth';
 import CalendarView from '../components/CalendarView';
 import InvoiceModal from '../components/InvoiceModal';
 import FinancialsTab from '../components/FinancialsTab';
+import PeriodNav, { getPeriodRange } from '../components/PeriodNav';
 
 const TIMES = Array.from({length: 48}, (_, i) => {
   const h = Math.floor(i / 2).toString().padStart(2, '0');
@@ -31,40 +32,6 @@ function toIso(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-function getDateRange(filter) {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const dow     = (today.getDay() + 6) % 7;
-  const thisMon = new Date(today); thisMon.setDate(today.getDate() - dow);
-  const thisSun = new Date(thisMon); thisSun.setDate(thisMon.getDate() + 6);
-  const nextMon = new Date(thisMon); nextMon.setDate(thisMon.getDate() + 7);
-  const nextSun = new Date(nextMon); nextSun.setDate(nextMon.getDate() + 6);
-
-  if (filter === 'week')     return { from: toIso(thisMon), to: toIso(thisSun) };
-  if (filter === 'nextweek') return { from: toIso(nextMon), to: toIso(nextSun) };
-  if (filter === 'month') {
-    return { from: toIso(new Date(today.getFullYear(), today.getMonth(), 1)), to: toIso(new Date(today.getFullYear(), today.getMonth() + 1, 0)) };
-  }
-  if (filter === 'nextmonth') {
-    return { from: toIso(new Date(today.getFullYear(), today.getMonth() + 1, 1)), to: toIso(new Date(today.getFullYear(), today.getMonth() + 2, 0)) };
-  }
-  if (filter === 'restofyear') {
-    const start = new Date(today.getFullYear(), today.getMonth() + 2, 1);
-    return { from: toIso(start), to: `${today.getFullYear()}-12-31` };
-  }
-  if (filter === 'all') {
-    return { from: toIso(today), to: null };
-  }
-  return null;
-}
-
-const FILTERS = [
-  { key:'week',       label:'This week' },
-  { key:'nextweek',   label:'Next week' },
-  { key:'month',      label:'This month' },
-  { key:'nextmonth',  label:'Next month' },
-  { key:'restofyear', label:'Rest of year' },
-  { key:'all',        label:'All' },
-];
 
 function isoForDate(year, month, day) {
   return `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
@@ -521,7 +488,8 @@ export default function DJDashboard({ previewProfile, hideFees }) {
   const isPreview = !!previewProfile;
 
   const [tab, setTab]                   = useState('schedule');
-  const [filter, setFilter]             = useState('week');
+  const [mode, setMode]                 = useState('week');
+  const [offset, setOffset]             = useState(0);
   const [gigs, setGigs]                 = useState([]);
   const [unavail, setUnavail]           = useState([]);
   const [loading, setLoading]           = useState(true);
@@ -544,7 +512,11 @@ export default function DJDashboard({ previewProfile, hideFees }) {
 
   useEffect(() => { if (profile?.uid) load(); }, [profile?.uid]);
 
-  async function handleAccept(gig) { await updateGigStatus(gig.id, 'confirmed'); load(); }
+  async function handleAccept(gig) {
+    await updateGigStatus(gig.id, 'confirmed');
+    if (!isPreview) createNotification('admin', `${profile.name} accepted a gig`, `${gig.venue} — ${gig.date} · ${gig.time}`);
+    load();
+  }
   async function handleReject(gig) {
     // Rejecting sends the gig straight back to the Unassigned pool for re-filling.
     await updateGig(gig.id, {
@@ -553,6 +525,7 @@ export default function DJDashboard({ previewProfile, hideFees }) {
       notes: gig.notes, fee: gig.fee,
       status: 'unassigned',
     });
+    if (!isPreview) createNotification('admin', `${profile.name} rejected a gig`, `${gig.venue} — ${gig.date} · ${gig.time} · back in the unassigned pool`);
     load();
   }
   async function handleHandBack(gig) {
@@ -565,6 +538,7 @@ export default function DJDashboard({ previewProfile, hideFees }) {
       notes: gig.notes, fee: gig.fee,
       status: 'unassigned',
     });
+    if (!isPreview) createNotification('admin', `${profile.name} handed back a gig`, `${gig.venue} — ${gig.date} · ${gig.time} · back in the unassigned pool`);
     load();
     setToast('Gig handed back');
   }
@@ -587,32 +561,21 @@ export default function DJDashboard({ previewProfile, hideFees }) {
   const pastGigs     = confirmed.filter(g => g.date < todayStr()).reverse();
   const nextGig      = upcomingGigs[0];
 
-  // Filtered list for the schedule tab
-  const range = getDateRange(filter);
-  const filteredUpcoming = upcomingGigs.filter(g => {
-    if (!range) return true;
+  // Filtered list for the schedule tab. Stepping into past periods shows
+  // that period's completed gigs; the current period starts at today
+  // (today's gigs live in the banner, earlier ones in History).
+  const range = getPeriodRange(mode, offset);
+  const viewingCurrent = mode === 'all' || offset === 0;
+  const filteredUpcoming = confirmed.filter(g => {
+    if (viewingCurrent && g.date <= todayStr()) return false;
     if (range.from && g.date < range.from) return false;
     if (range.to && g.date > range.to) return false;
     return true;
   });
 
-  const rangeLabel = range
-    ? range.to
-      ? `${formatDate(range.from)} – ${formatDate(range.to)}`
-      : `${formatDate(range.from)} onwards`
-    : null;
-
   const monthEarnings    = gigs.filter(g => { if (g.status !== 'confirmed' || !g.fee) return false; const d = new Date(g.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).reduce((sum, g) => sum + Number(g.fee), 0);
   const upcomingEarnings = upcomingGigs.filter(g => g.fee).reduce((sum, g) => sum + Number(g.fee), 0);
   const pastEarnings     = pastGigs.filter(g => g.fee).reduce((sum, g) => sum + Number(g.fee), 0);
-
-  const filterBtnStyle = (active) => ({
-    background: active ? 'var(--neon-bg)' : 'transparent',
-    border: `1px solid ${active ? 'var(--neon-border)' : 'var(--border-mid)'}`,
-    color: active ? 'var(--neon)' : 'var(--text-secondary)',
-    borderRadius: 5, padding: '4px 10px', fontSize: 11,
-    cursor: 'pointer', whiteSpace: 'nowrap',
-  });
 
   if (loading) return <div className="loading">Loading...</div>;
 
@@ -701,29 +664,22 @@ export default function DJDashboard({ previewProfile, hideFees }) {
             </div>
           </div>
 
-          {/* Date filter pills — same as the admin gig list */}
-          <div style={{display:'flex',gap:4,flexWrap:'wrap',alignItems:'center',marginBottom:12}}>
-            {FILTERS.map(f => (
-              <button key={f.key} onClick={() => setFilter(f.key)} style={filterBtnStyle(filter === f.key)}>
-                {f.label}
-              </button>
-            ))}
-            {rangeLabel && <span style={{fontSize:11,color:'var(--text-muted)',marginLeft:6}}>{rangeLabel}</span>}
+          {/* Period navigation — same control as the admin gig list */}
+          <div style={{marginBottom:12}}>
+            <PeriodNav mode={mode} offset={offset} onChange={(m, o) => { setMode(m); setOffset(o); }} />
           </div>
 
           {filteredUpcoming.length > 0 ? (
             <>
-              <div className="section-title">Upcoming gigs ({filteredUpcoming.length})</div>
+              <div className="section-title">{offset < 0 ? 'Gigs' : 'Upcoming gigs'} ({filteredUpcoming.length})</div>
               <div className="panel">
-                {filteredUpcoming.map(g => <GigRow key={g.id} g={g} profile={profile} isPreview={isPreview} hideFees={hideFees} onEdit={setEditingGig} onInvoice={setInvoiceGig} onHandBack={handleHandBack} isPast={false} />)}
+                {filteredUpcoming.map(g => <GigRow key={g.id} g={g} profile={profile} isPreview={isPreview} hideFees={hideFees} onEdit={setEditingGig} onInvoice={setInvoiceGig} onHandBack={handleHandBack} isPast={g.date < todayStr()} />)}
               </div>
             </>
           ) : (
-            upcomingGigs.length > 0 && (
-              <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,padding:20,textAlign:'center',color:'var(--text-secondary)',fontSize:13}}>
-                No gigs in this period — try another filter.
-              </div>
-            )
+            <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,padding:20,textAlign:'center',color:'var(--text-secondary)',fontSize:13}}>
+              No gigs in this period.
+            </div>
           )}
         </div>
       )}
