@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { getVenueColor, getVenueLogo } from '../../lib/venueGroups';
+import PeriodNav, { getPeriodRange } from '../PeriodNav';
 import CalendarView from '../CalendarView';
 import InvoiceModal from '../InvoiceModal';
 
@@ -18,40 +19,6 @@ function toIso(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-function getDateRange(filter) {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const dow     = (today.getDay() + 6) % 7;
-  const thisMon = new Date(today); thisMon.setDate(today.getDate() - dow);
-  const thisSun = new Date(thisMon); thisSun.setDate(thisMon.getDate() + 6);
-  const nextMon = new Date(thisMon); nextMon.setDate(thisMon.getDate() + 7);
-  const nextSun = new Date(nextMon); nextSun.setDate(nextMon.getDate() + 6);
-
-  if (filter === 'week')     return { from: toIso(thisMon), to: toIso(thisSun) };
-  if (filter === 'nextweek') return { from: toIso(nextMon), to: toIso(nextSun) };
-  if (filter === 'month') {
-    return { from: toIso(new Date(today.getFullYear(), today.getMonth(), 1)), to: toIso(new Date(today.getFullYear(), today.getMonth() + 1, 0)) };
-  }
-  if (filter === 'nextmonth') {
-    return { from: toIso(new Date(today.getFullYear(), today.getMonth() + 1, 1)), to: toIso(new Date(today.getFullYear(), today.getMonth() + 2, 0)) };
-  }
-  if (filter === 'restofyear') {
-    const start = new Date(today.getFullYear(), today.getMonth() + 2, 1);
-    return { from: toIso(start), to: `${today.getFullYear()}-12-31` };
-  }
-  if (filter === 'all') {
-    return { from: toIso(today), to: null };
-  }
-  return null;
-}
-
-const FILTERS = [
-  { key:'week',       label:'This week' },
-  { key:'nextweek',   label:'Next week' },
-  { key:'month',      label:'This month' },
-  { key:'nextmonth',  label:'Next month' },
-  { key:'restofyear', label:'Rest of year' },
-  { key:'all',        label:'All' },
-];
 
 function isNightTime(time) {
   if (!time) return false;
@@ -144,7 +111,8 @@ function GigRow({ g, hideFees, onInvoice, isPast }) {
 
 export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, hideFees, onAccept, onReject, onToggleUnavail, invoiceGig, setInvoiceGig }) {
   const [subtab, setSubtab] = useState('upcoming');
-  const [filter, setFilter] = useState('week');
+  const [mode, setMode]     = useState('week');
+  const [offset, setOffset] = useState(0);
   const now   = new Date();
   const today = todayStr();
 
@@ -155,20 +123,17 @@ export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, hideFee
   const pastGigs     = myConfirmed.filter(g => g.date < today).reverse();
   const nextGig      = upcomingGigs[0];
 
-  // Filtered list for the Upcoming sub-tab
-  const range = getDateRange(filter);
-  const filteredUpcoming = upcomingGigs.filter(g => {
-    if (!range) return true;
+  // Filtered list for the Upcoming sub-tab. Stepping into past periods
+  // shows that period's completed gigs; the current period starts at today
+  // (today's gigs live in the banner, earlier ones in History).
+  const range = getPeriodRange(mode, offset);
+  const viewingCurrent = mode === 'all' || offset === 0;
+  const filteredUpcoming = myConfirmed.filter(g => {
+    if (viewingCurrent && g.date <= today) return false;
     if (range.from && g.date < range.from) return false;
     if (range.to && g.date > range.to) return false;
     return true;
   });
-
-  const rangeLabel = range
-    ? range.to
-      ? `${formatDate(range.from)} – ${formatDate(range.to)}`
-      : `${formatDate(range.from)} onwards`
-    : null;
 
   const myMonthEarnings    = myGigs.filter(g => {
     if (g.status !== 'confirmed' || !g.fee) return false;
@@ -187,14 +152,6 @@ export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, hideFee
     color: active ? 'var(--neon)' : 'var(--text-secondary)',
     fontSize: 12, fontWeight: active ? 600 : 400,
     cursor: 'pointer', transition: 'all 0.15s',
-  });
-
-  const filterBtnStyle = (active) => ({
-    background: active ? 'var(--neon-bg)' : 'transparent',
-    border: `1px solid ${active ? 'var(--neon-border)' : 'var(--border-mid)'}`,
-    color: active ? 'var(--neon)' : 'var(--text-secondary)',
-    borderRadius: 5, padding: '4px 10px', fontSize: 11,
-    cursor: 'pointer', whiteSpace: 'nowrap',
   });
 
   const nextVc   = nextGig ? getVenueColor(nextGig.venue) : null;
@@ -309,29 +266,22 @@ export default function MyGigsTab({ myGigs, myUnavail, userUid, allGigs, hideFee
             </>
           )}
 
-          {/* Date filter pills — same as the admin gig list */}
-          <div style={{display:'flex',gap:4,flexWrap:'wrap',alignItems:'center',marginBottom:12}}>
-            {FILTERS.map(f => (
-              <button key={f.key} onClick={() => setFilter(f.key)} style={filterBtnStyle(filter === f.key)}>
-                {f.label}
-              </button>
-            ))}
-            {rangeLabel && <span style={{fontSize:11,color:'var(--text-muted)',marginLeft:6}}>{rangeLabel}</span>}
+          {/* Period navigation — same control as the admin gig list */}
+          <div style={{marginBottom:12}}>
+            <PeriodNav mode={mode} offset={offset} onChange={(m, o) => { setMode(m); setOffset(o); }} />
           </div>
 
           {filteredUpcoming.length > 0 ? (
             <>
-              <div className="section-title">Upcoming gigs ({filteredUpcoming.length})</div>
+              <div className="section-title">{offset < 0 ? 'Gigs' : 'Upcoming gigs'} ({filteredUpcoming.length})</div>
               <div className="panel">
-                {filteredUpcoming.map(g => <GigRow key={g.id} g={g} hideFees={hideFees} onInvoice={setInvoiceGig} isPast={false} />)}
+                {filteredUpcoming.map(g => <GigRow key={g.id} g={g} hideFees={hideFees} onInvoice={setInvoiceGig} isPast={g.date < today} />)}
               </div>
             </>
           ) : (
-            upcomingGigs.length > 0 && (
-              <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,padding:20,textAlign:'center',color:'var(--text-muted)',fontSize:13}}>
-                No gigs in this period — try another filter.
-              </div>
-            )
+            <div style={{background:'var(--bg-surface)',border:'1px solid var(--border)',borderRadius:10,padding:20,textAlign:'center',color:'var(--text-muted)',fontSize:13}}>
+              No gigs in this period.
+            </div>
           )}
         </>
       )}
