@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { getVenueColor, getVenueLogo } from '../../lib/venueGroups';
+import PeriodNav, { getPeriodRange } from '../PeriodNav';
 
 function formatDate(iso) {
   if (!iso) return '';
@@ -21,36 +22,6 @@ function isNightTime(time) {
   if (!time) return false;
   const hour = parseInt(time.split(':')[0], 10);
   return hour >= 18 || hour < 6;
-}
-
-function getDateRange(filter) {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const dow     = (today.getDay() + 6) % 7;
-  const thisMon = new Date(today); thisMon.setDate(today.getDate() - dow);
-  const thisSun = new Date(thisMon); thisSun.setDate(thisMon.getDate() + 6);
-  const nextMon = new Date(thisMon); nextMon.setDate(thisMon.getDate() + 7);
-  const nextSun = new Date(nextMon); nextSun.setDate(nextMon.getDate() + 6);
-
-  if (filter === 'week')     return { from: toIso(thisMon), to: toIso(thisSun) };
-  if (filter === 'nextweek') return { from: toIso(nextMon), to: toIso(nextSun) };
-  if (filter === 'month') {
-    return { from: toIso(new Date(today.getFullYear(), today.getMonth(), 1)), to: toIso(new Date(today.getFullYear(), today.getMonth() + 1, 0)) };
-  }
-  if (filter === 'nextmonth') {
-    return { from: toIso(new Date(today.getFullYear(), today.getMonth() + 1, 1)), to: toIso(new Date(today.getFullYear(), today.getMonth() + 2, 0)) };
-  }
-  if (filter === 'restofyear') {
-    const start = new Date(today.getFullYear(), today.getMonth() + 2, 1);
-    return { from: toIso(start), to: `${today.getFullYear()}-12-31` };
-  }
-  if (filter === 'completed') {
-    const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
-    return { from: `${today.getFullYear()}-01-01`, to: toIso(yesterday) };
-  }
-  if (filter === 'all') {
-    return { from: toIso(today), to: null };
-  }
-  return null;
 }
 
 function GigMenu({ g, onConfirm, onReject, onEdit, onDelete }) {
@@ -301,9 +272,12 @@ function UnassignedColumn({ gigs, hideFees, onConfirm, onReject, onEdit, onDelet
   );
 }
 
-function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, onEdit, onDelete, onDropAssign, onShowPending }) {
-  const range = getDateRange(filter);
-  const [dragOver, setDragOver] = useState(false);
+function DJColumn({ dj, gigs, dotColor, hideFees, range, collapseBefore, onConfirm, onReject, onEdit, onDelete, onDropAssign, onShowPending }) {
+  const [dragOver, setDragOver]       = useState(false);
+  const [showEarlier, setShowEarlier] = useState(false);
+
+  // Collapse state resets whenever the viewed period changes.
+  useEffect(() => { setShowEarlier(false); }, [range.from, range.to]);
 
   const matched = gigs
     .filter(g => {
@@ -318,12 +292,12 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
       }
       return true;
     })
-    .sort((a, b) => {
-      if (filter === 'completed') {
-        return b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || '');
-      }
-      return a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || '');
-    });
+    .sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''));
+
+  // When viewing the current period, gigs that already happened collapse
+  // behind an expander so the column opens at today.
+  const earlier = collapseBefore ? matched.filter(g => g.date < collapseBefore) : [];
+  const current = collapseBefore ? matched.filter(g => g.date >= collapseBefore) : matched;
 
   // Pending offers for this DJ across ALL dates (not just the current filter),
   // so unanswered offers are visible no matter which range you're viewing.
@@ -391,27 +365,31 @@ function DJColumn({ dj, gigs, dotColor, hideFees, filter, onConfirm, onReject, o
       {matched.length === 0 ? (
         <div style={{padding:'20px 14px',textAlign:'center',color:'var(--text-muted)',fontSize:12}}>No gigs in this period</div>
       ) : (
-        matched.map(g => (
-          <GigCard key={g.id} g={g} hideFees={hideFees} draggable onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete} />
-        ))
+        <>
+          {earlier.length > 0 && (
+            <button
+              onClick={() => setShowEarlier(s => !s)}
+              style={{width:'100%',background:'transparent',border:'none',borderBottom:'1px solid var(--border)',color:'var(--text-muted)',fontSize:11,padding:'8px 14px',cursor:'pointer',textAlign:'left'}}
+            >
+              {showEarlier ? '▾ Hide' : '▸ Show'} {earlier.length} earlier gig{earlier.length !== 1 ? 's' : ''}
+            </button>
+          )}
+          {showEarlier && earlier.map(g => (
+            <GigCard key={g.id} g={g} hideFees={hideFees} draggable onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete} />
+          ))}
+          {current.map(g => (
+            <GigCard key={g.id} g={g} hideFees={hideFees} draggable onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete} />
+          ))}
+        </>
       )}
     </div>
   );
 }
 
 const DOT_COLORS = ['#00d4aa','#a080ff','#40a0ff','#ff60c0','#ffbb00','#80d040'];
-const FILTERS = [
-  { key:'week',       label:'This week' },
-  { key:'nextweek',   label:'Next week' },
-  { key:'month',      label:'This month' },
-  { key:'nextmonth',  label:'Next month' },
-  { key:'restofyear', label:'Rest of year' },
-  { key:'completed',  label:'Completed' },
-  { key:'all',        label:'All' },
-];
-
 export default function GigList({ gigs, users = [], hideFees, onConfirm, onReject, onEdit, onDelete, onDropAssign, onDropUnassign }) {
-  const [filter, setFilter]       = useState('week');
+  const [mode, setMode]           = useState('week');
+  const [offset, setOffset]       = useState(0);
   const [hiddenDJs, setHiddenDJs] = useState({});
 
   const pending = gigs.filter(g => g.status === 'pending');
@@ -421,19 +399,15 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
   }
 
   const visibleUsers = users.filter(dj => !hiddenDJs[dj.uid]);
-  const range        = getDateRange(filter);
-
-  const rangeLabel = range
-    ? range.to
-      ? `${formatDate(range.from)} – ${formatDate(range.to)}`
-      : `${formatDate(range.from)} onwards`
-    : null;
+  const range        = getPeriodRange(mode, offset);
+  // Viewing the current week/month: collapse gigs before today in each column.
+  const collapseBefore = mode !== 'all' && offset === 0 ? todayStr() : null;
 
   return (
     <div className="page-body" style={{maxWidth:'100%', paddingLeft:28, paddingRight:28}}>
       {pending.length > 0 && (
         <div
-          onClick={() => setFilter('all')}
+          onClick={() => { setMode('all'); setOffset(0); }}
           title="Show all upcoming gigs"
           style={{background:'var(--pending-bg)',border:'1px solid var(--pending-border)',borderRadius:8,padding:'10px 16px',marginBottom:16,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer'}}
         >
@@ -445,23 +419,7 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
       )}
 
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10,flexWrap:'wrap',gap:8}}>
-        <div style={{display:'flex',gap:4,flexWrap:'wrap',alignItems:'center'}}>
-          {FILTERS.map(f => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              style={{
-                background: filter === f.key ? 'var(--neon-bg)' : 'transparent',
-                border: `1px solid ${filter === f.key ? 'var(--neon-border)' : 'var(--border-mid)'}`,
-                color: filter === f.key ? 'var(--neon)' : 'var(--text-secondary)',
-                borderRadius:5, padding:'4px 10px', fontSize:11, cursor:'pointer', whiteSpace:'nowrap',
-              }}
-            >
-              {f.label}
-            </button>
-          ))}
-          {rangeLabel && <span style={{fontSize:11,color:'var(--text-muted)',marginLeft:6}}>{rangeLabel}</span>}
-        </div>
+        <PeriodNav mode={mode} offset={offset} onChange={(m, o) => { setMode(m); setOffset(o); }} />
         <button className="btn btn-primary btn-sm" onClick={() => onEdit(null)}>+ Assign gig</button>
       </div>
 
@@ -499,10 +457,10 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
           <DJColumn
             key={dj.uid} dj={dj} gigs={gigs}
             dotColor={DOT_COLORS[users.indexOf(dj) % DOT_COLORS.length]}
-            hideFees={hideFees} filter={filter}
+            hideFees={hideFees} range={range} collapseBefore={collapseBefore}
             onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete}
             onDropAssign={onDropAssign}
-            onShowPending={() => setFilter('all')}
+            onShowPending={() => { setMode('all'); setOffset(0); }}
           />
         ))}
       </div>
