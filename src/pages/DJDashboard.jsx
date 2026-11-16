@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getGigsForDJ, updateGigStatus, getUnavailableDates, setUnavailableDates, createGigConfirmed, updateGig, createNotification } from '../lib/db';
+import { getGigsForDJ, updateGigStatus, getUnavailableDates, setUnavailableDates, createGigConfirmed, updateGig } from '../lib/db';
 import { getVenueColor, getVenueLogo } from '../lib/venueGroups';
 import { useAuth } from '../hooks/useAuth';
 import CalendarView from '../components/CalendarView';
@@ -514,7 +514,6 @@ export default function DJDashboard({ previewProfile, hideFees }) {
 
   async function handleAccept(gig) {
     await updateGigStatus(gig.id, 'confirmed');
-    if (!isPreview) createNotification('admin', `${profile.name} accepted a gig`, `${gig.venue} — ${gig.date} · ${gig.time}`);
     load();
   }
   async function handleReject(gig) {
@@ -525,7 +524,6 @@ export default function DJDashboard({ previewProfile, hideFees }) {
       notes: gig.notes, fee: gig.fee,
       status: 'unassigned',
     });
-    if (!isPreview) createNotification('admin', `${profile.name} rejected a gig`, `${gig.venue} — ${gig.date} · ${gig.time} · back in the unassigned pool`);
     load();
   }
   async function handleHandBack(gig) {
@@ -538,7 +536,6 @@ export default function DJDashboard({ previewProfile, hideFees }) {
       notes: gig.notes, fee: gig.fee,
       status: 'unassigned',
     });
-    if (!isPreview) createNotification('admin', `${profile.name} handed back a gig`, `${gig.venue} — ${gig.date} · ${gig.time} · back in the unassigned pool`);
     load();
     setToast('Gig handed back');
   }
