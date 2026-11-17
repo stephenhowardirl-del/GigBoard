@@ -62,15 +62,15 @@ function MultiCalendar({ selected, onChange, unavailDates = [] }) {
   }
 
   return (
-    <div style={{background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:8,padding:12}}>
+    <div style={{background:'var(--bg-base)',border:'1px solid var(--border-mid)',borderRadius:8,padding:12}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-        <button onClick={prevMonth} style={{background:'transparent',border:'none',color:'#6060a0',fontSize:16,cursor:'pointer',padding:'0 6px'}}>‹</button>
-        <div style={{fontSize:12,color:'#e8e8f0',fontWeight:600}}>{MONTHS[month]} {year}</div>
-        <button onClick={nextMonth} style={{background:'transparent',border:'none',color:'#6060a0',fontSize:16,cursor:'pointer',padding:'0 6px'}}>›</button>
+        <button onClick={prevMonth} style={{background:'transparent',border:'none',color:'var(--text-secondary)',fontSize:16,cursor:'pointer',padding:'0 6px'}}>‹</button>
+        <div style={{fontSize:12,color:'var(--text-primary)',fontWeight:600}}>{MONTHS[month]} {year}</div>
+        <button onClick={nextMonth} style={{background:'transparent',border:'none',color:'var(--text-secondary)',fontSize:16,cursor:'pointer',padding:'0 6px'}}>›</button>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2,marginBottom:4}}>
         {DAYS.map(d => (
-          <div key={d} style={{fontSize:9,color:'#404060',textAlign:'center',padding:'2px 0',textTransform:'uppercase'}}>{d}</div>
+          <div key={d} style={{fontSize:9,color:'var(--text-muted)',textAlign:'center',padding:'2px 0',textTransform:'uppercase'}}>{d}</div>
         ))}
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2}}>
@@ -88,9 +88,9 @@ function MultiCalendar({ selected, onChange, unavailDates = [] }) {
               style={{
                 textAlign:'center', padding:'5px 0', borderRadius:4, fontSize:11, cursor:'pointer',
                 fontWeight: isSelected ? 700 : 400,
-                background: isSelected ? '#00ffc2' : isToday ? '#0a1a14' : 'transparent',
-                color: isSelected ? '#000' : isUnavail ? '#ff6090' : isToday ? '#00ffc2' : '#c0c0d0',
-                border: isSelected ? '1px solid #00ffc2' : isToday ? '1px solid #00ffc230' : '1px solid transparent',
+                background: isSelected ? 'var(--neon)' : isToday ? 'var(--neon-bg)' : 'transparent',
+                color: isSelected ? 'var(--on-neon)' : isUnavail ? 'var(--danger)' : isToday ? 'var(--neon)' : 'var(--text-primary)',
+                border: isSelected ? '1px solid var(--neon)' : isToday ? '1px solid var(--neon-border)' : '1px solid transparent',
               }}
             >
               {d}
@@ -99,7 +99,7 @@ function MultiCalendar({ selected, onChange, unavailDates = [] }) {
         })}
       </div>
       {selected.length > 0 && (
-        <div style={{marginTop:10,fontSize:11,color:'#00ffc2',textAlign:'center',fontWeight:600}}>
+        <div style={{marginTop:10,fontSize:11,color:'var(--neon)',textAlign:'center',fontWeight:600}}>
           {selected.length} date{selected.length !== 1 ? 's' : ''} selected
         </div>
       )}
@@ -120,15 +120,15 @@ function SingleCalendar({ selected, onChange, unavailDates = [] }) {
   const today       = todayStr();
 
   return (
-    <div style={{background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:8,padding:12}}>
+    <div style={{background:'var(--bg-base)',border:'1px solid var(--border-mid)',borderRadius:8,padding:12}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-        <button onClick={prevMonth} style={{background:'transparent',border:'none',color:'#6060a0',fontSize:16,cursor:'pointer',padding:'0 6px'}}>‹</button>
-        <div style={{fontSize:12,color:'#e8e8f0',fontWeight:600}}>{MONTHS[month]} {year}</div>
-        <button onClick={nextMonth} style={{background:'transparent',border:'none',color:'#6060a0',fontSize:16,cursor:'pointer',padding:'0 6px'}}>›</button>
+        <button onClick={prevMonth} style={{background:'transparent',border:'none',color:'var(--text-secondary)',fontSize:16,cursor:'pointer',padding:'0 6px'}}>‹</button>
+        <div style={{fontSize:12,color:'var(--text-primary)',fontWeight:600}}>{MONTHS[month]} {year}</div>
+        <button onClick={nextMonth} style={{background:'transparent',border:'none',color:'var(--text-secondary)',fontSize:16,cursor:'pointer',padding:'0 6px'}}>›</button>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2,marginBottom:4}}>
         {DAYS.map(d => (
-          <div key={d} style={{fontSize:9,color:'#404060',textAlign:'center',padding:'2px 0',textTransform:'uppercase'}}>{d}</div>
+          <div key={d} style={{fontSize:9,color:'var(--text-muted)',textAlign:'center',padding:'2px 0',textTransform:'uppercase'}}>{d}</div>
         ))}
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2}}>
@@ -146,9 +146,9 @@ function SingleCalendar({ selected, onChange, unavailDates = [] }) {
               style={{
                 textAlign:'center', padding:'5px 0', borderRadius:4, fontSize:11, cursor:'pointer',
                 fontWeight: isSelected ? 700 : 400,
-                background: isSelected ? '#00ffc2' : isToday ? '#0a1a14' : 'transparent',
-                color: isSelected ? '#000' : isUnavail ? '#ff6090' : isToday ? '#00ffc2' : '#c0c0d0',
-                border: isToday && !isSelected ? '1px solid #00ffc230' : isUnavail && !isSelected ? '1px solid #ff407040' : '1px solid transparent',
+                background: isSelected ? 'var(--neon)' : isToday ? 'var(--neon-bg)' : 'transparent',
+                color: isSelected ? 'var(--on-neon)' : isUnavail ? 'var(--danger)' : isToday ? 'var(--neon)' : 'var(--text-primary)',
+                border: isToday && !isSelected ? '1px solid var(--neon-border)' : isUnavail && !isSelected ? '1px solid var(--danger-border)' : '1px solid transparent',
               }}
             >
               {d}
@@ -157,7 +157,7 @@ function SingleCalendar({ selected, onChange, unavailDates = [] }) {
         })}
       </div>
       {selected && (
-        <div style={{marginTop:10,fontSize:11,color:'#00ffc2',textAlign:'center',fontWeight:600}}>
+        <div style={{marginTop:10,fontSize:11,color:'var(--neon)',textAlign:'center',fontWeight:600}}>
           {(() => { const d = new Date(selected + 'T12:00:00'); return d.toLocaleDateString('en-IE', { weekday:'short', day:'numeric', month:'short', year:'numeric' }); })()}
         </div>
       )}
@@ -298,9 +298,9 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
 
   const btnStyle = (active) => ({
     flex: 1, padding: '7px 0', borderRadius: 6,
-    border: `1px solid ${active ? '#00ffc250' : '#2a2a40'}`,
-    background: active ? '#00ffc215' : 'transparent',
-    color: active ? '#00ffc2' : '#8080a0',
+    border: `1px solid ${active ? 'var(--neon-border)' : 'var(--border-mid)'}`,
+    background: active ? 'var(--neon-bg)' : 'transparent',
+    color: active ? 'var(--neon)' : 'var(--text-secondary)',
     fontSize: 12, fontWeight: active ? 600 : 400,
     cursor: 'pointer', transition: 'all 0.15s',
   });
@@ -360,7 +360,7 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
             {multiDates.length > 0 && (
               <div style={{marginTop:8, display:'flex', flexWrap:'wrap', gap:4}}>
                 {multiDates.map(d => (
-                  <span key={d} style={{fontSize:10,background:'#00ffc215',border:'1px solid #00ffc230',color:'#00ffc2',borderRadius:4,padding:'2px 6px'}}>
+                  <span key={d} style={{fontSize:10,background:'var(--neon-bg)',border:'1px solid var(--neon-border)',color:'var(--neon)',borderRadius:4,padding:'2px 6px'}}>
                     {new Date(d + 'T12:00:00').toLocaleDateString('en-IE', {day:'numeric', month:'short'})}
                   </span>
                 ))}
@@ -380,21 +380,21 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
             <div style={{display:'flex', gap:10}}>
               <div className="field" style={{flex:1}}>
                 <label>From</label>
-                <input type="date" value={recurStart} onChange={e => setRecurStart(e.target.value)} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'}} />
+                <input type="date" value={recurStart} onChange={e => setRecurStart(e.target.value)} style={{width:'100%',background:'var(--bg-base)',border:'1px solid var(--border-mid)',borderRadius:6,color:'var(--text-primary)',fontSize:13,padding:'8px 10px'}} />
               </div>
               <div className="field" style={{flex:1}}>
                 <label>To</label>
-                <input type="date" value={recurEnd} onChange={e => setRecurEnd(e.target.value)} style={{width:'100%',background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:6,color:'#e8e8f0',fontSize:13,padding:'8px 10px'}} />
+                <input type="date" value={recurEnd} onChange={e => setRecurEnd(e.target.value)} style={{width:'100%',background:'var(--bg-base)',border:'1px solid var(--border-mid)',borderRadius:6,color:'var(--text-primary)',fontSize:13,padding:'8px 10px'}} />
               </div>
             </div>
             {preview.length > 0 && (
-              <div style={{background:'#0a1a10',border:'1px solid #00ffc230',borderRadius:6,padding:10,marginBottom:12}}>
-                <div style={{fontSize:11,color:'#00ffc2',fontWeight:600,marginBottom:6}}>
+              <div style={{background:'var(--neon-bg)',border:'1px solid var(--neon-border)',borderRadius:6,padding:10,marginBottom:12}}>
+                <div style={{fontSize:11,color:'var(--neon)',fontWeight:600,marginBottom:6}}>
                   {preview.length} gig{preview.length !== 1 ? 's' : ''} will be created — every {DAY_NAMES[recurDay]}
                 </div>
                 <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
                   {preview.map(d => (
-                    <span key={d} style={{fontSize:10,background:'#00ffc215',border:'1px solid #00ffc230',color:'#00ffc2',borderRadius:4,padding:'2px 6px'}}>
+                    <span key={d} style={{fontSize:10,background:'var(--neon-bg)',border:'1px solid var(--neon-border)',color:'var(--neon)',borderRadius:4,padding:'2px 6px'}}>
                       {new Date(d + 'T12:00:00').toLocaleDateString('en-IE', {day:'numeric', month:'short'})}
                     </span>
                   ))}
@@ -422,21 +422,21 @@ export default function AssignGigModal({ onClose, onAssign, lockedVenue = null, 
 
         {/* Unavailability warning */}
         {unavailConflicts.length > 0 && (
-          <div style={{background:'#2a1a00',border:'1px solid #ffbb0030',borderRadius:6,padding:'8px 10px',fontSize:11,color:'#ffbb00',marginBottom:12}}>
+          <div style={{background:'var(--pending-bg)',border:'1px solid var(--pending-border)',borderRadius:6,padding:'8px 10px',fontSize:11,color:'var(--pending)',marginBottom:12}}>
             ⚠️ {selectedDj?.name || 'This DJ'} is marked unavailable on: {unavailConflicts.map(formatShort).join(', ')}
           </div>
         )}
 
         {/* Double-booking warning */}
         {gigConflicts.length > 0 && (
-          <div style={{background:'#1a000a',border:'1px solid #ff407040',borderRadius:6,padding:'10px 12px',fontSize:11,color:'#ff6090',marginBottom:12}}>
+          <div style={{background:'var(--danger-bg)',border:'1px solid var(--danger-border)',borderRadius:6,padding:'10px 12px',fontSize:11,color:'var(--danger)',marginBottom:12}}>
             <div style={{fontWeight:700,marginBottom:6}}>⚠️ {selectedDj?.name || 'This DJ'} already has {gigConflicts.length === 1 ? 'a gig' : `${gigConflicts.length} gigs`} on {gigConflicts.length === 1 ? 'this date' : 'these dates'}:</div>
             {gigConflicts.map(g => (
               <div key={g.id} style={{marginTop:3}}>
                 · {g.venue} — {formatShort(g.date)} at {g.time} ({g.status})
               </div>
             ))}
-            <div style={{marginTop:8,color:'#b08090'}}>You can still save — this is just a heads-up.</div>
+            <div style={{marginTop:8,color:'var(--text-secondary)'}}>You can still save — this is just a heads-up.</div>
           </div>
         )}
 
