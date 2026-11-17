@@ -4,6 +4,15 @@ import { db } from '../lib/firebase';
 import { jsPDF } from 'jspdf';
 import { getAllGigs } from '../lib/db';
 
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function toIso(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 function formatDate(iso) {
   if (!iso) return '';
   const d = new Date(iso + 'T12:00:00');
@@ -110,8 +119,10 @@ export default function InvoiceModal({ gig, userUid, allGigs = [], onClose }) {
   }
 
   async function saveInvoiceRecord() {
-    const today   = new Date().toISOString().split('T')[0];
-    const dueDate = new Date(Date.now() + payTerms * 86400000).toISOString().split('T')[0];
+    const today   = todayStr();
+    const due     = new Date(today + 'T12:00:00');
+    due.setDate(due.getDate() + payTerms);
+    const dueDate = toIso(due);
     const invRef  = doc(db, 'djProfiles', userUid, 'invoices', invoiceNum);
     await setDoc(invRef, {
       invoiceNum,
@@ -157,7 +168,7 @@ export default function InvoiceModal({ gig, userUid, allGigs = [], onClose }) {
     pdf.text('DUE DATE',   margin+55, y+1);
     pdf.text('INVOICE NO', margin+110, y+1);
     pdf.setTextColor(30,30,40); pdf.setFontSize(9); pdf.setFont('helvetica','normal');
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayStr();
     pdf.text(formatDate(today),        margin+4,   y+8);
     pdf.text(addDays(today, payTerms), margin+55,  y+8);
     pdf.text(invoiceNum,               margin+110, y+8);
@@ -219,49 +230,49 @@ export default function InvoiceModal({ gig, userUid, allGigs = [], onClose }) {
 
   return (
     <div style={{position:'fixed',inset:0,background:'#00000080',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:20}} onClick={onClose}>
-      <div style={{background:'#0d0d14',border:'1px solid #2a2a40',borderRadius:12,padding:28,width:'100%',maxWidth:500,maxHeight:'90vh',overflowY:'auto'}} onClick={e => e.stopPropagation()}>
+      <div style={{background:'var(--bg-surface)',border:'1px solid var(--border-mid)',borderRadius:12,padding:28,width:'100%',maxWidth:500,maxHeight:'90vh',overflowY:'auto'}} onClick={e => e.stopPropagation()}>
 
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
           <div>
-            <div style={{fontSize:17,fontWeight:600,color:'#e8e8f0'}}>Create Invoice</div>
-            <div style={{fontSize:12,color:'#8080a0',marginTop:2}}>{invoiceNum}</div>
+            <div style={{fontSize:17,fontWeight:600,color:'var(--text-primary)'}}>Create Invoice</div>
+            <div style={{fontSize:12,color:'var(--text-secondary)',marginTop:2}}>{invoiceNum}</div>
           </div>
-          <button onClick={onClose} style={{background:'transparent',border:'none',color:'#404060',fontSize:20,cursor:'pointer'}}>✕</button>
+          <button onClick={onClose} style={{background:'transparent',border:'none',color:'var(--text-muted)',fontSize:20,cursor:'pointer'}}>✕</button>
         </div>
 
         {loading ? (
-          <div style={{textAlign:'center',padding:20,color:'#8080a0'}}>Loading...</div>
+          <div style={{textAlign:'center',padding:20,color:'var(--text-secondary)'}}>Loading...</div>
         ) : !djProfile ? (
-          <div style={{textAlign:'center',padding:20,color:'#ff6090',fontSize:13}}>Please fill in your profile before generating an invoice.</div>
+          <div style={{textAlign:'center',padding:20,color:'var(--danger)',fontSize:13}}>Please fill in your profile before generating an invoice.</div>
         ) : (
           <>
-            <div style={{fontSize:11,color:'#8080a0',textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:8}}>Primary gig</div>
-            <div style={{background:'#002a1a',border:'1px solid #00ffcc40',borderRadius:8,padding:'10px 12px',marginBottom:16}}>
-              <div style={{fontSize:13,fontWeight:600,color:'#e8e8f0'}}>{gig.venue}</div>
-              <div style={{fontSize:11,color:'#8080a0',marginTop:2}}>{formatDateShort(gig.date)} · {gig.time}</div>
+            <div style={{fontSize:11,color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:8}}>Primary gig</div>
+            <div style={{background:'var(--neon-bg)',border:'1px solid var(--neon-border)',borderRadius:8,padding:'10px 12px',marginBottom:16}}>
+              <div style={{fontSize:13,fontWeight:600,color:'var(--text-primary)'}}>{gig.venue}</div>
+              <div style={{fontSize:11,color:'var(--text-secondary)',marginTop:2}}>{formatDateShort(gig.date)} · {gig.time}</div>
               <div style={{display:'flex',alignItems:'center',gap:8,marginTop:8}}>
-                <span style={{fontSize:11,color:'#8080a0'}}>Fee: €</span>
-                <input type="number" value={fees[gig.id]||''} onChange={e => setFees(f=>({...f,[gig.id]:e.target.value}))} style={{width:80,background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:5,color:'#00ffc2',fontSize:13,padding:'4px 8px',fontWeight:700}} />
+                <span style={{fontSize:11,color:'var(--text-secondary)'}}>Fee: €</span>
+                <input type="number" value={fees[gig.id]||''} onChange={e => setFees(f=>({...f,[gig.id]:e.target.value}))} style={{width:80,background:'var(--bg-base)',border:'1px solid var(--border-mid)',borderRadius:5,color:'var(--money)',fontSize:13,padding:'4px 8px',fontWeight:700}} />
               </div>
             </div>
 
             {relatedGigs.length > 0 && (
               <>
-                <div style={{fontSize:11,color:'#8080a0',textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:8}}>Add more gigs</div>
+                <div style={{fontSize:11,color:'var(--text-secondary)',textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:8}}>Add more gigs</div>
                 {Object.entries(gigsByVenue).map(([venue, venueGigs]) => (
                   <div key={venue} style={{marginBottom:12}}>
-                    <div style={{fontSize:11,color:'#6060a0',marginBottom:6,fontWeight:600}}>{venue}</div>
+                    <div style={{fontSize:11,color:'var(--text-secondary)',marginBottom:6,fontWeight:600}}>{venue}</div>
                     {venueGigs.map(g => {
                       const isSelected = selectedIds.has(g.id);
                       return (
-                        <div key={g.id} onClick={() => toggleGig(g.id)} style={{background:isSelected?'#001a10':'#0f0f1a',border:`1px solid ${isSelected?'#00ffcc30':'#1e1e2e'}`,borderRadius:7,padding:'9px 12px',marginBottom:6,cursor:'pointer',display:'flex',alignItems:'center',gap:10}}>
-                          <div style={{width:14,height:14,borderRadius:3,border:`1px solid ${isSelected?'#00ffcc':'#2a2a40'}`,background:isSelected?'#00ffcc':'transparent',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                            {isSelected && <div style={{width:8,height:8,background:'#0a0a0f',borderRadius:1}} />}
+                        <div key={g.id} onClick={() => toggleGig(g.id)} style={{background:isSelected?'var(--neon-bg)':'var(--bg-surface)',border:`1px solid ${isSelected?'var(--neon-border)':'var(--bg-hover)'}`,borderRadius:7,padding:'9px 12px',marginBottom:6,cursor:'pointer',display:'flex',alignItems:'center',gap:10}}>
+                          <div style={{width:14,height:14,borderRadius:3,border:`1px solid ${isSelected?'var(--neon)':'var(--border-mid)'}`,background:isSelected?'var(--neon)':'transparent',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                            {isSelected && <div style={{width:8,height:8,background:'var(--bg-base)',borderRadius:1}} />}
                           </div>
                           <div style={{flex:1}}>
-                            <div style={{fontSize:12,color:'#e8e8f0'}}>{formatDateShort(g.date)} · {g.time}</div>
+                            <div style={{fontSize:12,color:'var(--text-primary)'}}>{formatDateShort(g.date)} · {g.time}</div>
                           </div>
-                          <input type="number" value={fees[g.id]||''} onChange={e=>{e.stopPropagation();setFees(f=>({...f,[g.id]:e.target.value}));}} onClick={e=>e.stopPropagation()} placeholder="Fee" style={{width:70,background:'#0a0a0f',border:'1px solid #2a2a40',borderRadius:5,color:'#e8e8f0',fontSize:12,padding:'4px 8px',textAlign:'right'}} />
+                          <input type="number" value={fees[g.id]||''} onChange={e=>{e.stopPropagation();setFees(f=>({...f,[g.id]:e.target.value}));}} onClick={e=>e.stopPropagation()} placeholder="Fee" style={{width:70,background:'var(--bg-base)',border:'1px solid var(--border-mid)',borderRadius:5,color:'var(--text-primary)',fontSize:12,padding:'4px 8px',textAlign:'right'}} />
                         </div>
                       );
                     })}
@@ -270,15 +281,15 @@ export default function InvoiceModal({ gig, userUid, allGigs = [], onClose }) {
               </>
             )}
 
-            <div style={{marginTop:16,padding:'12px',background:'#13131f',border:'1px solid #1e1e2e',borderRadius:8,fontSize:12}}>
+            <div style={{marginTop:16,padding:'12px',background:'var(--bg-raised)',border:'1px solid var(--border)',borderRadius:8,fontSize:12}}>
               {hasVat && (
                 <>
-                  <div style={{display:'flex',justifyContent:'space-between',color:'#9090b0',marginBottom:4}}><span>Subtotal</span><span>€{subtotal.toFixed(2)}</span></div>
-                  <div style={{display:'flex',justifyContent:'space-between',color:'#9090b0',marginBottom:8}}><span>VAT 23%</span><span>€{vatAmt.toFixed(2)}</span></div>
+                  <div style={{display:'flex',justifyContent:'space-between',color:'var(--text-secondary)',marginBottom:4}}><span>Subtotal</span><span>€{subtotal.toFixed(2)}</span></div>
+                  <div style={{display:'flex',justifyContent:'space-between',color:'var(--text-secondary)',marginBottom:8}}><span>VAT 23%</span><span>€{vatAmt.toFixed(2)}</span></div>
                 </>
               )}
-              <div style={{display:'flex',justifyContent:'space-between',color:'#00ffc2',fontWeight:600,fontSize:14}}><span>Total</span><span>€{total.toFixed(2)}</span></div>
-              <div style={{fontSize:11,color:'#505070',marginTop:8}}>Due {addDays(new Date().toISOString().split('T')[0], payTerms)} · {invoiceNum}</div>
+              <div style={{display:'flex',justifyContent:'space-between',color:'var(--money)',fontWeight:600,fontSize:14}}><span>Total</span><span>€{total.toFixed(2)}</span></div>
+              <div style={{fontSize:11,color:'var(--text-muted)',marginTop:8}}>Due {addDays(todayStr(), payTerms)} · {invoiceNum}</div>
             </div>
 
             <div style={{display:'flex',gap:10,marginTop:16}}>
