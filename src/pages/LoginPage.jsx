@@ -7,7 +7,7 @@ export default function LoginPage() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <div className="login-logo">GIG<span>BOARD</span></div>
+        <div className="login-logo">GigBoard</div>
         <p className="login-tagline">DJ schedule management</p>
 
         <button className="google-btn" onClick={login}>
