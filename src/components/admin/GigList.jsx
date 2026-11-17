@@ -477,28 +477,36 @@ function WeekBands({ djs, allUsers, gigs, range, mode, collapseBefore, isMobile,
   }
 
   const today = todayStr();
+
+  // Bands always cover whole Monday-to-Sunday weeks, so a week that straddles
+  // two months shows in full in both. `shownRange` is what gets drawn; `range`
+  // (the calendar month) is still what the header gig counts and fees add up.
+  const shownRange = {
+    from: mondayOf(range.from),
+    to: range.to ? addDaysIso(mondayOf(range.to), 6) : null,
+  };
+
   const perDJ = djs.map(dj => ({
     dj,
     color: DOT_COLORS[allUsers.indexOf(dj) % DOT_COLORS.length],
-    list: gigsForDJ(dj, gigs, range),
+    list: gigsForDJ(dj, gigs, shownRange),
+    inPeriod: gigsForDJ(dj, gigs, range),
     pendingCount: gigs.filter(g => belongsTo(g, dj) && g.status === 'pending').length,
   }));
 
-  // Last day to draw: the end of the month, or in All view the last gig on the books.
-  const lastDate = range.to || perDJ.reduce((max, p) => p.list.reduce((m, g) => (g.date > m ? g.date : m), max), range.from);
+  // Last day to draw: the end of the last week, or in All view the last gig on the books.
+  const lastDate = shownRange.to || perDJ.reduce((max, p) => p.list.reduce((m, g) => (g.date > m ? g.date : m), max), shownRange.from);
 
   const weeks = [];
-  for (let start = mondayOf(range.from); start <= lastDate; start = addDaysIso(start, 7)) {
+  for (let start = shownRange.from; start <= lastDate; start = addDaysIso(start, 7)) {
     const end   = addDaysIso(start, 6);
     const cells = perDJ.map(p => p.list.filter(g => g.date >= start && g.date <= end));
     const count = cells.reduce((sum, c) => sum + c.length, 0);
     // All view skips weeks where nobody has anything on.
     if (mode === 'all' && count === 0) continue;
-    const from = start < range.from ? range.from : start;
-    const to   = range.to && end > range.to ? range.to : end;
     weeks.push({
       start, cells, count,
-      label: `${formatDayMonth(from)} – ${formatDayMonth(to)}`,
+      label: `${formatDayMonth(start)} – ${formatDayMonth(end)}`,
       isCurrent: today >= start && today <= end,
       isPast: end < today,
     });
@@ -521,7 +529,8 @@ function WeekBands({ djs, allUsers, gigs, range, mode, collapseBefore, isMobile,
           <div style={{padding:'12px 10px', fontSize:10, fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'var(--text-muted)', display:'flex', alignItems:'center'}}>Week</div>
         )}
         {perDJ.map((p, i) => {
-          const feeTotal = p.list.reduce((sum, g) => sum + (g.fee ? Number(g.fee) : 0), 0);
+          // Totals count only the gigs dated inside the viewed period (the calendar month).
+          const feeTotal = p.inPeriod.reduce((sum, g) => sum + (g.fee ? Number(g.fee) : 0), 0);
           const initials = p.dj.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
           return (
             <DropCell key={p.dj.uid} dj={p.dj} dotColor={p.color} onDropAssign={onDropAssign}
@@ -532,7 +541,7 @@ function WeekBands({ djs, allUsers, gigs, range, mode, collapseBefore, isMobile,
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:13,fontWeight:700,color:'var(--text-primary)'}}>{p.dj.name}</div>
                 <div style={{fontSize:11,color:'var(--text-secondary)',marginTop:1,display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
-                  <span>{`${p.list.length} gig${p.list.length !== 1 ? 's' : ''}${!hideFees && feeTotal > 0 ? ` · €${feeTotal}` : ''}`}</span>
+                  <span>{`${p.inPeriod.length} gig${p.inPeriod.length !== 1 ? 's' : ''}${!hideFees && feeTotal > 0 ? ` · €${feeTotal}` : ''}`}</span>
                   {p.pendingCount > 0 && (
                     <span
                       onClick={e => { e.stopPropagation(); onShowPending && onShowPending(); }}
