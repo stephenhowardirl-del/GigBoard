@@ -18,6 +18,39 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+function addDaysIso(iso, n) {
+  const d = new Date(iso + 'T12:00:00');
+  d.setDate(d.getDate() + n);
+  return toIso(d);
+}
+
+function mondayOf(iso) {
+  const d = new Date(iso + 'T12:00:00');
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return toIso(d);
+}
+
+function formatDayMonth(iso) {
+  return new Date(iso + 'T12:00:00').toLocaleDateString('en-IE', { day:'numeric', month:'short' });
+}
+
+function belongsTo(g, dj) {
+  return g.djUid === dj.uid || (g.djName && dj.name && g.djName.toLowerCase() === dj.name.toLowerCase());
+}
+
+// A DJ's gigs inside the viewed period, in date and time order.
+function gigsForDJ(dj, gigs, range) {
+  return gigs
+    .filter(g => {
+      if (!belongsTo(g, dj)) return false;
+      if (g.status === 'rejected' || g.status === 'unassigned') return false;
+      if (range.from && g.date < range.from) return false;
+      if (range.to && g.date > range.to) return false;
+      return true;
+    })
+    .sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''));
+}
+
 // Stack / cap the DJ columns on phones instead of crushing them side by side.
 function useIsMobile() {
   const [mobile, setMobile] = useState(window.innerWidth <= 768);
@@ -398,6 +431,176 @@ function DJColumn({ dj, gigs, dotColor, hideFees, range, collapseBefore, onConfi
 }
 
 const DOT_COLORS = ['#00d4aa','#a080ff','#40a0ff','#ff60c0','#ffbb00','#80d040'];
+
+// A drop target for one DJ: dropping a gig here assigns it to that DJ.
+// The gig keeps its own date — the week it is dropped in does not change it.
+function DropCell({ dj, dotColor, onDropAssign, style, children }) {
+  const [dragOver, setDragOver] = useState(false);
+  return (
+    <div
+      onDragOver={e => {
+        if (e.dataTransfer.types.includes('text/gig-id')) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          setDragOver(true);
+        }
+      }}
+      onDragLeave={e => {
+        if (!e.currentTarget.contains(e.relatedTarget)) setDragOver(false);
+      }}
+      onDrop={e => {
+        e.preventDefault();
+        setDragOver(false);
+        const gigId = e.dataTransfer.getData('text/gig-id');
+        if (gigId && onDropAssign) onDropAssign(gigId, dj);
+      }}
+      style={{
+        ...style,
+        background: dragOver ? 'var(--neon-bg)' : style.background,
+        outline: dragOver ? `2px dashed ${dotColor}` : 'none',
+        outlineOffset: -2,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// Month and All views: one outlined band per Monday-to-Sunday week, running
+// across every visible DJ so the same week lines up for everyone.
+function WeekBands({ djs, allUsers, gigs, range, mode, collapseBefore, isMobile, hideFees, onConfirm, onReject, onEdit, onDelete, onDropAssign, onShowPending }) {
+  const [showEarlier, setShowEarlier] = useState(false);
+  useEffect(() => { setShowEarlier(false); }, [range.from, range.to]);
+
+  if (djs.length === 0) {
+    return <div style={{padding:'24px 14px',textAlign:'center',color:'var(--text-muted)',fontSize:13}}>Pick a DJ above to see their gigs.</div>;
+  }
+
+  const today = todayStr();
+  const perDJ = djs.map(dj => ({
+    dj,
+    color: DOT_COLORS[allUsers.indexOf(dj) % DOT_COLORS.length],
+    list: gigsForDJ(dj, gigs, range),
+    pendingCount: gigs.filter(g => belongsTo(g, dj) && g.status === 'pending').length,
+  }));
+
+  // Last day to draw: the end of the month, or in All view the last gig on the books.
+  const lastDate = range.to || perDJ.reduce((max, p) => p.list.reduce((m, g) => (g.date > m ? g.date : m), max), range.from);
+
+  const weeks = [];
+  for (let start = mondayOf(range.from); start <= lastDate; start = addDaysIso(start, 7)) {
+    const end   = addDaysIso(start, 6);
+    const cells = perDJ.map(p => p.list.filter(g => g.date >= start && g.date <= end));
+    const count = cells.reduce((sum, c) => sum + c.length, 0);
+    // All view skips weeks where nobody has anything on.
+    if (mode === 'all' && count === 0) continue;
+    const from = start < range.from ? range.from : start;
+    const to   = range.to && end > range.to ? range.to : end;
+    weeks.push({
+      start, cells, count,
+      label: `${formatDayMonth(from)} – ${formatDayMonth(to)}`,
+      isCurrent: today >= start && today <= end,
+      isPast: end < today,
+    });
+  }
+
+  // Viewing the current month: weeks that are fully over collapse behind one toggle.
+  const earlier = collapseBefore ? weeks.filter(w => w.isPast) : [];
+  const shown   = collapseBefore && !showEarlier ? weeks.filter(w => !w.isPast) : weeks;
+
+  const djCols = `repeat(${djs.length}, minmax(0, 1fr))`;
+  const grid   = isMobile ? djCols : `92px ${djCols}`;
+  const weekBorder = 'color-mix(in srgb, var(--text-muted) 60%, transparent)';
+
+  return (
+    <div style={{display:'flex', flexDirection:'column', gap:10}}>
+
+      {/* DJ header row — stays in view while you scroll the weeks */}
+      <div style={{position:'sticky', top:56, zIndex:20, display:'grid', gridTemplateColumns:grid, background:'var(--bg-raised)', border:'1px solid var(--border)', borderRadius:10, overflow:'hidden'}}>
+        {!isMobile && (
+          <div style={{padding:'12px 10px', fontSize:10, fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'var(--text-muted)', display:'flex', alignItems:'center'}}>Week</div>
+        )}
+        {perDJ.map((p, i) => {
+          const feeTotal = p.list.reduce((sum, g) => sum + (g.fee ? Number(g.fee) : 0), 0);
+          const initials = p.dj.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+          return (
+            <DropCell key={p.dj.uid} dj={p.dj} dotColor={p.color} onDropAssign={onDropAssign}
+              style={{display:'flex', alignItems:'center', gap:10, padding:'10px 12px', minWidth:0, background:'var(--bg-raised)', borderLeft: !isMobile || i > 0 ? '1px solid var(--border)' : 'none'}}>
+              <div style={{width:34,height:34,borderRadius:'50%',background:p.color+'25',color:p.color,border:`1.5px solid ${p.color}60`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,flexShrink:0}}>
+                {initials}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:700,color:'var(--text-primary)'}}>{p.dj.name}</div>
+                <div style={{fontSize:11,color:'var(--text-secondary)',marginTop:1,display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+                  <span>{`${p.list.length} gig${p.list.length !== 1 ? 's' : ''}${!hideFees && feeTotal > 0 ? ` · €${feeTotal}` : ''}`}</span>
+                  {p.pendingCount > 0 && (
+                    <span
+                      onClick={e => { e.stopPropagation(); onShowPending && onShowPending(); }}
+                      title="Show all gigs including pending"
+                      style={{color:'var(--pending)',fontWeight:700,background:'var(--pending-bg)',border:'1px solid var(--pending-border)',borderRadius:4,padding:'0 6px',fontSize:10,cursor:'pointer'}}
+                    >
+                      {p.pendingCount} pending
+                    </span>
+                  )}
+                </div>
+              </div>
+            </DropCell>
+          );
+        })}
+      </div>
+
+      {earlier.length > 0 && (
+        <button
+          onClick={() => setShowEarlier(v => !v)}
+          style={{background:'transparent',border:'1px solid var(--border-mid)',borderRadius:8,color:'var(--text-secondary)',fontSize:12,padding:'8px 14px',cursor:'pointer',textAlign:'left'}}
+        >
+          {showEarlier ? '▾ Hide' : '▸ Show'} {earlier.length} earlier week{earlier.length !== 1 ? 's' : ''}
+        </button>
+      )}
+
+      {shown.length === 0 && (
+        <div style={{padding:'24px 14px',textAlign:'center',color:'var(--text-muted)',fontSize:13}}>No gigs in this period</div>
+      )}
+
+      {shown.map(w => {
+        const weekMeta = (
+          <>
+            <div style={{fontSize:12,fontWeight:700,color:'var(--text-primary)',lineHeight:1.35}}>{w.label}</div>
+            <div style={{fontSize:11,color:'var(--text-secondary)',marginTop: isMobile ? 0 : 3}}>{w.count} gig{w.count !== 1 ? 's' : ''}</div>
+            {w.isCurrent && (
+              <div style={{fontSize:10,fontWeight:700,color:'var(--neon)',textTransform:'uppercase',letterSpacing:'0.06em',marginTop: isMobile ? 0 : 5}}>This week</div>
+            )}
+          </>
+        );
+        return (
+          <div key={w.start} style={{border:`1px solid ${w.isCurrent ? 'var(--neon)' : weekBorder}`, borderRadius:10, overflow:'hidden', background:'var(--bg-surface)'}}>
+            {isMobile && (
+              <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',padding:'8px 12px',background:'var(--bg-hover)'}}>{weekMeta}</div>
+            )}
+            <div style={{display:'grid', gridTemplateColumns:grid}}>
+              {!isMobile && (
+                <div style={{padding:'12px 10px',background:'var(--bg-hover)'}}>{weekMeta}</div>
+              )}
+              {w.cells.map((list, i) => (
+                <DropCell key={perDJ[i].dj.uid} dj={perDJ[i].dj} dotColor={perDJ[i].color} onDropAssign={onDropAssign}
+                  style={{minWidth:0, background:'transparent', borderLeft: !isMobile || i > 0 ? '1px solid var(--border)' : 'none'}}>
+                  {list.length === 0 ? (
+                    <div style={{padding:'14px',fontSize:12,color:'var(--text-muted)'}}>No gigs</div>
+                  ) : (
+                    list.map(g => (
+                      <GigCard key={g.id} g={g} hideFees={hideFees} draggable onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete} />
+                    ))
+                  )}
+                </DropCell>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function GigList({ gigs, users = [], hideFees, onConfirm, onReject, onEdit, onDelete, onDropAssign, onDropUnassign }) {
   const [mode, setMode]           = useState('week');
   const [offset, setOffset]       = useState(0);
@@ -479,7 +682,27 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
         })}
       </div>
 
-      {isMobile ? (
+      {mode !== 'week' ? (
+        <div style={{display:'flex', flexDirection: isMobile ? 'column' : 'row', gap:10, alignItems: isMobile ? 'stretch' : 'flex-start', width:'100%'}}>
+          <div style={{display:'flex', flex: isMobile ? '0 0 auto' : '0 0 210px', minWidth:0}}>
+            <UnassignedColumn
+              gigs={gigs} hideFees={hideFees}
+              onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete}
+              onDropUnassign={onDropUnassign}
+            />
+          </div>
+          <div style={{flex:1, minWidth:0}}>
+            <WeekBands
+              djs={visibleUsers} allUsers={users} gigs={gigs}
+              range={range} mode={mode} collapseBefore={collapseBefore}
+              isMobile={isMobile} hideFees={hideFees}
+              onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete}
+              onDropAssign={onDropAssign}
+              onShowPending={() => { setMode('all'); setOffset(0); }}
+            />
+          </div>
+        </div>
+      ) : isMobile ? (
         <div style={{display:'flex', flexDirection:'column', gap:10, width:'100%'}}>
           <UnassignedColumn
             gigs={gigs} hideFees={hideFees}
