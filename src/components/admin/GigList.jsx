@@ -18,7 +18,7 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-// Stack the DJ columns vertically on phones instead of crushing them side by side.
+// Stack / cap the DJ columns on phones instead of crushing them side by side.
 function useIsMobile() {
   const [mobile, setMobile] = useState(window.innerWidth <= 768);
   useEffect(() => {
@@ -404,13 +404,32 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
   const [hiddenDJs, setHiddenDJs] = useState({});
   const isMobile                  = useIsMobile();
 
+  // On mobile only two DJ columns fit side by side, so the pills become a
+  // picker capped at two: tapping a third swaps out the oldest selection.
+  const [mobileDJs, setMobileDJs] = useState(null);
+  useEffect(() => {
+    if (mobileDJs === null && users.length > 0) {
+      setMobileDJs(users.slice(0, 2).map(u => u.uid));
+    }
+  }, [users, mobileDJs]);
+
   const pending = gigs.filter(g => g.status === 'pending');
 
   function toggleDJ(uid) {
-    setHiddenDJs(h => ({ ...h, [uid]: !h[uid] }));
+    if (isMobile) {
+      setMobileDJs(sel => {
+        const cur = sel || [];
+        if (cur.includes(uid)) return cur.filter(u => u !== uid);
+        return [...cur, uid].slice(-2);
+      });
+    } else {
+      setHiddenDJs(h => ({ ...h, [uid]: !h[uid] }));
+    }
   }
 
-  const visibleUsers = users.filter(dj => !hiddenDJs[dj.uid]);
+  const visibleUsers = isMobile
+    ? users.filter(dj => (mobileDJs || []).includes(dj.uid))
+    : users.filter(dj => !hiddenDJs[dj.uid]);
   const range        = getPeriodRange(mode, offset);
   // Viewing the current week/month: collapse gigs before today in each column.
   const collapseBefore = mode !== 'all' && offset === 0 ? todayStr() : null;
@@ -435,9 +454,10 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
         <button className="btn btn-primary btn-sm" onClick={() => onEdit(null)}>+ Assign gig</button>
       </div>
 
-      <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14}}>
+      <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14,alignItems:'center'}}>
+        {isMobile && <span style={{fontSize:10,color:'var(--text-muted)',marginRight:2}}>Pick 2:</span>}
         {users.map((dj, i) => {
-          const hidden   = hiddenDJs[dj.uid];
+          const hidden   = isMobile ? !(mobileDJs || []).includes(dj.uid) : hiddenDJs[dj.uid];
           const dotColor = DOT_COLORS[i % DOT_COLORS.length];
           return (
             <button
@@ -459,23 +479,45 @@ export default function GigList({ gigs, users = [], hideFees, onConfirm, onRejec
         })}
       </div>
 
-      <div style={{display:'flex', flexDirection: isMobile ? 'column' : 'row', gap:10, alignItems: isMobile ? 'stretch' : 'flex-start', width:'100%'}}>
-        <UnassignedColumn
-          gigs={gigs} hideFees={hideFees}
-          onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete}
-          onDropUnassign={onDropUnassign}
-        />
-        {visibleUsers.map(dj => (
-          <DJColumn
-            key={dj.uid} dj={dj} gigs={gigs}
-            dotColor={DOT_COLORS[users.indexOf(dj) % DOT_COLORS.length]}
-            hideFees={hideFees} range={range} collapseBefore={collapseBefore}
+      {isMobile ? (
+        <div style={{display:'flex', flexDirection:'column', gap:10, width:'100%'}}>
+          <UnassignedColumn
+            gigs={gigs} hideFees={hideFees}
             onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete}
-            onDropAssign={onDropAssign}
-            onShowPending={() => { setMode('all'); setOffset(0); }}
+            onDropUnassign={onDropUnassign}
           />
-        ))}
-      </div>
+          <div style={{display:'flex', gap:8, alignItems:'flex-start', width:'100%'}}>
+            {visibleUsers.map(dj => (
+              <DJColumn
+                key={dj.uid} dj={dj} gigs={gigs}
+                dotColor={DOT_COLORS[users.indexOf(dj) % DOT_COLORS.length]}
+                hideFees={hideFees} range={range} collapseBefore={collapseBefore}
+                onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete}
+                onDropAssign={onDropAssign}
+                onShowPending={() => { setMode('all'); setOffset(0); }}
+              />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div style={{display:'flex', gap:10, alignItems:'flex-start', width:'100%'}}>
+          <UnassignedColumn
+            gigs={gigs} hideFees={hideFees}
+            onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete}
+            onDropUnassign={onDropUnassign}
+          />
+          {visibleUsers.map(dj => (
+            <DJColumn
+              key={dj.uid} dj={dj} gigs={gigs}
+              dotColor={DOT_COLORS[users.indexOf(dj) % DOT_COLORS.length]}
+              hideFees={hideFees} range={range} collapseBefore={collapseBefore}
+              onConfirm={onConfirm} onReject={onReject} onEdit={onEdit} onDelete={onDelete}
+              onDropAssign={onDropAssign}
+              onShowPending={() => { setMode('all'); setOffset(0); }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
