@@ -27,7 +27,7 @@ export default class ErrorBoundary extends React.Component {
           textAlign: 'center',
         }}>
           <div style={{fontSize: 32, marginBottom: 16}}>⚠️</div>
-          <div style={{fontSize: 16, fontWeight: 600, color: '#e8e8f0', marginBottom: 8}}>
+          <div style={{fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8}}>
             Something went wrong
           </div>
           <div style={{fontSize: 13, color: 'var(--text-muted)', marginBottom: 24, maxWidth: 400}}>
