@@ -12,6 +12,7 @@ import AssignGigModal from '../components/AssignGigModal';
 import GigList from '../components/admin/GigList';
 import RosterTab from '../components/admin/RosterTab';
 import MyGigsTab from '../components/admin/MyGigsTab';
+import VenueView from '../components/admin/VenueView';
 import VenueManager from '../components/admin/VenueManager';
 import FinancialsTab from '../components/FinancialsTab';
 import DJDashboard from './DJDashboard';
@@ -260,6 +261,7 @@ export default function AdminDashboard({ hideFees }) {
       <div className="subnav">
         <button className={`subnav-btn${tab==='list'?' active':''}`}       onClick={() => setTab('list')}>Gig list</button>
         <button className={`subnav-btn${tab==='calendar'?' active':''}`}   onClick={() => setTab('calendar')}>Month view</button>
+        <button className={`subnav-btn${tab==='venueview'?' active':''}`}  onClick={() => setTab('venueview')}>Venue view</button>
         <button className={`subnav-btn${tab==='roster'?' active':''}`}     onClick={() => setTab('roster')}>DJ roster</button>
         <button className={`subnav-btn${tab==='venues'?' active':''}`}     onClick={() => setTab('venues')}>Venues</button>
         <button className={`subnav-btn${tab==='mygigs'?' active':''}`}     onClick={() => setTab('mygigs')}>
@@ -292,6 +294,10 @@ export default function AdminDashboard({ hideFees }) {
       )}
 
       {tab === 'calendar' && <CalendarView gigs={gigs} allUnavail={unavail} readOnly showDJPicker />}
+
+      {tab === 'venueview' && (
+        <VenueView gigs={gigs} users={gigListUsers} venues={venues} profile={profile} hideFees={hideFees} />
+      )}
 
       {tab === 'roster' && (
         <RosterTab
