@@ -37,13 +37,14 @@ export async function updateUserSelfAssignVenues(uid, selfAssignVenues) {
   await updateDoc(doc(db, 'users', uid), { selfAssignVenues });
 }
 
-export async function createGig({ venue, date, time, djUid, djName, djEmail, notes, fee, assignedBy, status }) {
+export async function createGig({ venue, date, time, djUid, djName, djEmail, notes, fee, assignedBy, status, musician }) {
   return await addDoc(collection(db, 'gigs'), {
     venue, date, time,
     djUid: djUid || '',
     djName: djName || '',
     djEmail: djEmail || '',
     notes: notes || '',
+    musician: musician || '',
     fee: fee ? Number(fee) : null,
     status: status || 'pending',
     assignedBy,
@@ -105,9 +106,12 @@ export async function updateGigStatus(gigId, status, calendarEventId = null) {
   await updateDoc(doc(db, 'gigs', gigId), data);
 }
 
-export async function updateGig(gigId, { venue, date, time, djUid, djName, djEmail, notes, fee, status }) {
+export async function updateGig(gigId, { venue, date, time, djUid, djName, djEmail, notes, fee, status, musician }) {
   // Editing preserves the gig's existing status — passed in by the caller.
+  // The musician is only written when the caller passes one, so screens that
+  // don't know about it (drag-and-drop, the assign modal) leave it untouched.
   await updateDoc(doc(db, 'gigs', gigId), {
+    ...(musician !== undefined ? { musician: musician || '' } : {}),
     venue, date, time,
     djUid: djUid || '',
     djName: djName || '',
@@ -164,4 +168,14 @@ export async function getVenues() {
 
 export async function saveVenues(list) {
   await setDoc(doc(db, 'settings', 'venues'), { list });
+}
+
+// Days marked as closed in the Venue view (a list of 'YYYY-MM-DD' strings).
+export async function getClosedDays() {
+  const snap = await getDoc(doc(db, 'settings', 'closedDays'));
+  return snap.exists() ? (snap.data().list || []) : [];
+}
+
+export async function saveClosedDays(list) {
+  await setDoc(doc(db, 'settings', 'closedDays'), { list });
 }
